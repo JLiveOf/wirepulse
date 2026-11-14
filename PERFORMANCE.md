@@ -48,3 +48,10 @@ A 48 kHz, el análisis pasa aproximadamente de 24,2 a 10,6 ms por segundo de aud
 Ajustes → Audio y Rendimiento muestra los FPS de dibujo, objetivo, tiempo medio del orbe/LED y si Skia está usando GPU o CPU. `status.json` añade frecuencia y perfil por pantalla, suspensión, CPU y memoria del proceso. Los FPS se cuentan al ejecutar el dibujo; no son una medición del fotograma finalmente presentado por DWM.
 
 La validación automática incluye el programa con Cinnamon/Nemo y captura real de un monitor PulseAudio, además de compilación/pruebas en Windows y macOS. Para confirmar 165 Hz se necesita medirlo en un equipo con esa pantalla. No se garantiza fluidez universal en cualquier ordenador de 2012; el sistema operativo, GPU, resolución y controladores también deben ser compatibles.
+
+
+## Medición adicional en Windows CI (CPU, sin RTX física)
+
+En el ejecutor de Windows, 1080p pasó de 8,86 ms/fotograma a 7,91 ms en Calidad y 1,67 ms en Ligero. Las asignaciones bajaron de 222.758 a 17.370 bytes por fotograma en Calidad. La FFT a 48 kHz pasó de 21,21 a 10,98 ms por segundo de audio. Los valores dependen del ejecutor y no equivalen a un i5-12400F/RTX 3050.
+
+También se prueba la firma binaria de la operación de líneas de Skia y que los puntos fuera de la porción enviada no se dibujan, incluso en CI sin GPU física. Las nuevas aperturas de la app reutilizan la instancia existente y sus ajustes; hay pruebas entre procesos para excluir capturas/renderizadores duplicados y comprobar recuperación tras un cierre inesperado.

@@ -1,5 +1,6 @@
 Mejoras de rendimiento y correcciones para Windows y Linux. macOS mantiene su implementación nativa, con el mismo número de versión para la publicación conjunta.
 
+- Una sola instancia: abrir la app de nuevo muestra sus ajustes sin duplicar captura de audio ni renderizado.
 - Sincronización con la frecuencia de cada pantalla: se eliminan el tope de 120 FPS y el reloj fijo de 60 Hz de la biblioteca anterior. Un monitor de 165 Hz puede solicitar 165 FPS y otro de 75 Hz, 75, según el margen del equipo.
 - Se corrigen los saltos de cadencia al limitar los FPS. El dibujo sigue los fotogramas del sistema, sin temporizador de interfaz fijo.
 - Orbe por lotes en el hilo de dibujo, con buffers reutilizados y menos objetos temporales. Fondo y tarjeta se conservan en capas separadas; el texto no se reconstruye con cada fotograma del orbe.

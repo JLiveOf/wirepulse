@@ -7,6 +7,10 @@ using System.Diagnostics;
 using System.Text.Json;
 using WirePulse;
 AppBuilder.Configure<App>().UseHeadless(new AvaloniaHeadlessPlatformOptions{UseHeadlessDrawing=false}).UseSkia().WithInterFont().SetupWithoutStarting();
+// Exercise the counted C ABI on every native platform, even on CI without a physical GPU.
+if(!SkiaLines.Available)throw new Exception("Native Skia line batching export could not be loaded");
+using(var surface=SkiaSharp.SKSurface.Create(new SkiaSharp.SKImageInfo(32,32))){surface.Canvas.Clear(SkiaSharp.SKColors.Transparent);using var paint=new SkiaSharp.SKPaint{Color=SkiaSharp.SKColors.White,StrokeWidth=2};using var path=new SkiaSharp.SKPath();SkiaLines.Draw(surface.Canvas,new[]{new SkiaSharp.SKPoint(4,8),new SkiaSharp.SKPoint(24,8),new SkiaSharp.SKPoint(4,20),new SkiaSharp.SKPoint(24,20)},2,paint,path);using var image=surface.Snapshot();using var pixels=SkiaSharp.SKBitmap.FromImage(image);if(pixels.GetPixel(10,8).Alpha==0||pixels.GetPixel(10,20).Alpha!=0)throw new Exception("Native line batch ignored its count");}
+Console.WriteLine("PASS native Skia batch ABI draws only the visible buffer portion");
 var results=new List<object>();
 foreach(var (width,height,centered) in new[]{(1920,1080,false),(1440,900,false),(3840,2160,false),(1920,1080,true)})foreach(string mode in new[]{"legacy","optimized","light"}){
  var settings=new Settings("benchmark-unused");settings.Values["rotation"]=System.Text.Json.Nodes.JsonValue.Create(0d);settings.Values["deformation"]=System.Text.Json.Nodes.JsonValue.Create(0d);settings.Values["pulse"]=System.Text.Json.Nodes.JsonValue.Create(0d);settings.RenderProfile=mode=="light"?"Ligero":"Calidad";if(centered){settings.Values["sphereX"]=System.Text.Json.Nodes.JsonValue.Create(50d);settings.Values["sphereY"]=System.Text.Json.Nodes.JsonValue.Create(50d);}var spectrum=new Spectrum();var media=new MediaService(settings);
