@@ -3,7 +3,7 @@ namespace WirePulse;
 
 public static partial class DesktopHost
 {
-    public static void Attach(IntPtr window, int width, int height, int x, int y) { if (OperatingSystem.IsWindows()) Windows(window, width, height, x, y); else if (OperatingSystem.IsLinux()) Linux(window); }
+    public static WindowsLayeredPresenter? Attach(IntPtr window, int width, int height, int x, int y) { if (OperatingSystem.IsWindows())return Windows(window,width,height,x,y);if(OperatingSystem.IsLinux())Linux(window);return null;}
     public static void Validate() { if (OperatingSystem.IsLinux() && (Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") == "wayland" || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY")))) throw new InvalidOperationException("El fondo necesita la sesión Cinnamon (X11). Cierra sesión y elige Cinnamon, no Cinnamon Wayland."); }
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindow(string cls, string? title);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern IntPtr FindWindowEx(IntPtr parent, IntPtr after, string cls, string? title);
@@ -18,13 +18,13 @@ public static partial class DesktopHost
     public static bool Alive(IntPtr h) => !OperatingSystem.IsWindows() || IsWindow(h);
     [DllImport("user32.dll")] static extern bool ScreenToClient(IntPtr h, ref XY p);
     [StructLayout(LayoutKind.Sequential)] struct XY { public int X, Y; }
-    static void Windows(IntPtr window, int w, int h, int x, int y)
+    static WindowsLayeredPresenter? Windows(IntPtr window, int w, int h, int x, int y)
     {
         var prog = FindWindow("Progman", null); if (prog == IntPtr.Zero) throw new Exception("No se encuentra el escritorio de Explorer."); SendMessageTimeout(prog, 0x052C, new IntPtr(0xD), new IntPtr(1), 0, 2000, out _); IntPtr worker = IntPtr.Zero;
         EnumWindows((top, _) => { if (FindWindowEx(top, IntPtr.Zero, "SHELLDLL_DefView", null) != IntPtr.Zero) worker = FindWindowEx(IntPtr.Zero, top, "WorkerW", null); return true; }, IntPtr.Zero);
         bool raised = (GetWindowLongPtr(prog, -20).ToInt64() & 0x00200000) != 0; var icons = FindWindowEx(prog, IntPtr.Zero, "SHELLDLL_DefView", null); if (raised) worker = FindWindowEx(prog, IntPtr.Zero, "WorkerW", null); if (worker == IntPtr.Zero) worker = FindWindowEx(prog, IntPtr.Zero, "WorkerW", null); if (worker == IntPtr.Zero) throw new Exception("Explorer no proporciona una superficie WorkerW para el fondo.");
         var parent=raised?prog:worker;var point=new XY{X=x,Y=y};ScreenToClient(parent,ref point);
-        AttachWindowsSurface(window,parent,icons,raised,w,h,point.X,point.Y,RedirectionRenderer());
+        return AttachWindowsSurface(window,parent,icons,raised,w,h,point.X,point.Y,RedirectionRenderer());
     }
     [DllImport("libX11.so.6")] static extern IntPtr XOpenDisplay(IntPtr name); [DllImport("libX11.so.6")] static extern IntPtr XInternAtom(IntPtr d, string name, bool only);
     [DllImport("libX11.so.6")] static extern int XChangeProperty(IntPtr d, IntPtr w, IntPtr property, IntPtr type, int format, int mode, IntPtr[] data, int n);

@@ -24,7 +24,7 @@ foreach ($layout in @('classic','raised')) {
         if ($process.ExitCode -ne 0 -or !(Test-Path $report)) { Get-Content "test-results/renderers/$name.err"; throw "Desktop fixture failed: $name" }
         $result = Get-Content $report -Raw | ConvertFrom-Json
         if (!$result.visible -or $result.matching -lt 7) { throw "Wallpaper pixels are not visible: $name" }
-        if ($layout -eq 'raised' -and ($result.presentation.classHasOwnDc -or !$result.presentation.alphaConfigured -or $result.presentation.alpha -ne 255)) { throw "Incompatible layered-window state: $name" }
+        if ($layout -eq 'raised' -and ($result.presentation.window.classHasOwnDc -or !$result.presentation.window.layered -or $result.presentation.frames -lt 1)) { throw "Incompatible layered-window state: $name" }
         Write-Output "PASS ${name}: $($result.matching)/$($result.samples) desktop pixels visible; $($result.active)"
     }
 }
