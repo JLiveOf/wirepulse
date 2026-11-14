@@ -1,6 +1,15 @@
 import AppKit
 import MetalKit
 
+if let index=CommandLine.arguments.firstIndex(of:"--relocation-probe"),CommandLine.arguments.count>index+1{
+ do{
+  let old=Bundle.main.executableURL!,destination=URL(fileURLWithPath:CommandLine.arguments[index+1])
+  try FileManager.default.moveItem(at:Bundle.main.bundleURL,to:destination)
+  guard let actual=currentExecutableURL(),actual.path==destination.appendingPathComponent("Contents/MacOS/WirePulse").path,actual.path != old.path else{fatalError("Relocated executable was not resolved")}
+  let child=Process();child.executableURL=actual;child.arguments=["--self-test"];try child.run();child.waitUntilExit();guard child.terminationStatus==0 else{fatalError("Relocated helper launch failed")}
+  print("PASS: running bundle moved; cached path changed; child launched from the new location");exit(0)
+ }catch{fputs("Relocation test failed: \(error)\n",stderr);exit(1)}
+}
 if CommandLine.arguments.contains("--provider-diagnostic"){
  let bundles=ProviderDetection.activeOutputBundles();let selected=ProviderDetection.browser(from:bundles)
  print("Active output processes: \(bundles.count); browser/application fallback: \(selected?.name ?? "none")");exit(0)

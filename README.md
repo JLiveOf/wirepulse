@@ -76,3 +76,7 @@ Icono propio adaptado del icono de OrbMusic para iPod: orbe de alambre rojo y LE
 - No se añaden portadas ni tiempos de reproducción inventados al navegador. Firefox, Arc y procesos WebKit genéricos muestran el nombre de la aplicación sin consultar su URL. Safari, Chrome, Edge y Brave pueden solicitar permiso de Automatización cuando se selecciona Automático. La selección manual existente se conserva.
 
 Referencias de Apple: [formato real del tap](https://developer.apple.com/documentation/coreaudio/audiohardwaretap/format), [portadas animadas](https://developer.apple.com/documentation/mediaplayer/mpmediaitemanimatedartwork).
+
+## Corrección 1.1.1: mover la aplicación
+
+El lector de portadas usa la ruta actual del ejecutable obtenida del kernel con `proc_pidpath`, en lugar de depender de `Bundle.main.executableURL`, que conserva la ruta del lanzamiento. Así puede abrir el proceso auxiliar aunque Finder haya movido la app mientras seguía ejecutándose. La prueba `python3 scripts/test-relocation.py dist/WirePulse.app` crea una copia desechable, mueve su bundle mientras se ejecuta y comprueba el lanzamiento de un proceso hijo desde la nueva ubicación, sin modificar la app original.

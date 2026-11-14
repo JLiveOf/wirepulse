@@ -48,7 +48,7 @@ final class NowPlaying:ObservableObject {
     if spotify,let address=info["art"] as? String,let url=URL(string:address),url.scheme=="https"{
      URLSession.shared.dataTask(with:url){[weak self] bytes,_,_ in let image=bytes.flatMap{NSImage(data:$0)};DispatchQueue.main.async{self?.finishArtwork(image,key:key,message:"Spotify aún no devuelve una portada válida")}}.resume()
     }else if !spotify{
-     let executable=Bundle.main.executableURL!
+     guard let executable=currentExecutableURL() else{self.artBusy=false;self.artworkState="No se encuentra el lector de portadas. Cierra y vuelve a abrir WirePulse.";return}
      DispatchQueue.global(qos:.utility).async{[weak self] in let (bytes,error)=Self.run(arguments:["--music-artwork",pid],executable:executable);let image=bytes.flatMap{NSImage(data:$0)};DispatchQueue.main.async{self?.finishArtwork(image,key:key,message:error.isEmpty ? "Apple Music aún no ha cargado la portada":error)}}
     }else{self.artBusy=false;self.artworkState="Spotify no ha proporcionado una URL de portada"}
    }
