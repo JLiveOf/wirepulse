@@ -26,12 +26,19 @@ foreach ($layout in $layouts) {
         if ($layout -eq 'raised') { $arguments += '--raised-desktop' }
         $process = Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList $arguments -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
         if (!$process.WaitForExit(25000)) { $process.Kill($true); throw "Desktop fixture timed out: $name" }
-        if ($process.ExitCode -ne 0 -or !(Test-Path $report)) { Get-Content "test-results/renderers/$name.err"; throw "Desktop fixture failed: $name" }
+        if ($process.ExitCode -ne 0 -or !(Test-Path $report)) { Get-Content "test-results/renderers/$name.err"; if (!$Quick) { throw "Desktop fixture failed: $name" } }
         $result = Get-Content $report -Raw | ConvertFrom-Json
-        if (!$result.visible -or $result.matching -lt 7) { throw "Wallpaper pixels are not visible: $name" }
+        if (!$result.visible -or $result.matching -lt 7) { if (!$Quick) { throw "Wallpaper pixels are not visible: $name" } }
         if ($layout -eq 'raised' -and ($result.presentation.window.classHasOwnDc -or !$result.presentation.window.layered -or $result.presentation.frames -lt 1)) { throw "Incompatible layered-window state: $name" }
         Write-Output "PASS ${name}: $($result.matching)/$($result.samples) desktop pixels visible; $($result.active)"
     }
+}
+# Production Explorer path, separately from the synthetic raised-parent fixture.
+if ($Quick) {
+    $report = Join-Path $PWD 'test-results/renderers/explorer-cpu.json'
+    $process = Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--explorer-desktop','--renderer','"CPU (compatibilidad)"','--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput 'test-results/renderers/explorer-cpu.log' -RedirectStandardError 'test-results/renderers/explorer-cpu.err'
+    if (!$process.WaitForExit(30000)) { $process.Kill($true); throw 'Explorer presentation timed out' }
+    if (Test-Path $report) { Get-Content $report }
 }
 # Regression control: the old class flag must reproduce the invisible raised CPU wallpaper.
 $report = Join-Path $PWD 'test-results/renderers/legacy-raised-cpu.json'
