@@ -70,3 +70,6 @@ Automático conserva DirectX 11 y su alternativa por CPU. Vulkan y OpenGL intent
 El instalador añade **WirePulse (modo compatible)** al menú Inicio. El ZIP incluye `WirePulse-SafeMode.cmd`; ambos fuerzan CPU para recuperar los ajustes si un controlador impide abrir la app. Desde allí selecciona otro motor y pulsa Aplicar y reiniciar. Esta apertura no sobrescribe tu preferencia por su cuenta.
 
 El [motor de ventanas utilizado](https://api-docs.avaloniaui.net/docs/T_Avalonia_Win32RenderingMode) no ofrece DirectX 12; no se anuncia una selección que usaría DirectX 11 por debajo. [NVENC](https://developer.nvidia.com/video-codec-sdk) codifica vídeo: WirePulse dibuja la escena directamente y no tiene una etapa de codificación a la que aplicarlo. Cambiar de API no garantiza más FPS; depende del controlador, la GPU y el coste de preparar la escena.
+
+
+En Windows 11 con el escritorio elevado, CPU/OpenGL usan una capa de presentación compatible para evitar un fondo invisible. Esa ruta copia el fotograma completo y puede rendir menos que Vulkan; no cambia el motor elegido por su cuenta. Las pruebas verifican también píxeles visibles sobre Explorer, no solo que se abra una ventana de ajustes.

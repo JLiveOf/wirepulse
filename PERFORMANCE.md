@@ -71,3 +71,12 @@ El selector cambia `Win32PlatformOptions.RenderingMode` antes de inicializar Ava
 El nombre activo procede del contexto de plataforma y de `GRContext.Backend`, leídos bajo un préstamo de la API gráfica en el primer dibujo. Para ANGLE/WGL se consulta `GL_RENDERER` dentro de ese contexto. Así se puede distinguir la selección pedida de su alternativa y reconocer un controlador WARP por su descripción, sin llamarlo RTX u otra GPU por suposición. `status.json` incluye `rendererRequested` y `rendererActive`.
 
 La CI de Windows abre una ventana nativa con cada selección, exige fotogramas dibujados y verifica que el motor activo pertenezca al orden de alternativas. La prueba por CPU debe permanecer en CPU. Los informes de `windows-renderers` registran las alternativas efectivamente utilizadas. Estas pruebas no certifican Vulkan con una RTX 3050 física ni una mejora de FPS; el corredor puede carecer de un controlador Vulkan y usar una alternativa.
+
+
+## Presentación compatible en el escritorio moderno (2.5.1)
+
+La prueba inicial de 2.5 abría una ventana normal; no certificaba que su imagen se viese después de integrarla bajo los iconos de Explorer. La nueva regresión utiliza el escritorio real de una cuenta desechable de Windows CI y comprueba píxeles de la captura, además del recuento de dibujos. Una ventana directa sin el presentador debe permanecer invisible en ese escenario; la presentación compatible debe mostrar la imagen.
+
+En el escritorio elevado, CPU y WGL mantienen sus contextos y sus DC originales, sin forzarles `WS_EX_LAYERED`. Una ventana nativa independiente sin `CS_OWNDC` presenta los fotogramas completos mediante una capa opaca y blits redirigidos. El ejecutable declara compatibilidad con Windows 8/8.1/10/11, necesaria para las capas hijas. El fondo incluye tarjeta, portada y reloj porque se captura después de dibujar toda la escena.
+
+Los búferes se reutilizan y las presentaciones se agrupan para no acumular tareas si el escritorio va más lento. La copia adicional tiene un coste, especialmente en OpenGL por la lectura GPU→CPU: es una ruta de compatibilidad, sin promesa de superar Vulkan. Vulkan y DirectX 11 conservan su presentación directa. El diagnóstico `presentation` registra el modo, los fotogramas presentados, el tiempo de copia y cualquier error.
