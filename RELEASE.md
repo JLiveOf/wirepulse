@@ -1,35 +1,20 @@
-## Fondos infinitos reactivos y reloj personalizable
+## Estrellas independientes y etiqueta del reproductor centrada
 
-- **Ajustes → Fondo animado**: Estrellas como primera opción y Malla triangular como segunda, con el material de alambre del orbe. Se puede ocultar y configurar color, opacidad, grosor, densidad/separación, velocidad y dirección.
-- En silencio el fondo mantiene un desplazamiento constante, por defecto desde arriba a la derecha hacia abajo a la izquierda. Los ataques del audio aceleran el movimiento suavemente, modulados por el tempo estimado. La reactividad y su intensidad son configurables.
-- **Ajustes → Reloj**: mostrar/ocultar, fuente instalada, formato de 12/24 horas, color, tamaño y posición.
-- Las dos funciones están disponibles en **Windows, Linux y macOS**, y respetan el modo de pantallas compartidas o independientes.
-- Dibujo con búferes reutilizables y reloj actualizado una vez por segundo. El perfil Ligero reduce la densidad del fondo en Windows/Linux.
+- **Estrellas**: puntos redondeados con velocidad, profundidad, trayectoria y vaivén propios, inspirados en los indicadores de movimiento del iPhone. Mantienen la dirección general elegida y aceleran suavemente con el audio.
+- **Cider**: si los metadatos de la canción incluyen BPM válidos, se aplican al fondo y se identifican en Ajustes. Si faltan, son inválidos, Cider pausa o los datos caducan, se conserva la detección por audio. Es compatibilidad condicional: no se ha confirmado que todas las versiones de su API publiquen ese campo.
+- **Windows/Linux**: texto del proveedor centrado horizontal y verticalmente en su etiqueta, respetando el tamaño de la tarjeta.
+- Se mantienen Malla, reloj, ajustes por pantalla, instalador de Windows e inicio automático opcional.
 
-El detector estima entre 40 y 240 BPM desde el audio; algunos temas pueden producir la mitad o el doble del tempo. No lee un BPM oficial del servicio musical.
-
-## Instalador de Windows e inicio automático opcional
-
-- Nuevo **instalador de Windows x64**, sin permisos de administrador: instala en la cuenta actual, crea el acceso del menú Inicio, ofrece acceso al escritorio y permite desinstalar desde Windows.
-- La primera apertura de **Windows, Linux y macOS** pregunta si deseas abrir WirePulse al iniciar sesión. La elección se guarda y puede cambiarse en **Ajustes → Inicio**.
-- El inicio automático solo se activa tras elegirlo y abre el fondo sin mostrar los ajustes. En macOS utiliza los ítems de inicio nativos y respeta su estado de aprobación.
-- El instalador admite reinstalación/actualización, conserva las preferencias y elimina su entrada de inicio al desinstalar. Pide cerrar WirePulse si está abierto.
-- Se mantienen las mejoras de rendimiento de 2.2, los perfiles, las posiciones independientes por pantalla, Cider y las portadas.
-
-### Elige tu descarga
+### Descargas
 
 | Sistema | Archivo |
 | --- | --- |
-| **Windows x64 · recomendado** | **WirePulse-2.4.0-win-x64-Setup.exe** |
-| Windows x64 portátil | WirePulse-2.4.0-win-x64.zip |
-| Linux Mint / Cinnamon X11 | wirepulse_2.4.0_amd64.deb |
-| Linux x64 portátil | WirePulse-2.4.0-linux-x64.tar.gz |
-| macOS / Apple silicon | WirePulse-2.4.0-macOS-arm64.zip |
+| Windows x64 instalador | **WirePulse-2.4.1-win-x64-Setup.exe** |
+| Windows x64 portátil | WirePulse-2.4.1-win-x64.zip |
+| Linux Mint / Cinnamon X11 | wirepulse_2.4.1_amd64.deb |
+| Linux x64 portátil | WirePulse-2.4.1-linux-x64.tar.gz |
+| macOS / Apple silicon | WirePulse-2.4.1-macOS-arm64.zip |
 
-Cierra la versión anterior antes de instalar. El instalador no activa el inicio automático por su cuenta: esa elección se hace en la app. El ZIP portátil sigue disponible.
+Windows 10 2004+ x64; Linux requiere X11; macOS 14.2+ Apple silicon. Windows sin firma comercial y macOS con firma ad hoc, sin notarización.
 
-Windows: instalador sin firma comercial, para Windows 10 2004 o posterior x64. Linux requiere X11. macOS requiere 14.2+ y Apple silicon; firma ad hoc, sin notarización. En macOS la opción puede pedir aprobación en Ítems de inicio.
-
-Las pruebas comprueban instalación, reinstalación, acceso del menú Inicio, ejecución de la app instalada y desinstalación en Windows; conservación de preferencias y limpieza de la entrada de inicio; diálogo de consentimiento y rechazo; registro por usuario de Windows/Linux y servicio nativo simulado de macOS. Las pruebas de macOS no alteran los ítems de inicio reales del equipo de compilación.
-
-Se comprueban también trenes de pulsos de 40 a 240 BPM, audio PCM de percusión, decaimiento en silencio, continuidad del desplazamiento, formato horario, controles de ambos fondos y persistencia por pantalla.
+Se comprueban trayectorias independientes, pausa, BPM opcionales v1/v2 de Cider, valores ausentes e inválidos, prioridad y caducidad de metadatos, FFT, detección de tempo, ajustes, rendimiento e instalación/reinstalación/desinstalación de Windows. La lectura de BPM se valida con respuestas simuladas; no garantiza que un cliente Cider concreto incluya ese dato.

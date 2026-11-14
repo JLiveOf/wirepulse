@@ -6,6 +6,7 @@ namespace WirePulse;
 
 public sealed record Track(string Provider = "Audio del sistema", string Title = "", string Artist = "", string Album = "", double Duration = 0, double Position = 0, bool Playing = false, string Artwork = "", byte[]? ImageBytes = null)
 {
+    public double Bpm { get; init; }
     public DateTimeOffset Updated { get; init; } = DateTimeOffset.UtcNow;
     public double Elapsed => Math.Clamp(Position + (Playing ? (DateTimeOffset.UtcNow - Updated).TotalSeconds : 0), 0, Math.Max(0, Duration));
 }
@@ -55,6 +56,6 @@ public sealed class MediaService(Settings settings)
         var v2 = (await Get("/api/v2/playback"))?["data"]; var info = v2?["nowPlaying"]; bool playing; double position, duration;
         if (info != null) { playing = v2?["state"]?.GetValue<string>() == "playing"; position = v2?["time"]?["currentTime"]?.GetValue<double>() ?? 0; duration = v2?["time"]?["duration"]?.GetValue<double>() ?? info["durationInMillis"]?.GetValue<double>() / 1000 ?? 0; }
         else { info = (await Get("/api/v1/playback/now-playing"))?["info"]; if (info == null) return null; playing = (await Get("/api/v1/playback/is-playing"))?["is_playing"]?.GetValue<bool>() == true; position = info["currentPlaybackTime"]?.GetValue<double>() ?? 0; duration = info["durationInMillis"]?.GetValue<double>() / 1000 ?? 0; }
-        return new("Cider", info["name"]?.GetValue<string>() ?? "", info["artistName"]?.GetValue<string>() ?? "", info["albumName"]?.GetValue<string>() ?? "", duration, position, playing, (info["artwork"]?["url"]?.GetValue<string>() ?? "").Replace("{w}", "600").Replace("{h}", "600"));
+        return new("Cider", info["name"]?.GetValue<string>() ?? "", info["artistName"]?.GetValue<string>() ?? "", info["albumName"]?.GetValue<string>() ?? "", duration, position, playing, (info["artwork"]?["url"]?.GetValue<string>() ?? "").Replace("{w}", "600").Replace("{h}", "600")){Bpm=PlaybackTempo.Read(info)};
     }
 }

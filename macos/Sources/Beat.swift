@@ -28,3 +28,11 @@ struct BackgroundMotion {
  var x=0.0,y=0.0,speed=0.0
  mutating func advance(dt:Double,base:Double,direction:Double,boost:Double,beat:Double,bpm:Double,paused:Bool){guard !paused else{return};let delta=min(0.1,max(0,dt));speed=base*(1+boost*min(1,max(0,beat))*(bpm>0 ? min(2,max(0.5,bpm/120)):1));let angle=direction*Double.pi/180;x+=cos(angle)*speed*delta;y+=sin(angle)*speed*delta}
 }
+
+final class StarMotion {
+ static let ring:[SIMD2<Double>]=(0...8).map{let angle=Double($0)*Double.pi/4;return SIMD2(cos(angle),sin(angle))}
+ private var x=[Double](repeating:0,count:400),y=[Double](repeating:0,count:400),time=0.0
+ static func seed(_ index:UInt32,_ salt:UInt32)->Double{var v=index^salt;v ^= v>>16;v = v &* 0x7feb352d;v ^= v>>15;v = v &* 0x846ca68b;v ^= v>>16;return Double(v&0xffffff)/16777216}
+ func advance(count:Int,dt:Double,speed:Double,direction:Double,paused:Bool){guard !paused else{return};let delta=min(0.1,max(0,dt));time+=delta;for i in 0..<min(count,400){let depth=0.55+Self.seed(UInt32(i),0xa12c)*1.1,phase=Self.seed(UInt32(i),0xb45d)*Double.pi*2,offset=(Self.seed(UInt32(i),0xc78e)-0.5)*0.85,sway=sin(time*(0.22+depth*0.2)+phase)*0.22,heading=direction*Double.pi/180+offset+sway;x[i]+=cos(heading)*speed*depth*delta;y[i]+=sin(heading)*speed*depth*delta}}
+ func position(_ index:Int,width:Double,height:Double)->(x:Double,y:Double){func wrap(_ v:Double,_ n:Double)->Double{let r=v.truncatingRemainder(dividingBy:n);return r<0 ? r+n:r};return (wrap(Self.seed(UInt32(index),0x1234abcd)*width+x[index],width),wrap(Self.seed(UInt32(index),0xbadf00d)*height+y[index],height))}
+}

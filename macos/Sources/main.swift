@@ -3,6 +3,11 @@ import MetalKit
 import ServiceManagement
 
 if CommandLine.arguments.contains("--scene-self-test"){
+ let stars=StarMotion(),a=stars.position(0,width:1920,height:1080),b=stars.position(1,width:1920,height:1080);for _ in 0..<60{stars.advance(count:120,dt:1/60,speed:20,direction:135,paused:false)};let aa=stars.position(0,width:1920,height:1080),bb=stars.position(1,width:1920,height:1080);precondition(abs((aa.x-a.x)-(bb.x-b.x))>1);stars.advance(count:120,dt:0.1,speed:200,direction:0,paused:true);precondition(stars.position(0,width:1920,height:1080).x==aa.x)
+ precondition(CiderReader.tempo(["bpm":128.5])==128.5 && CiderReader.tempo(["attributes":["tempo":"128.5"]])==128.5 && CiderReader.tempo(["bpm":true])==0 && CiderReader.tempo(["bpm":9999])==0 && CiderReader.tempo([:])==0)
+ let player=NowPlaying();player.provider="Cider";player.playing=true;player.bpm=128.5;precondition(player.tempoBpm==128.5);player.playing=false;precondition(player.tempoBpm==0);player.playing=true;player.provider="Spotify";precondition(player.tempoBpm==0)
+ print("PASS independent stars, pause and optional Cider BPM with audio fallback")
+
  for expected in [40.0,60.0,90.0,120.0,165.0,190.0,220.0,240.0]{let detector=BeatTracker();var result=BeatFrame();let period=60/expected,ranges=[ClosedRange<Double>](repeating:0...200,count:64)
   for i in 0..<900{let phase=(Double(i)/60).truncatingRemainder(dividingBy:period),energy=phase<0.09 ? exp(-phase*30)*0.7:0;result=detector.feed(bands:[Float](repeating:Float(energy),count:64),ranges:ranges,energy:energy,dt:1/60)}
   precondition(abs(result.bpm-expected)<8,"Tempo estimate differs from click train");print("PASS tempo \(expected) BPM estimated as \(result.bpm)")
@@ -45,7 +50,8 @@ if CommandLine.arguments.contains("--music-artwork"){
  let index=CommandLine.arguments.firstIndex(of:"--music-artwork")!;let pid=CommandLine.arguments.count>index+1 ? CommandLine.arguments[index+1]:"";exit(exportMusicArtwork(expectedID:pid))
 }
 if let i=CommandLine.arguments.firstIndex(of:"--cider-fixture-test"),CommandLine.arguments.count>i+1{
- guard let info=CiderReader.read(address:CommandLine.arguments[i+1],token:"fixture-token"),info["provider"] as? String=="Cider",info["title"] as? String=="WirePulse fixture",info["position"] as? Double==12 else{fputs("Cider fixture failed\n",stderr);exit(1)}
+ let expectedIndex=CommandLine.arguments.firstIndex(of:"--expected-bpm"),expected=expectedIndex.flatMap{Double(CommandLine.arguments[$0+1])} ?? 0
+ guard let info=CiderReader.read(address:CommandLine.arguments[i+1],token:"fixture-token"),info["provider"] as? String=="Cider",info["title"] as? String=="WirePulse fixture",info["position"] as? Double==12,info["bpm"] as? Double==expected else{fputs("Cider fixture failed\n",stderr);exit(1)}
  print("PASS Cider API metadata/state/time/artwork");exit(0)
 }
 if CommandLine.arguments.contains("--display-profile-test"){

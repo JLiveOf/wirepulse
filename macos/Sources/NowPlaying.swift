@@ -9,6 +9,8 @@ final class NowPlaying:ObservableObject {
  @Published var playing=false
  @Published var duration=0.0
  @Published var position=0.0
+ @Published var bpm=0.0
+ var tempoBpm:Double{provider=="Cider" && playing && ProcessInfo.processInfo.systemUptime-updated<6 ? bpm:0}
  @Published var artwork:NSImage?
  @Published var artworkState="Sin portada"
  @Published var note="Selecciona Apple Music o Spotify para mostrar sus metadatos."
@@ -19,7 +21,7 @@ final class NowPlaying:ObservableObject {
  func poll(source:String,ciderURL:String="http://127.0.0.1:10767",ciderToken:String=""){
   guard ["Ninguno","Apple Music","Spotify","Cider","Automático"].contains(source) else{return}
   activeSource=source
-  guard source != "Ninguno" else{title="";artist="";album="";identity="";provider="Audio del sistema";artwork=nil;artworkState="Sin fuente seleccionada";return}
+  guard source != "Ninguno" else{bpm=0;title="";artist="";album="";identity="";provider="Audio del sistema";artwork=nil;artworkState="Sin fuente seleccionada";return}
   guard !busy else{return};busy=true
   let browser=source=="Automático" ? ProviderDetection.browser(from:ProviderDetection.activeOutputBundles()):nil
   let script="""
@@ -40,7 +42,7 @@ final class NowPlaying:ObservableObject {
     guard let info=result,(error.isEmpty || result?["provider"] as? String=="Cider") else{self.note="Autoriza WirePulse en Privacidad y seguridad → Automatización para leer \(source).";return}
     let next=info["title"] as? String ?? "",artist=info["artist"] as? String ?? "",album=info["album"] as? String ?? "",pid=info["id"] as? String ?? ""
     let resolved=info["provider"] as? String ?? "Audio del sistema",isBrowser=info["kind"] as? String=="browser",spotify=resolved=="Spotify" && !isBrowser
-    self.provider=resolved
+    self.provider=resolved;self.bpm=resolved=="Cider" ? info["bpm"] as? Double ?? 0:0
     let key=resolved+"|"+pid+"|"+next+"|"+artist+"|"+album,changed=key != self.identity
     self.title=next;self.artist=artist;self.album=album;self.duration=info["duration"] as? Double ?? 0;self.position=info["position"] as? Double ?? 0;self.playing=info["playing"] as? Bool ?? false;self.updated=ProcessInfo.processInfo.systemUptime;self.note=next.isEmpty ? "\(source) no tiene una canción activa.":"Leyendo \(resolved)"
     if changed{self.identity=key;self.artwork=self.cache.object(forKey:key as NSString);self.lastArtAttempt=0;self.artworkState=self.artwork==nil ? "Esperando portada":"Portada en caché"}

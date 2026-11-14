@@ -9,7 +9,7 @@ final class WallpaperSurface {
  init(screen:NSScreen,config:Configuration,audio:SystemAudio,media:NowPlaying)throws{
   self.config=config
   guard let device=MTLCreateSystemDefaultDevice() else{throw NSError(domain:"WirePulse",code:3,userInfo:[NSLocalizedDescriptionKey:"Este Mac no dispone de Metal"])}
-  renderer=try WallpaperRenderer(config:config,analyzer:audio.analyzer,device:device)
+  renderer=try WallpaperRenderer(config:config,analyzer:audio.analyzer,device:device,media:media)
   window=NSWindow(contentRect:screen.frame,styleMask:.borderless,backing:.buffered,defer:false,screen:screen)
   window.title="WirePulse · fondo animado";window.level=NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.desktopWindow))+1);window.collectionBehavior=[.canJoinAllSpaces,.stationary,.ignoresCycle];window.ignoresMouseEvents=true;window.hasShadow=false;window.isOpaque=true;window.isReleasedWhenClosed=false;window.hidesOnDeactivate=false
   let root=NSView(frame:NSRect(origin:.zero,size:screen.frame.size));root.wantsLayer=true;window.contentView=root

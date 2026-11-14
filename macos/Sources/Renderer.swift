@@ -5,19 +5,20 @@ import simd
 struct WireVertex { var position:SIMD2<Float>; var color:SIMD4<Float> }
 struct MeshPoint {var x:Float;var y:Float;var z:Float;var bin:Int;var phase:Float}
 final class WallpaperRenderer:NSObject,MTKViewDelegate {
- let config:Configuration;let analyzer:SpectrumAnalyzer
+ let config:Configuration;let analyzer:SpectrumAnalyzer;let media:NowPlaying?
  let device:MTLDevice;private let commandQueue:MTLCommandQueue;private let pipeline:MTLRenderPipelineState
  private var smooth=[Float](repeating:0,count:64),peaks=[Float](repeating:0,count:64)
  private var mesh=[MeshPoint](),edges=[(Int,Int)](),density=0
  var backgroundPulse=0.0
  var spaceNodes=[SIMD2<Float>]()
  var backgroundMotion=BackgroundMotion()
+ let stars=StarMotion()
  private var vertices=[WireVertex](),angle:Float=0,last=ProcessInfo.processInfo.systemUptime
  private var buffers=[MTLBuffer?](repeating:nil,count:3),bufferIndex=0
  private let inFlight=DispatchSemaphore(value:3)
  var frameCount:UInt64=0
- init(config:Configuration,analyzer:SpectrumAnalyzer,device:MTLDevice)throws{
-  self.config=config;self.analyzer=analyzer;self.device=device
+ init(config:Configuration,analyzer:SpectrumAnalyzer,device:MTLDevice,media:NowPlaying?=nil)throws{
+  self.config=config;self.analyzer=analyzer;self.device=device;self.media=media
   guard let q=device.makeCommandQueue() else{throw NSError(domain:"WirePulse",code:2,userInfo:[NSLocalizedDescriptionKey:"Metal no pudo crear una cola de dibujo"])};commandQueue=q
   let source="""
   #include <metal_stdlib>
@@ -80,7 +81,8 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   for i in 0..<64{let input=snapshot.age<0.3 && !config.paused ? snapshot.bands[i]:0;let v=min(1,max(0,input-Float(config.n("gate")))*Float(config.n("sensitivity"))*((snapshot.ranges.indices.contains(i) && snapshot.ranges[i].upperBound>20 && snapshot.ranges[i].lowerBound<160) ? Float(config.n("bass")):1));smooth[i]=v+(smooth[i]-v)*decay;if smooth[i]<0.0001{smooth[i]=0}}
   if !config.backgroundPath.isEmpty{rect(0,0,width,height,SIMD4(0,0,0,Float(config.n("dim")/100)))}
   let beat=snapshot.age<0.8 && !config.paused ? snapshot.beat*exp(-snapshot.age*7):0
-  drawSpace(time:time,dt:dt,beat:beat,bpm:snapshot.bpm)
+  let ciderBpm=media?.tempoBpm ?? 0
+  drawSpace(time:time,dt:dt,beat:beat,bpm:ciderBpm>0 ? ciderBpm:snapshot.bpm)
   let bassIndices=snapshot.ranges.indices.filter{snapshot.ranges[$0].upperBound>20 && snapshot.ranges[$0].lowerBound<160};let low=bassIndices.reduce(Float(0)){$0+smooth[$1]}/Float(max(1,bassIndices.count))
   if !config.paused{angle += dt*Float(config.n("rotation"))}
   if config.on("sphere"){

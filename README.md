@@ -22,6 +22,7 @@ Cada release reúne **los tres sistemas** y un archivo `SHA256SUMS.txt`. Windows
 - FFT adaptativa y 64 bandas continuas desde DC hasta Nyquist; análisis estéreo que conserva señales en contrafase.
 - Sensibilidad, graves, suavizado, colores, tamaño y posición de los elementos.
 - Fondo infinito ocultable: **Estrellas** (primera opción) o **Malla** triangular, con el material de alambre del orbe. Velocidad, dirección, densidad, separación, grosor, color y opacidad configurables.
+- Estrellas redondeadas con trayectoria, velocidad y vaivén independientes, inspiradas en los indicadores de movimiento del iPhone. Mantienen la dirección general elegida.
 - Beats detectados desde el audio aceleran suavemente el fondo; el tempo estimado modula la intensidad. En silencio continúa a la velocidad base, por defecto desde arriba a la derecha hacia abajo a la izquierda.
 - Reloj ocultable con fuentes instaladas, formato de 12/24 horas, color, tamaño y posición por pantalla.
 - Música, portada, progreso y proveedor desde los datos publicados por los reproductores.
@@ -53,7 +54,7 @@ Las pruebas automáticas no sustituyen la validación de hardware de audio de Wi
 
 ## Fondo animado y reloj
 
-En **Ajustes → Fondo animado**, elige Estrellas o Malla y activa o desactiva el fondo y su respuesta al ritmo. La dirección se expresa en grados: 0 hacia la derecha, 90 hacia abajo y 135 en diagonal hacia abajo a la izquierda. El movimiento se integra sin saltos cuando cambia la velocidad. Los BPM se estiman a partir de ataques y correlación del audio entre 40 y 240 BPM; algunos temas pueden producir estimaciones a mitad o doble tempo. No depende de que el reproductor publique BPM.
+En **Ajustes → Fondo animado**, elige Estrellas o Malla y activa o desactiva el fondo y su respuesta al ritmo. La dirección se expresa en grados: 0 hacia la derecha, 90 hacia abajo y 135 en diagonal hacia abajo a la izquierda. El movimiento se integra sin saltos cuando cambia la velocidad. Los BPM se estiman a partir de ataques y correlación del audio entre 40 y 240 BPM; algunos temas pueden producir estimaciones a mitad o doble tempo. No depende de que el reproductor publique BPM. Si los metadatos de la canción que entrega Cider incluyen BPM válidos, se priorizan mientras reproduce y se indica «BPM · Cider». Cuando faltan, pausa o los datos quedan desactualizados, se utiliza el análisis del audio. Esta lectura es condicional: no se ha confirmado un campo de BPM garantizado en todas las versiones de la [API de Cider](https://taproom.cider.sh/docs/api/).
 
 En **Ajustes → Reloj**, elige una fuente instalada, color y formato. Ambos elementos respetan la composición compartida o independiente de cada pantalla. El perfil Ligero de Windows/Linux reduce también la densidad del nuevo fondo.
 
