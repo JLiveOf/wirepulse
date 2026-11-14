@@ -1,0 +1,7 @@
+bin/
+obj/
+publish/
+test-results/
+*.user
+.DS_Store
+packages/
