@@ -9,6 +9,9 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
  let device:MTLDevice;private let commandQueue:MTLCommandQueue;private let pipeline:MTLRenderPipelineState
  private var smooth=[Float](repeating:0,count:64),peaks=[Float](repeating:0,count:64)
  private var mesh=[MeshPoint](),edges=[(Int,Int)](),density=0
+ var backgroundPulse=0.0
+ var spaceNodes=[SIMD2<Float>]()
+ var backgroundMotion=BackgroundMotion()
  private var vertices=[WireVertex](),angle:Float=0,last=ProcessInfo.processInfo.systemUptime
  private var buffers=[MTLBuffer?](repeating:nil,count:3),bufferIndex=0
  private let inFlight=DispatchSemaphore(value:3)
@@ -62,11 +65,11 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
    let a=j*m+i;if j<n{edges.append((a,a+m));edges.append((a,(j+1)*m+(i+1)%m))};edges.append((a,j*m+(i+1)%m))
   }}
  }
- private var width:Float=1,height:Float=1
+ var width:Float=1,height:Float=1
  private func point(_ x:Float,_ y:Float)->SIMD2<Float>{SIMD2(x/width*2-1,1-y/height*2)}
  private func triangle(_ a:SIMD2<Float>,_ b:SIMD2<Float>,_ c:SIMD2<Float>,_ color:SIMD4<Float>){vertices.append(WireVertex(position:point(a.x,a.y),color:color));vertices.append(WireVertex(position:point(b.x,b.y),color:color));vertices.append(WireVertex(position:point(c.x,c.y),color:color))}
- private func rect(_ x:Float,_ y:Float,_ w:Float,_ h:Float,_ color:SIMD4<Float>){guard w>0,h>0 else{return};let a=SIMD2(x,y),b=SIMD2(x+w,y),c=SIMD2(x,y+h),d=SIMD2(x+w,y+h);triangle(a,b,c,color);triangle(c,b,d,color)}
- private func line(_ a:SIMD2<Float>,_ b:SIMD2<Float>,_ thickness:Float,_ color:SIMD4<Float>){
+ func rect(_ x:Float,_ y:Float,_ w:Float,_ h:Float,_ color:SIMD4<Float>){guard w>0,h>0 else{return};let a=SIMD2(x,y),b=SIMD2(x+w,y),c=SIMD2(x,y+h),d=SIMD2(x+w,y+h);triangle(a,b,c,color);triangle(c,b,d,color)}
+ func line(_ a:SIMD2<Float>,_ b:SIMD2<Float>,_ thickness:Float,_ color:SIMD4<Float>){
   if max(a.x,b.x)<0 || min(a.x,b.x)>width || max(a.y,b.y)<0 || min(a.y,b.y)>height{return}
   let delta=b-a,length=simd_length(delta);guard length>0.0001 else{return};let n=SIMD2(-delta.y,delta.x)*(thickness*0.5/length)
   triangle(a-n,b-n,a+n,color);triangle(a+n,b-n,b+n,color)
@@ -76,6 +79,8 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   let snapshot=analyzer.snapshot(),decay=pow(Float(config.n("smoothing")),dt*60)
   for i in 0..<64{let input=snapshot.age<0.3 && !config.paused ? snapshot.bands[i]:0;let v=min(1,max(0,input-Float(config.n("gate")))*Float(config.n("sensitivity"))*((snapshot.ranges.indices.contains(i) && snapshot.ranges[i].upperBound>20 && snapshot.ranges[i].lowerBound<160) ? Float(config.n("bass")):1));smooth[i]=v+(smooth[i]-v)*decay;if smooth[i]<0.0001{smooth[i]=0}}
   if !config.backgroundPath.isEmpty{rect(0,0,width,height,SIMD4(0,0,0,Float(config.n("dim")/100)))}
+  let beat=snapshot.age<0.8 && !config.paused ? snapshot.beat*exp(-snapshot.age*7):0
+  drawSpace(time:time,dt:dt,beat:beat,bpm:snapshot.bpm)
   let bassIndices=snapshot.ranges.indices.filter{snapshot.ranges[$0].upperBound>20 && snapshot.ranges[$0].lowerBound<160};let low=bassIndices.reduce(Float(0)){$0+smooth[$1]}/Float(max(1,bassIndices.count))
   if !config.paused{angle += dt*Float(config.n("rotation"))}
   if config.on("sphere"){

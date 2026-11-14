@@ -1,3 +1,13 @@
+## Fondos infinitos reactivos y reloj personalizable
+
+- **Ajustes → Fondo animado**: Estrellas como primera opción y Malla triangular como segunda, con el material de alambre del orbe. Se puede ocultar y configurar color, opacidad, grosor, densidad/separación, velocidad y dirección.
+- En silencio el fondo mantiene un desplazamiento constante, por defecto desde arriba a la derecha hacia abajo a la izquierda. Los ataques del audio aceleran el movimiento suavemente, modulados por el tempo estimado. La reactividad y su intensidad son configurables.
+- **Ajustes → Reloj**: mostrar/ocultar, fuente instalada, formato de 12/24 horas, color, tamaño y posición.
+- Las dos funciones están disponibles en **Windows, Linux y macOS**, y respetan el modo de pantallas compartidas o independientes.
+- Dibujo con búferes reutilizables y reloj actualizado una vez por segundo. El perfil Ligero reduce la densidad del fondo en Windows/Linux.
+
+El detector estima entre 40 y 240 BPM desde el audio; algunos temas pueden producir la mitad o el doble del tempo. No lee un BPM oficial del servicio musical.
+
 ## Instalador de Windows e inicio automático opcional
 
 - Nuevo **instalador de Windows x64**, sin permisos de administrador: instala en la cuenta actual, crea el acceso del menú Inicio, ofrece acceso al escritorio y permite desinstalar desde Windows.
@@ -10,14 +20,16 @@
 
 | Sistema | Archivo |
 | --- | --- |
-| **Windows x64 · recomendado** | **WirePulse-2.3.0-win-x64-Setup.exe** |
-| Windows x64 portátil | WirePulse-2.3.0-win-x64.zip |
-| Linux Mint / Cinnamon X11 | wirepulse_2.3.0_amd64.deb |
-| Linux x64 portátil | WirePulse-2.3.0-linux-x64.tar.gz |
-| macOS / Apple silicon | WirePulse-2.3.0-macOS-arm64.zip |
+| **Windows x64 · recomendado** | **WirePulse-2.4.0-win-x64-Setup.exe** |
+| Windows x64 portátil | WirePulse-2.4.0-win-x64.zip |
+| Linux Mint / Cinnamon X11 | wirepulse_2.4.0_amd64.deb |
+| Linux x64 portátil | WirePulse-2.4.0-linux-x64.tar.gz |
+| macOS / Apple silicon | WirePulse-2.4.0-macOS-arm64.zip |
 
 Cierra la versión anterior antes de instalar. El instalador no activa el inicio automático por su cuenta: esa elección se hace en la app. El ZIP portátil sigue disponible.
 
 Windows: instalador sin firma comercial, para Windows 10 2004 o posterior x64. Linux requiere X11. macOS requiere 14.2+ y Apple silicon; firma ad hoc, sin notarización. En macOS la opción puede pedir aprobación en Ítems de inicio.
 
 Las pruebas comprueban instalación, reinstalación, acceso del menú Inicio, ejecución de la app instalada y desinstalación en Windows; conservación de preferencias y limpieza de la entrada de inicio; diálogo de consentimiento y rechazo; registro por usuario de Windows/Linux y servicio nativo simulado de macOS. Las pruebas de macOS no alteran los ítems de inicio reales del equipo de compilación.
+
+Se comprueban también trenes de pulsos de 40 a 240 BPM, audio PCM de percusión, decaimiento en silencio, continuidad del desplazamiento, formato horario, controles de ambos fondos y persistencia por pantalla.

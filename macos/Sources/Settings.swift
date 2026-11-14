@@ -7,13 +7,15 @@ struct SettingsView:View {
  @ObservedObject var startup:StartupManager
  var playback:Configuration?=nil
  @State var selected="Audio"
- let groups=["Audio","Fondo","Orbe","Espectro","Tarjeta","Rendimiento","Inicio"]
+ let groups=["Audio","Fondo","Fondo animado","Orbe","Espectro","Tarjeta","Reloj","Rendimiento","Inicio"]
  var body:some View{
   NavigationSplitView{
-   List(groups,id:\.self,selection:$selected){group in Label(group,systemImage:["Audio":"waveform","Fondo":"photo","Orbe":"globe","Espectro":"chart.bar","Tarjeta":"music.note","Rendimiento":"speedometer","Inicio":"power"][group]!).tag(group)}.navigationTitle("WirePulse").navigationSplitViewColumnWidth(170)
+   List(groups,id:\.self,selection:$selected){group in Label(group,systemImage:["Audio":"waveform","Fondo":"photo","Fondo animado":"sparkles","Reloj":"clock","Orbe":"globe","Espectro":"chart.bar","Tarjeta":"music.note","Rendimiento":"speedometer","Inicio":"power"][group]!).tag(group)}.navigationTitle("WirePulse").navigationSplitViewColumnWidth(170)
   } detail: {
    Form{
     if selected=="Inicio"{Section("Inicio de sesión"){Toggle("Abrir WirePulse al iniciar sesión",isOn:Binding(get:{startup.enabled},set:{startup.setEnabled($0)}));Text(startup.note).font(.caption).foregroundStyle(.secondary);Button("Gestionar ítems de inicio"){SMAppService.openSystemSettingsLoginItems()}}}
+    if selected=="Fondo animado"{Section("Material"){Picker("Tipo",selection:Binding(get:{Int(config.n("bgstyle"))},set:{config.values["bgstyle"]=Double($0)})){Text("Estrellas").tag(0);Text("Malla").tag(1)};TimelineView(.periodic(from:.now,by:1)){_ in let snapshot=audio.analyzer.snapshot(),bpm=snapshot.age<2 ? snapshot.bpm:0;Text(bpm>0 ? "\(Int(bpm.rounded())) BPM estimados":"Esperando un ritmo estable").font(.caption).foregroundStyle(.secondary)};Text("Sin sonido mantiene la velocidad base. Los beats aceleran el desplazamiento; los BPM se estiman a partir del audio.").font(.caption).foregroundStyle(.secondary)}}
+    if selected=="Reloj"{Section("Fuente"){Picker("Fuente del reloj",selection:$config.clockFont){Text("Sistema").tag("System");ForEach(NSFontManager.shared.availableFontFamilies.sorted(),id:\.self){font in Text(font).tag(font)}}}}
     if selected=="Audio"{
      Section("Audio del sistema"){
       Text(audio.status).textSelection(.enabled)

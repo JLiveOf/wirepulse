@@ -55,3 +55,10 @@ La validación automática incluye el programa con Cinnamon/Nemo y captura real 
 En el ejecutor de Windows, 1080p pasó de 8,86 ms/fotograma a 7,91 ms en Calidad y 1,67 ms en Ligero. Las asignaciones bajaron de 222.758 a 17.370 bytes por fotograma en Calidad. La FFT a 48 kHz pasó de 21,21 a 10,98 ms por segundo de audio. Los valores dependen del ejecutor y no equivalen a un i5-12400F/RTX 3050.
 
 También se prueba la firma binaria de la operación de líneas de Skia y que los puntos fuera de la porción enviada no se dibujan, incluso en CI sin GPU física. Las nuevas aperturas de la app reutilizan la instancia existente y sus ajustes; hay pruebas entre procesos para excluir capturas/renderizadores duplicados y comprobar recuperación tras un cierre inesperado.
+
+
+## Fondo y reloj (2.4)
+
+El banco de pruebas conserva los tres casos anteriores con los elementos nuevos desactivados y añade `stars` y `mesh` a 1080p con el reloj visible. El fondo reutiliza caminos y búferes; el reloj se invalida a 1 Hz y conserva el texto formateado. Ligero limita las estrellas a 80 y la separación mínima de la malla a 120 px. El análisis de tempo se comparte entre pantallas y se actualiza dos veces por segundo, con una ventana de ocho segundos.
+
+En la prueba local por CPU de macOS/Skia, la escena 1080p de referencia midió 4,90 ms por cuadro; con estrellas 4,76 ms, y con malla 4,94 ms. La variación entre pasadas impide interpretar diferencias pequeñas como una mejora. Estos valores no son una medición de la RTX 3050 ni garantizan una frecuencia de refresco física.

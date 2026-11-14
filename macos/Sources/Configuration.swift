@@ -40,12 +40,28 @@ let controls: [ControlSpec] = [
  .init(id:"accent",title:"Color del progreso",group:"Tarjeta",kind:.color),
  .init(id:"unlimitedfps",title:"Usar frecuencia de la pantalla",group:"Rendimiento",kind:.toggle),
  .init(id:"fps",title:"Límite de FPS",group:"Rendimiento",kind:.slider(15,120,1)),
- .init(id:"quality",title:"Resolución de dibujo",group:"Rendimiento",kind:.slider(0.5,1.5,0.25))
+ .init(id:"quality",title:"Resolución de dibujo",group:"Rendimiento",kind:.slider(0.5,1.5,0.25)),
+ .init(id:"bgshow",title:"Mostrar fondo animado",group:"Fondo animado",kind:.toggle),
+ .init(id:"bgreact",title:"Acelerar con los beats",group:"Fondo animado",kind:.toggle),
+ .init(id:"bgcolor",title:"Color del material",group:"Fondo animado",kind:.color),
+ .init(id:"bgopacity",title:"Opacidad",group:"Fondo animado",kind:.slider(0.05,1,0.05)),
+ .init(id:"bgdensity",title:"Cantidad de estrellas",group:"Fondo animado",kind:.slider(10,400,10)),
+ .init(id:"bgspacing",title:"Separación de la malla",group:"Fondo animado",kind:.slider(40,240,5)),
+ .init(id:"bgline",title:"Grosor del material",group:"Fondo animado",kind:.slider(0.25,3,0.05)),
+ .init(id:"bgspeed",title:"Velocidad base",group:"Fondo animado",kind:.slider(0,150,1)),
+ .init(id:"bgdirection",title:"Dirección: 0 derecha, 90 abajo",group:"Fondo animado",kind:.slider(0,359,1)),
+ .init(id:"bgboost",title:"Aceleración por beat",group:"Fondo animado",kind:.slider(0,8,0.1)),
+ .init(id:"clockshow",title:"Mostrar reloj",group:"Reloj",kind:.toggle),
+ .init(id:"clock24",title:"Formato de 24 horas",group:"Reloj",kind:.toggle),
+ .init(id:"clockcolor",title:"Color del reloj",group:"Reloj",kind:.color),
+ .init(id:"clocksize",title:"Tamaño de fuente",group:"Reloj",kind:.slider(14,160,1)),
+ .init(id:"clockX",title:"Posición horizontal",group:"Reloj",kind:.slider(0,100,1)),
+ .init(id:"clockY",title:"Posición vertical",group:"Reloj",kind:.slider(0,100,1))
 ]
 final class Configuration: ObservableObject {
  let storagePrefix:String
  @Published var independentDisplays:Bool { didSet{UserDefaults.standard.set(independentDisplays,forKey:"independentDisplays")} }
- static let defaults: [String:Double] = ["dim":0,"sensitivity":0.7,"bass":1.2,"gate":0.015,"smoothing":0.5,"sphere":1,"fullmesh":1,"radius":55,"sphereX":97,"sphereY":123,"deformation":1,"pulse":0.2,"rotation":0.5,"density":42,"linewidth":0.65,"glow":6,"opacity":1,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":0.75,"unlimitedfps":0,"fps":60,"quality":1]
+ static let defaults: [String:Double] = ["dim":0,"sensitivity":0.7,"bass":1.2,"gate":0.015,"smoothing":0.5,"sphere":1,"fullmesh":1,"radius":55,"sphereX":97,"sphereY":123,"deformation":1,"pulse":0.2,"rotation":0.5,"density":42,"linewidth":0.65,"glow":6,"opacity":1,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":0.75,"unlimitedfps":0,"fps":60,"quality":1,"bgshow":1,"bgreact":1,"bgstyle":0,"bgopacity":0.3,"bgdensity":120,"bgspacing":100,"bgline":0.65,"bgspeed":20,"bgdirection":135,"bgboost":3,"clockshow":1,"clock24":1,"clocksize":48,"clockX":50,"clockY":82]
  @Published var values: [String:Double] { didSet { UserDefaults.standard.set(values,forKey:storagePrefix+"values") } }
  @Published var colors: [String:String] { didSet { UserDefaults.standard.set(colors,forKey:storagePrefix+"colors") } }
  @Published var backgroundPath: String { didSet { UserDefaults.standard.set(backgroundPath,forKey:storagePrefix+"backgroundPath") } }
@@ -54,16 +70,18 @@ final class Configuration: ObservableObject {
  @Published var topMargin:Double { didSet{UserDefaults.standard.set(topMargin,forKey:storagePrefix+"topMargin")} }
  @Published var ciderURL:String { didSet{UserDefaults.standard.set(ciderURL,forKey:"ciderURL")} }
  @Published var ciderToken:String { didSet{CiderReader.saveToken(ciderToken)} }
+ @Published var clockFont:String {didSet{UserDefaults.standard.set(clockFont,forKey:storagePrefix+"clockFont")}}
  @Published var paused = false
  init(profile:String="",template:Configuration?=nil) {
   storagePrefix=profile.isEmpty ? "":"display-"+profile+"-"
+  clockFont=UserDefaults.standard.string(forKey:storagePrefix+"clockFont") ?? template?.clockFont ?? "System"
   independentDisplays=UserDefaults.standard.bool(forKey:"independentDisplays")
   topCentered=UserDefaults.standard.object(forKey:storagePrefix+"topCentered") as? Bool ?? template?.topCentered ?? true
   topMargin=UserDefaults.standard.object(forKey:storagePrefix+"topMargin") as? Double ?? template?.topMargin ?? 4.8
   ciderURL=UserDefaults.standard.string(forKey:"ciderURL") ?? "http://127.0.0.1:10767"
   ciderToken=CiderReader.loadToken()
   values = (template?.values ?? Self.defaults).merging(UserDefaults.standard.dictionary(forKey:storagePrefix+"values") as? [String:Double] ?? [:]) { _,new in new }
-  colors = (template?.colors ?? ["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf"]).merging(UserDefaults.standard.dictionary(forKey:storagePrefix+"colors") as? [String:String] ?? [:]) { _,new in new }
+  colors = (template?.colors ?? ["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf","bgcolor":"#ff143c","clockcolor":"#ffffff"]).merging(UserDefaults.standard.dictionary(forKey:storagePrefix+"colors") as? [String:String] ?? [:]) { _,new in new }
   backgroundPath = UserDefaults.standard.string(forKey:storagePrefix+"backgroundPath") ?? template?.backgroundPath ?? ""
   mediaSource = UserDefaults.standard.string(forKey:"mediaSource") ?? "Automático"
   if profile.isEmpty && UserDefaults.standard.integer(forKey:"desktopPresetRevision")<2 {
@@ -72,11 +90,11 @@ final class Configuration: ObservableObject {
   }
  }
  var hasSaved:Bool{UserDefaults.standard.object(forKey:storagePrefix+"values") != nil}
- func copyLayout(from other:Configuration){values=other.values;colors=other.colors;backgroundPath=other.backgroundPath;topCentered=other.topCentered;topMargin=other.topMargin}
+ func copyLayout(from other:Configuration){values=other.values;colors=other.colors;backgroundPath=other.backgroundPath;topCentered=other.topCentered;topMargin=other.topMargin;clockFont=other.clockFont}
  func n(_ key:String)->Double { values[key] ?? Self.defaults[key] ?? 0 }
  func on(_ key:String)->Bool { n(key)>0.5 }
  func color(_ key:String)->NSColor { NSColor(hex:colors[key] ?? "#ffffff") }
- func reset() { values=Self.defaults; colors=["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf"];backgroundPath="";topCentered=true;topMargin=4.8 }
+ func reset() { values=Self.defaults; colors=["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf","bgcolor":"#ff143c","clockcolor":"#ffffff"];backgroundPath="";clockFont="System";topCentered=true;topMargin=4.8 }
  func chooseImage() {
   let panel=NSOpenPanel();panel.allowedContentTypes=[.image];panel.canChooseDirectories=false
   guard panel.runModal() == .OK,let url=panel.url else{return}

@@ -111,7 +111,7 @@
   },
   {
     "key": "sphereX",
-    "title": "Posición horizontal",
+    "title": "Posici\u00f3n horizontal",
     "kind": "slider",
     "value": 97,
     "group": "Orbe",
@@ -121,7 +121,7 @@
   },
   {
     "key": "sphereY",
-    "title": "Posición vertical",
+    "title": "Posici\u00f3n vertical",
     "kind": "slider",
     "value": 123,
     "group": "Orbe",
@@ -131,7 +131,7 @@
   },
   {
     "key": "deformation",
-    "title": "Deformación por audio",
+    "title": "Deformaci\u00f3n por audio",
     "kind": "slider",
     "value": 1,
     "group": "Orbe",
@@ -151,7 +151,7 @@
   },
   {
     "key": "rotation",
-    "title": "Velocidad de rotación",
+    "title": "Velocidad de rotaci\u00f3n",
     "kind": "slider",
     "value": 0.5,
     "group": "Orbe",
@@ -171,7 +171,7 @@
   },
   {
     "key": "linewidth",
-    "title": "Grosor de líneas",
+    "title": "Grosor de l\u00edneas",
     "kind": "slider",
     "value": 0.65,
     "group": "Orbe",
@@ -211,7 +211,7 @@
   },
   {
     "key": "spectrumX",
-    "title": "Posición horizontal",
+    "title": "Posici\u00f3n horizontal",
     "kind": "slider",
     "value": 0,
     "group": "Espectro",
@@ -221,7 +221,7 @@
   },
   {
     "key": "spectrumY",
-    "title": "Posición vertical",
+    "title": "Posici\u00f3n vertical",
     "kind": "slider",
     "value": 0,
     "group": "Espectro",
@@ -241,7 +241,7 @@
   },
   {
     "key": "spectrumWidth",
-    "title": "Anchura máxima",
+    "title": "Anchura m\u00e1xima",
     "kind": "slider",
     "value": 15,
     "group": "Espectro",
@@ -271,7 +271,7 @@
   },
   {
     "key": "hideidle",
-    "title": "Ocultar si no hay canción",
+    "title": "Ocultar si no hay canci\u00f3n",
     "kind": "bool",
     "value": false,
     "group": "Tarjeta",
@@ -281,7 +281,7 @@
   },
   {
     "key": "cardX",
-    "title": "Posición horizontal",
+    "title": "Posici\u00f3n horizontal",
     "kind": "slider",
     "value": 0.8,
     "group": "Tarjeta",
@@ -331,7 +331,7 @@
   },
   {
     "key": "fps",
-    "title": "Límite de FPS",
+    "title": "L\u00edmite de FPS",
     "kind": "slider",
     "value": 60,
     "group": "Rendimiento",
@@ -341,12 +341,172 @@
   },
   {
     "key": "quality",
-    "title": "Resolución de dibujo",
+    "title": "Resoluci\u00f3n de dibujo",
     "kind": "slider",
     "value": 1,
     "group": "Rendimiento",
     "min": 0.5,
     "max": 1.5,
     "step": 0.25
+  },
+  {
+    "key": "bgshow",
+    "title": "Mostrar fondo animado",
+    "kind": "bool",
+    "value": true,
+    "group": "Fondo animado",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "bgreact",
+    "title": "Acelerar con los beats",
+    "kind": "bool",
+    "value": true,
+    "group": "Fondo animado",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "bgcolor",
+    "title": "Color del material",
+    "kind": "color",
+    "value": "#ff143c",
+    "group": "Fondo animado",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "bgopacity",
+    "title": "Opacidad",
+    "kind": "slider",
+    "value": 0.3,
+    "group": "Fondo animado",
+    "min": 0.05,
+    "max": 1,
+    "step": 0.05
+  },
+  {
+    "key": "bgdensity",
+    "title": "Cantidad de estrellas",
+    "kind": "slider",
+    "value": 120,
+    "group": "Fondo animado",
+    "min": 10,
+    "max": 400,
+    "step": 10
+  },
+  {
+    "key": "bgspacing",
+    "title": "Separacion de la malla",
+    "kind": "slider",
+    "value": 100,
+    "group": "Fondo animado",
+    "min": 40,
+    "max": 240,
+    "step": 5
+  },
+  {
+    "key": "bgline",
+    "title": "Grosor del material",
+    "kind": "slider",
+    "value": 0.65,
+    "group": "Fondo animado",
+    "min": 0.25,
+    "max": 3,
+    "step": 0.05
+  },
+  {
+    "key": "bgspeed",
+    "title": "Velocidad base",
+    "kind": "slider",
+    "value": 20,
+    "group": "Fondo animado",
+    "min": 0,
+    "max": 150,
+    "step": 1
+  },
+  {
+    "key": "bgdirection",
+    "title": "Direccion: 0 derecha, 90 abajo",
+    "kind": "slider",
+    "value": 135,
+    "group": "Fondo animado",
+    "min": 0,
+    "max": 359,
+    "step": 1
+  },
+  {
+    "key": "bgboost",
+    "title": "Aceleracion por beat",
+    "kind": "slider",
+    "value": 3,
+    "group": "Fondo animado",
+    "min": 0,
+    "max": 8,
+    "step": 0.1
+  },
+  {
+    "key": "clockshow",
+    "title": "Mostrar reloj",
+    "kind": "bool",
+    "value": true,
+    "group": "Reloj",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "clock24",
+    "title": "Formato de 24 horas",
+    "kind": "bool",
+    "value": true,
+    "group": "Reloj",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "clockcolor",
+    "title": "Color del reloj",
+    "kind": "color",
+    "value": "#ffffff",
+    "group": "Reloj",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "clocksize",
+    "title": "Tamano de fuente",
+    "kind": "slider",
+    "value": 48,
+    "group": "Reloj",
+    "min": 14,
+    "max": 160,
+    "step": 1
+  },
+  {
+    "key": "clockX",
+    "title": "Posicion horizontal",
+    "kind": "slider",
+    "value": 50,
+    "group": "Reloj",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  {
+    "key": "clockY",
+    "title": "Posicion vertical",
+    "kind": "slider",
+    "value": 82,
+    "group": "Reloj",
+    "min": 0,
+    "max": 100,
+    "step": 1
   }
 ]

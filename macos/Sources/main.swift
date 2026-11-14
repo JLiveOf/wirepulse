@@ -2,6 +2,20 @@ import AppKit
 import MetalKit
 import ServiceManagement
 
+if CommandLine.arguments.contains("--scene-self-test"){
+ for expected in [40.0,60.0,90.0,120.0,165.0,190.0,220.0,240.0]{let detector=BeatTracker();var result=BeatFrame();let period=60/expected,ranges=[ClosedRange<Double>](repeating:0...200,count:64)
+  for i in 0..<900{let phase=(Double(i)/60).truncatingRemainder(dividingBy:period),energy=phase<0.09 ? exp(-phase*30)*0.7:0;result=detector.feed(bands:[Float](repeating:Float(energy),count:64),ranges:ranges,energy:energy,dt:1/60)}
+  precondition(abs(result.bpm-expected)<8,"Tempo estimate differs from click train");print("PASS tempo \(expected) BPM estimated as \(result.bpm)")
+  for _ in 0..<180{result=detector.feed(bands:[Float](repeating:0,count:64),ranges:ranges,energy:0,dt:1/60)};precondition(result.bpm==0 && result.pulse==0)
+ }
+ for expected in [90.0,120.0,165.0]{let analyzer=SpectrumAnalyzer(),rate=48000,count=48000*12;var pcm=[Float](repeating:0,count:count)
+  for i in 0..<count{let t=Double(i)/Double(rate),phase=t.truncatingRemainder(dividingBy:60/expected),envelope=0.7*exp(-phase*45),oscillator=sin(2*Double.pi*65*t);pcm[i]=Float(envelope*oscillator)}
+  pcm.withUnsafeBufferPointer{analyzer.ingest($0.baseAddress!,frames:count,channels:1,rate:Double(rate))};let bpm=analyzer.snapshot().bpm;precondition(abs(bpm-expected)<8,"PCM tempo estimate differs");print("PASS PCM kick audio \(expected) BPM estimated as \(bpm)")
+ }
+ var motion=BackgroundMotion();for _ in 0..<60{motion.advance(dt:1/60,base:20,direction:135,boost:3,beat:0,bpm:0,paused:false)};precondition(abs(motion.x+sqrt(200))<0.000001 && abs(motion.y-sqrt(200))<0.000001)
+ let date=Date(timeIntervalSince1970:13*3600+5*60),oldZone=NSTimeZone.default;NSTimeZone.default=TimeZone(secondsFromGMT:0)!;precondition(ClockOverlay.text(date,hours24:true)=="13:05" && ClockOverlay.text(date,hours24:false)=="01:05 PM");NSTimeZone.default=oldZone
+ print("PASS clock 12/24-hour formatting and silent constant diagonal movement with beat decay");exit(0)
+}
 if CommandLine.arguments.contains("--startup-self-test"){
  let name="WirePulseStartupTest-"+UUID().uuidString,store=UserDefaults(suiteName:name)!
  var state=SMAppService.Status.notRegistered,registrations=0,removals=0
@@ -36,8 +50,8 @@ if let i=CommandLine.arguments.firstIndex(of:"--cider-fixture-test"),CommandLine
 }
 if CommandLine.arguments.contains("--display-profile-test"){
  let key="test-"+UUID().uuidString,root=Configuration(),before=root.n("sphereX"),a=Configuration(profile:key,template:root)
- precondition(a.n("sphereX")==before);a.values["sphereX"]=23;let b=Configuration(profile:key,template:root);precondition(b.n("sphereX")==23 && root.n("sphereX")==before)
- for field in ["values","colors","backgroundPath","topCentered","topMargin"]{UserDefaults.standard.removeObject(forKey:"display-"+key+"-"+field)}
+ precondition(a.n("sphereX")==before);a.values["sphereX"]=23;a.values["bgstyle"]=1;a.values["clock24"]=0;a.clockFont="Menlo";let b=Configuration(profile:key,template:root);precondition(b.n("sphereX")==23 && root.n("sphereX")==before && b.n("bgstyle")==1 && b.n("clock24")==0 && b.clockFont=="Menlo")
+ for field in ["values","colors","backgroundPath","topCentered","topMargin","clockFont"]{UserDefaults.standard.removeObject(forKey:"display-"+key+"-"+field)}
  print("PASS independent display profile persists without changing shared layout");exit(0)
 }
 if CommandLine.arguments.contains("--self-test"){

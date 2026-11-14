@@ -10,12 +10,13 @@ namespace WirePulse;
 
 public sealed record VisualizerOptions(bool Sphere, bool Full, bool Spectrum, bool Segmented, int Density, double Radius, double X, double Y, double Deformation, double Pulse, double Rotation, double Line, double Glow, double Opacity, SKColor Color, double SpectrumX, double SpectrumY, double SpectrumW, double SpectrumH, double Gate, double Sensitivity, double Bass, double Smoothing, string Profile)
 {
+    public SpaceOptions? Space{get;init;}
     static SKColor ToSkia(string text) { var c = Avalonia.Media.Color.Parse(text); return new SKColor(c.R, c.G, c.B, c.A); }
-    public static VisualizerOptions Read(Settings s) => new(s.On("sphere"), s.On("fullmesh"), s.On("spectrum"), s.On("segmented"), (int)s.N("density"), s.N("radius"), s.N("sphereX"), s.N("sphereY"), s.N("deformation"), s.N("pulse"), s.N("rotation"), s.N("linewidth"), s.N("glow"), s.N("opacity"), ToSkia(s.Text("wirecolor")), s.N("spectrumX"), s.N("spectrumY"), s.N("spectrumWidth"), s.N("spectrumHeight"), s.N("gate"), s.N("sensitivity"), s.N("bass"), s.N("smoothing"), s.RenderProfile);
+    public static VisualizerOptions Read(Settings s) => new(s.On("sphere"), s.On("fullmesh"), s.On("spectrum"), s.On("segmented"), (int)s.N("density"), s.N("radius"), s.N("sphereX"), s.N("sphereY"), s.N("deformation"), s.N("pulse"), s.N("rotation"), s.N("linewidth"), s.N("glow"), s.N("opacity"), ToSkia(s.Text("wirecolor")), s.N("spectrumX"), s.N("spectrumY"), s.N("spectrumWidth"), s.N("spectrumHeight"), s.N("gate"), s.N("sensitivity"), s.N("bass"), s.N("smoothing"), s.RenderProfile){Space=SpaceOptions.Read(s)};
 }
 public sealed class VisualizerPainter : IDisposable
 {
-    readonly object gate = new(); readonly double[] smooth = new double[64], peaks = new double[64]; double last, angle, detail = 1; int density; OrbMesh? mesh; Vector3[] projected = []; SKPoint[] far = [], near = []; SKPath? segments; double segmentWidth, segmentHeight, segmentStep;
+    readonly object gate = new();readonly SpaceBackground space=new(); readonly double[] smooth = new double[64], peaks = new double[64]; double last, angle, detail = 1; int density; OrbMesh? mesh; Vector3[] projected = []; SKPoint[] far = [], near = []; SKPath? segments; double segmentWidth, segmentHeight, segmentStep;
     readonly SKPaint line = new() { IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeCap = SKStrokeCap.Butt }; readonly SKPaint fill = new() { IsAntialias = false }; readonly SKPaint gradient = new() { IsAntialias = false }; readonly SKPath rings = new(), fallback = new(), cpuFar = new(), cpuNear = new(); bool disposed;
     public RenderStatistics Statistics { get; } = new();
     public VisualizerPainter() { gradient.Shader = SKShader.CreateLinearGradient(new(0, 0), new(1, 0), new[] { new SKColor(87, 255, 0), new SKColor(184, 219, 0), new SKColor(255, 99, 0), new SKColor(255, 0, 40) }, new[] { 0f, .4f, .75f, 1f }, SKShaderTileMode.Clamp); }
@@ -25,6 +26,7 @@ public sealed class VisualizerPainter : IDisposable
         {
             if (disposed) return; long start = Stopwatch.GetTimestamp(); double now = start / (double)Stopwatch.Frequency, dt = last == 0 ? 1 / 60d : Math.Clamp(now - last, 0, .1); last = now; double decay = Math.Pow(o.Smoothing, dt * 60), bass = 0; int bassCount = 0;
             for (int i = 0; i < 64; i++) { bool isBass = audio.High[i] > 20 && audio.Low[i] < 160; double input = audio.Age < .3 && !paused ? audio.Bands[i] : 0, v = Math.Clamp(Math.Max(0, input - o.Gate) * o.Sensitivity * (isBass ? o.Bass : 1), 0, 1); smooth[i] = v + (smooth[i] - v) * decay; if (smooth[i] < .0001) smooth[i] = 0; if (isBass) { bass += smooth[i]; bassCount++; } }
+            double beat=audio.Age<.8&&!paused?audio.Beat*Math.Exp(-audio.Age*7):0;if(o.Space is{} background)space.Draw(canvas,width,height,now,dt,background,beat,audio.Bpm,paused,gpu,o.Profile=="Ligero");
             if (!paused) angle += dt * o.Rotation; if (o.Sphere) Orb(canvas, width, height, now, bassCount > 0 ? bass / bassCount : 0, o, gpu); if (o.Spectrum) Leds(canvas, width, height, dt, o);
             Statistics.Backend = gpu ? "GPU · Skia" : "CPU · Skia"; Statistics.Record(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
         }
@@ -48,7 +50,7 @@ public sealed class VisualizerPainter : IDisposable
         c.Restore(); fill.Color = new SKColor(255, 30, 60, 115); for (int i = 0; i < 64; i++) if (peaks[i] > 3) c.DrawRect((float)(x + peaks[i]), (float)(y + i * row), 1, (float)bar, fill);
     }
     public void Adapt(double targetFps) { double budget = 1000 / Math.Max(1, targetFps), current = Volatile.Read(ref detail); if (Statistics.DrawMs > budget * .65 || (Statistics.Frames > 120 && Statistics.Fps > 0 && Statistics.Fps < targetFps * .85)) current = Math.Max(.5, current - .05); else if (Statistics.DrawMs < budget * .25) current = Math.Min(1, current + .025); Volatile.Write(ref detail, current); }
-    public void Dispose() { lock (gate) { if (disposed) return; disposed = true; line.Dispose(); fill.Dispose(); gradient.Shader?.Dispose(); gradient.Dispose(); segments?.Dispose(); rings.Dispose(); fallback.Dispose(); cpuFar.Dispose(); cpuNear.Dispose(); } }
+    public void Dispose() { lock (gate) { if (disposed) return; disposed = true;space.Dispose(); line.Dispose(); fill.Dispose(); gradient.Shader?.Dispose(); gradient.Dispose(); segments?.Dispose(); rings.Dispose(); fallback.Dispose(); cpuFar.Dispose(); cpuNear.Dispose(); } }
 }
 public sealed class VisualizationOperation(VisualizerPainter painter, VisualizerOptions options, SpectrumFrame audio, bool paused, Rect bounds) : ICustomDrawOperation
 {

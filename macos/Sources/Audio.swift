@@ -5,10 +5,12 @@ import Accelerate
 struct SpectrumSnapshot {
  let bands:[Float],age:Double,frames:UInt64,peak:Float
  let sampleRate:Double,fftSize:Int,binWidthHz:Double,peakFrequencyHz:Double
+ let beat:Double,bpm:Double,beatConfidence:Double
  let ranges:[ClosedRange<Double>]
  var maximumHz:Double {sampleRate/2}
 }
 final class SpectrumAnalyzer {
+ private var beatTracker=BeatTracker(),publishedBeat=BeatFrame()
  private var fft:vDSP_DFT_Setup?
  private var count=0,rate=0.0,cursor=0,hop=0,hopSize=800
  private var left=[Float](),right=[Float](),window=[Float](),real=[Float](),imag=[Float](),outReal=[Float](),outImag=[Float](),power=[Float]()
@@ -22,7 +24,7 @@ final class SpectrumAnalyzer {
  func configure(rate:Double){
   guard rate.isFinite,rate>0,rate != self.rate else{return}
   if let fft=fft{vDSP_DFT_DestroySetup(fft)}
-  self.rate=rate;count=8192;while Double(count)<rate/6 && count<65536{count *= 2}
+  beatTracker=BeatTracker();self.rate=rate;count=8192;while Double(count)<rate/6 && count<65536{count *= 2}
   fft=vDSP_DFT_zop_CreateSetup(nil,vDSP_Length(count),.FORWARD)!;cursor=0;hop=0;hopSize=max(1,Int(rate/60))
   left=[Float](repeating:0,count:count);right=left;window=left;real=left;imag=left;outReal=left;outImag=left;power=[Float](repeating:0,count:count/2+1)
   vDSP_hann_window(&window,vDSP_Length(count),Int32(vDSP_HANN_NORM));windowSum=window.reduce(0,+)
@@ -65,9 +67,10 @@ final class SpectrumAnalyzer {
   var bins=[Float](repeating:0,count:64)
   for band in 0..<64{var sum:Float=0;for k in starts[band]..<ends[band]{sum += power[k]};let magnitude=sqrt(sum/Float(ends[band]-starts[band]));bins[band]=max(0,min(1,(20*log10(max(0.0000001,magnitude))+72)/60))}
   var maximum:Float=0;var index=0;for k in 0...half{if power[k]>maximum{maximum=power[k];index=k}}
-  lock.lock();published=bins;lastSample=ProcessInfo.processInfo.systemUptime;frames+=1;peak=bins.max() ?? 0;peakHz=Double(index)*rate/Double(count);lock.unlock()
+  let beat=beatTracker.feed(bands:bins,ranges:ranges,energy:sqrt(power.reduce(0.0){$0+Double($1)}),dt:Double(hopSize)/rate)
+  lock.lock();publishedBeat=beat;published=bins;lastSample=ProcessInfo.processInfo.systemUptime;frames+=1;peak=bins.max() ?? 0;peakHz=Double(index)*rate/Double(count);lock.unlock()
  }
- func snapshot()->SpectrumSnapshot{lock.lock();defer{lock.unlock()};return SpectrumSnapshot(bands:published,age:ProcessInfo.processInfo.systemUptime-lastSample,frames:frames,peak:peak,sampleRate:publishedRate,fftSize:publishedSize,binWidthHz:publishedRate/Double(max(1,publishedSize)),peakFrequencyHz:peakHz,ranges:publishedRanges)}
+ func snapshot()->SpectrumSnapshot{lock.lock();defer{lock.unlock()};return SpectrumSnapshot(bands:published,age:ProcessInfo.processInfo.systemUptime-lastSample,frames:frames,peak:peak,sampleRate:publishedRate,fftSize:publishedSize,binWidthHz:publishedRate/Double(max(1,publishedSize)),peakFrequencyHz:peakHz,beat:publishedBeat.pulse,bpm:publishedBeat.bpm,beatConfidence:publishedBeat.confidence,ranges:publishedRanges)}
 }
 final class SystemAudio: ObservableObject {
  @Published var status="Audio sin activar"
