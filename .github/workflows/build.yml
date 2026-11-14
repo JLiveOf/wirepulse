@@ -1,0 +1,41 @@
+name: Native builds and integration
+on:
+  push:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            framework: net10.0-windows10.0.19041.0
+            rid: win-x64
+          - os: ubuntu-24.04
+            framework: net10.0
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet publish -c Release -f ${{ matrix.framework }} -r ${{ matrix.rid }} --self-contained true -o publish -p:DebugType=None -p:DebugSymbols=false
+      - name: DSP and Cider protocol tests
+        shell: bash
+        run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test
+      - name: Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1
+      - name: Cinnamon X11 integration with real output audio
+        if: runner.os == 'Linux'
+        run: dbus-run-session -- bash tests/linux-integration.sh
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: WirePulse-${{ matrix.rid }}
+          path: |
+            publish/
+            test-results/

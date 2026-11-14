@@ -1,0 +1,18 @@
+<Project Sdk="Microsoft.NET.Sdk">
+ <PropertyGroup>
+  <TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
+  <EnableWindowsTargeting>true</EnableWindowsTargeting><OutputType>WinExe</OutputType>
+  <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  <AssemblyName>WirePulse</AssemblyName><Version>2.0.0</Version><AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+ </PropertyGroup>
+ <ItemGroup>
+  <PackageReference Include="Tmds.DBus.Protocol" Version="0.21.3"/>
+  <PackageReference Include="Avalonia" Version="11.3.12"/><PackageReference Include="Avalonia.Desktop" Version="11.3.12"/>
+  <PackageReference Include="Avalonia.Themes.Fluent" Version="11.3.12"/><PackageReference Include="Avalonia.Fonts.Inter" Version="11.3.12"/>
+  <AvaloniaResource Include="Assets/**"/>
+ </ItemGroup>
+ <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">
+  <PackageReference Include="NAudio" Version="2.2.1"/>
+ </ItemGroup>
+ <ItemGroup><None Include="Assets/controls.json" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/WirePulse.png" CopyToOutputDirectory="PreserveNewest"/></ItemGroup>
+</Project>

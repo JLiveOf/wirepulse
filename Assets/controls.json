@@ -1,0 +1,352 @@
+[
+  {
+    "key": "backgroundcolor",
+    "title": "Color de fondo",
+    "kind": "color",
+    "value": "#000000",
+    "group": "Fondo",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "backgroundimage",
+    "title": "Imagen de fondo",
+    "kind": "file",
+    "value": "",
+    "group": "Fondo",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "dim",
+    "title": "Oscurecer imagen",
+    "kind": "slider",
+    "value": 0,
+    "group": "Fondo",
+    "min": 0,
+    "max": 100,
+    "step": 1
+  },
+  {
+    "key": "sensitivity",
+    "title": "Sensibilidad de audio",
+    "kind": "slider",
+    "value": 0.7,
+    "group": "Audio",
+    "min": 0,
+    "max": 6,
+    "step": 0.1
+  },
+  {
+    "key": "bass",
+    "title": "Refuerzo de graves",
+    "kind": "slider",
+    "value": 1.2,
+    "group": "Audio",
+    "min": 0,
+    "max": 4,
+    "step": 0.1
+  },
+  {
+    "key": "gate",
+    "title": "Umbral de ruido",
+    "kind": "slider",
+    "value": 0.015,
+    "group": "Audio",
+    "min": 0,
+    "max": 0.2,
+    "step": 0.005
+  },
+  {
+    "key": "smoothing",
+    "title": "Suavizado",
+    "kind": "slider",
+    "value": 0.5,
+    "group": "Audio",
+    "min": 0,
+    "max": 0.98,
+    "step": 0.01
+  },
+  {
+    "key": "sphere",
+    "title": "Mostrar esfera",
+    "kind": "bool",
+    "value": true,
+    "group": "Esfera",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "fullmesh",
+    "title": "Malla completa (alternativa)",
+    "kind": "bool",
+    "value": true,
+    "group": "Esfera",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "wirecolor",
+    "title": "Color de la malla",
+    "kind": "color",
+    "value": "#ff143c",
+    "group": "Esfera",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "radius",
+    "title": "Radio (% de altura)",
+    "kind": "slider",
+    "value": 55,
+    "group": "Esfera",
+    "min": 10,
+    "max": 100,
+    "step": 1
+  },
+  {
+    "key": "sphereX",
+    "title": "Posición horizontal",
+    "kind": "slider",
+    "value": 97,
+    "group": "Esfera",
+    "min": 0,
+    "max": 120,
+    "step": 1
+  },
+  {
+    "key": "sphereY",
+    "title": "Posición vertical",
+    "kind": "slider",
+    "value": 123,
+    "group": "Esfera",
+    "min": 0,
+    "max": 140,
+    "step": 1
+  },
+  {
+    "key": "deformation",
+    "title": "Deformación por audio",
+    "kind": "slider",
+    "value": 1,
+    "group": "Esfera",
+    "min": 0,
+    "max": 2,
+    "step": 0.05
+  },
+  {
+    "key": "pulse",
+    "title": "Pulso de graves",
+    "kind": "slider",
+    "value": 0.2,
+    "group": "Esfera",
+    "min": 0,
+    "max": 0.6,
+    "step": 0.01
+  },
+  {
+    "key": "rotation",
+    "title": "Velocidad de rotación",
+    "kind": "slider",
+    "value": 0.5,
+    "group": "Esfera",
+    "min": 0,
+    "max": 1,
+    "step": 0.01
+  },
+  {
+    "key": "density",
+    "title": "Densidad de malla",
+    "kind": "slider",
+    "value": 42,
+    "group": "Esfera",
+    "min": 12,
+    "max": 72,
+    "step": 1
+  },
+  {
+    "key": "linewidth",
+    "title": "Grosor de líneas",
+    "kind": "slider",
+    "value": 0.65,
+    "group": "Esfera",
+    "min": 0.25,
+    "max": 2,
+    "step": 0.05
+  },
+  {
+    "key": "glow",
+    "title": "Resplandor",
+    "kind": "slider",
+    "value": 6,
+    "group": "Esfera",
+    "min": 0,
+    "max": 15,
+    "step": 1
+  },
+  {
+    "key": "opacity",
+    "title": "Opacidad de malla",
+    "kind": "slider",
+    "value": 1,
+    "group": "Esfera",
+    "min": 0.1,
+    "max": 1,
+    "step": 0.05
+  },
+  {
+    "key": "spectrum",
+    "title": "Mostrar espectro",
+    "kind": "bool",
+    "value": true,
+    "group": "Espectro",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "spectrumX",
+    "title": "Posición horizontal",
+    "kind": "slider",
+    "value": 0,
+    "group": "Espectro",
+    "min": 0,
+    "max": 90,
+    "step": 1
+  },
+  {
+    "key": "spectrumY",
+    "title": "Posición vertical",
+    "kind": "slider",
+    "value": 0,
+    "group": "Espectro",
+    "min": 0,
+    "max": 80,
+    "step": 1
+  },
+  {
+    "key": "spectrumHeight",
+    "title": "Altura",
+    "kind": "slider",
+    "value": 100,
+    "group": "Espectro",
+    "min": 10,
+    "max": 90,
+    "step": 1
+  },
+  {
+    "key": "spectrumWidth",
+    "title": "Anchura máxima",
+    "kind": "slider",
+    "value": 15,
+    "group": "Espectro",
+    "min": 3,
+    "max": 40,
+    "step": 1
+  },
+  {
+    "key": "segmented",
+    "title": "Barras segmentadas",
+    "kind": "bool",
+    "value": true,
+    "group": "Espectro",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "card",
+    "title": "Mostrar tarjeta musical",
+    "kind": "bool",
+    "value": true,
+    "group": "Tarjeta",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "hideidle",
+    "title": "Ocultar si no hay canción",
+    "kind": "bool",
+    "value": false,
+    "group": "Tarjeta",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "cardX",
+    "title": "Posición horizontal",
+    "kind": "slider",
+    "value": 0.8,
+    "group": "Tarjeta",
+    "min": 0,
+    "max": 90,
+    "step": 0.1
+  },
+  {
+    "key": "cardY",
+    "title": "Margen inferior",
+    "kind": "slider",
+    "value": 1.3,
+    "group": "Tarjeta",
+    "min": 0,
+    "max": 90,
+    "step": 0.1
+  },
+  {
+    "key": "cardscale",
+    "title": "Escala",
+    "kind": "slider",
+    "value": 0.75,
+    "group": "Tarjeta",
+    "min": 0.5,
+    "max": 1.5,
+    "step": 0.05
+  },
+  {
+    "key": "accent",
+    "title": "Color del progreso",
+    "kind": "color",
+    "value": "#b226bf",
+    "group": "Tarjeta",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "unlimitedfps",
+    "title": "FPS ilimitados",
+    "kind": "bool",
+    "value": false,
+    "group": "Rendimiento",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
+    "key": "fps",
+    "title": "Límite de FPS",
+    "kind": "slider",
+    "value": 60,
+    "group": "Rendimiento",
+    "min": 15,
+    "max": 240,
+    "step": 1
+  },
+  {
+    "key": "quality",
+    "title": "Resolución de dibujo",
+    "kind": "slider",
+    "value": 1,
+    "group": "Rendimiento",
+    "min": 0.5,
+    "max": 1.5,
+    "step": 0.25
+  }
+]
