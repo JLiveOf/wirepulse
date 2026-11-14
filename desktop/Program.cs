@@ -1,10 +1,12 @@
 using Avalonia;
+using System.Diagnostics;
 namespace WirePulse;
 
 internal static class Program
 {
     public static string[] Args = [];
     public static SingleInstance? Singleton;
+    public static bool RestartRequested;
     [STAThread]
     public static int Main(string[] args)
     {
@@ -13,8 +15,17 @@ internal static class Program
             if (args.Contains("--instance-lock-probe")) { using var probe = new SingleInstance(Option("--probe-name") ?? ""); if (!probe.Owned) return 2; Console.WriteLine("ACQUIRED"); Thread.Sleep(int.Parse(Option("--instance-lock-probe") ?? "1000")); return 0; }
             if (args.Contains("--disable-autostart")) { new StartupRegistration().SetEnabled(false); return 0; }
             if (args.Contains("--self-test")) return SelfTest.Run();
-            using var instance = new SingleInstance(); if (!instance.Owned) { if (!args.Contains("--autostart")) instance.Notify(); return 0; }
-            Singleton = instance; DesktopHost.Validate(); return AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace().StartWithClassicDesktopLifetime(args);
+            int result;
+            using(var instance = new SingleInstance()){
+             if (!instance.Owned) { if (!args.Contains("--autostart")) instance.Notify(); return 0; }
+             Singleton = instance;if(!args.Contains("--renderer-smoke-test"))DesktopHost.Validate();
+             var builder=AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace();
+             builder=GraphicsBackend.Configure(builder,Option("--renderer")??new Settings().WindowsRenderer);
+             result=builder.StartWithClassicDesktopLifetime(args);
+            }
+            Singleton=null;
+            if(RestartRequested)Process.Start(new ProcessStartInfo(Environment.ProcessPath!){UseShellExecute=true});
+            return result;
         }
         catch (Exception e) { Console.Error.WriteLine(e); return 1; }
     }

@@ -42,6 +42,7 @@ Source: "{#SourceDir}\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs 
 
 [Icons]
 Name: "{autoprograms}\WirePulse"; Filename: "{app}\WirePulse.exe"; WorkingDir: "{app}"
+Name: "{autoprograms}\WirePulse (modo compatible)"; Filename: "{app}\WirePulse.exe"; Parameters: "--renderer ""CPU (compatibilidad)"""; WorkingDir: "{app}"
 Name: "{autodesktop}\WirePulse"; Filename: "{app}\WirePulse.exe"; WorkingDir: "{app}"; Tasks: desktopicon
 
 [Run]

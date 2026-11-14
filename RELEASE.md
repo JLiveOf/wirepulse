@@ -1,20 +1,24 @@
-## Estrellas independientes y etiqueta del reproductor centrada
+## Selección de motores gráficos en Windows
 
-- **Estrellas**: puntos redondeados con velocidad, profundidad, trayectoria y vaivén propios, inspirados en los indicadores de movimiento del iPhone. Mantienen la dirección general elegida y aceleran suavemente con el audio.
-- **Cider**: si los metadatos de la canción incluyen BPM válidos, se aplican al fondo y se identifican en Ajustes. Si faltan, son inválidos, Cider pausa o los datos caducan, se conserva la detección por audio. Es compatibilidad condicional: no se ha confirmado que todas las versiones de su API publiquen ese campo.
-- **Windows/Linux**: texto del proveedor centrado horizontal y verticalmente en su etiqueta, respetando el tamaño de la tarjeta.
-- Se mantienen Malla, reloj, ajustes por pantalla, instalador de Windows e inicio automático opcional.
+En **Ajustes → Rendimiento**, elige Automático, **DirectX 11**, **Vulkan**, OpenGL o CPU y pulsa **Aplicar y reiniciar**. La elección se aplica a todas las pantallas y se conserva entre aperturas.
+
+- Vulkan/OpenGL intentan su controlador y, si no se inicializa, usan DirectX 11 y después CPU. Automático conserva DirectX 11 con alternativa por CPU.
+- El diagnóstico muestra el motor realmente activo y la descripción del controlador DirectX 11/OpenGL cuando está disponible. No se etiqueta una selección solicitada como si fuera el motor activo.
+- Nuevo acceso **WirePulse (modo compatible)** en Inicio y `WirePulse-SafeMode.cmd` en el ZIP para recuperar los ajustes por CPU si un controlador falla.
+- Se mantienen los fondos reactivos, estrellas independientes, reloj, portadas, Cider y perfiles por pantalla. Linux y macOS conservan sus motores actuales.
+
+**DirectX 12 no está incluido**: Avalonia no ofrece ese backend. NVENC no interviene porque el fondo se dibuja directamente, sin codificar vídeo. Cambiar de API no garantiza más FPS en todos los equipos.
 
 ### Descargas
 
 | Sistema | Archivo |
 | --- | --- |
-| Windows x64 instalador | **WirePulse-2.4.1-win-x64-Setup.exe** |
-| Windows x64 portátil | WirePulse-2.4.1-win-x64.zip |
-| Linux Mint / Cinnamon X11 | wirepulse_2.4.1_amd64.deb |
-| Linux x64 portátil | WirePulse-2.4.1-linux-x64.tar.gz |
-| macOS / Apple silicon | WirePulse-2.4.1-macOS-arm64.zip |
+| Windows x64 instalador | **WirePulse-2.5.0-win-x64-Setup.exe** |
+| Windows x64 portátil | WirePulse-2.5.0-win-x64.zip |
+| Linux Mint / Cinnamon X11 | wirepulse_2.5.0_amd64.deb |
+| Linux x64 portátil | WirePulse-2.5.0-linux-x64.tar.gz |
+| macOS / Apple silicon | WirePulse-2.5.0-macOS-arm64.zip |
 
-Windows 10 2004+ x64; Linux requiere X11; macOS 14.2+ Apple silicon. Windows sin firma comercial y macOS con firma ad hoc, sin notarización.
+Windows 10 2004+ x64; Linux X11; macOS 14.2+ Apple silicon. Windows sin firma comercial; macOS con firma ad hoc, sin notarización.
 
-Se comprueban trayectorias independientes, pausa, BPM opcionales v1/v2 de Cider, valores ausentes e inválidos, prioridad y caducidad de metadatos, FFT, detección de tempo, ajustes, rendimiento e instalación/reinstalación/desinstalación de Windows. La lectura de BPM se valida con respuestas simuladas; no garantiza que un cliente Cider concreto incluya ese dato.
+Las pruebas comprueban persistencia global y reinicio explícito, órdenes de alternativas, ventanas nativas con los cinco modos, FFT, Cider, ajustes, rendimiento e instalación/reinstalación/desinstalación. Vulkan puede recurrir a una alternativa en el corredor de pruebas; la validación no certifica una RTX 3050 física ni 165 FPS.

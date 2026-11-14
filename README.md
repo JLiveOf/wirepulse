@@ -43,7 +43,7 @@ Los tres proyectos anteriores se han integrado conservando su historial. `deskto
 
 ## Rendimiento
 
-Windows/Linux incluyen perfiles Automático, Calidad y Ligero, sincronización por pantalla y diagnóstico GPU/CPU. [Ver pruebas y mediciones](PERFORMANCE.md).
+Windows/Linux incluyen perfiles Automático, Calidad y Ligero, sincronización por pantalla y diagnóstico GPU/CPU. Windows añade **Ajustes → Rendimiento → Motor gráfico**: Automático, DirectX 11 (ANGLE), Vulkan, OpenGL y CPU, con botón para aplicar y reiniciar. El motor es global para todas las pantallas. [Ver pruebas y mediciones](PERFORMANCE.md).
 
 ## Validación
 
@@ -61,3 +61,12 @@ En **Ajustes → Reloj**, elige una fuente instalada, color y formato. Ambos ele
 ## Inicio automático
 
 La primera apertura en Windows, Linux y macOS pregunta si deseas abrir WirePulse al iniciar sesión. No se activa sin elegirlo. Puedes cambiarlo en **Ajustes → Inicio**. El inicio automático abre el fondo sin mostrar los ajustes; en macOS está sujeto a la aprobación del sistema.
+
+
+### Motores de Windows
+
+Automático conserva DirectX 11 y su alternativa por CPU. Vulkan y OpenGL intentan primero el controlador correspondiente, después DirectX 11 y por último CPU. El diagnóstico muestra el contexto realmente usado y, en DirectX 11/OpenGL cuando está disponible, el nombre que comunica el controlador. Un contexto GPU puede usar un controlador por software; no equivale por sí solo a una GPU física.
+
+El instalador añade **WirePulse (modo compatible)** al menú Inicio. El ZIP incluye `WirePulse-SafeMode.cmd`; ambos fuerzan CPU para recuperar los ajustes si un controlador impide abrir la app. Desde allí selecciona otro motor y pulsa Aplicar y reiniciar. Esta apertura no sobrescribe tu preferencia por su cuenta.
+
+El [motor de ventanas utilizado](https://api-docs.avaloniaui.net/docs/T_Avalonia_Win32RenderingMode) no ofrece DirectX 12; no se anuncia una selección que usaría DirectX 11 por debajo. [NVENC](https://developer.nvidia.com/video-codec-sdk) codifica vídeo: WirePulse dibuja la escena directamente y no tiene una etapa de codificación a la que aplicarlo. Cambiar de API no garantiza más FPS; depende del controlador, la GPU y el coste de preparar la escena.

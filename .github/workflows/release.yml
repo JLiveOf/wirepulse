@@ -63,6 +63,15 @@ jobs:
       - name: Cinnamon, output capture and MPRIS
         if: runner.os == 'Linux'
         run: dbus-run-session -- bash tests/linux-integration.sh
+      - name: Native Windows graphics modes and safe fallbacks
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./tests/windows-renderers.ps1
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Windows'
+        with:
+          name: windows-renderers
+          path: desktop/test-results/renderers/
       - name: Package application
         shell: bash
         run: |

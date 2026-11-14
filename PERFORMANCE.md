@@ -62,3 +62,12 @@ También se prueba la firma binaria de la operación de líneas de Skia y que lo
 El banco de pruebas conserva los tres casos anteriores con los elementos nuevos desactivados y añade `stars` y `mesh` a 1080p con el reloj visible. El fondo reutiliza caminos y búferes; el reloj se invalida a 1 Hz y conserva el texto formateado. Ligero limita las estrellas a 80 y la separación mínima de la malla a 120 px. El análisis de tempo se comparte entre pantallas y se actualiza dos veces por segundo, con una ventana de ocho segundos.
 
 En la prueba local por CPU de macOS/Skia, la escena 1080p de referencia midió 4,90 ms por cuadro; con estrellas 4,76 ms, y con malla 4,94 ms. La variación entre pasadas impide interpretar diferencias pequeñas como una mejora. Estos valores no son una medición de la RTX 3050 ni garantizan una frecuencia de refresco física.
+
+
+## Selección de motor en Windows (2.5)
+
+El selector cambia `Win32PlatformOptions.RenderingMode` antes de inicializar Avalonia. DirectX 11 corresponde a ANGLE EGL; Vulkan usa el backend nativo; OpenGL usa WGL; CPU fuerza Software. La preferencia se guarda globalmente y requiere reinicio. No modifica el perfil de calidad ni la configuración de cada monitor.
+
+El nombre activo procede del contexto de plataforma y de `GRContext.Backend`, leídos bajo un préstamo de la API gráfica en el primer dibujo. Para ANGLE/WGL se consulta `GL_RENDERER` dentro de ese contexto. Así se puede distinguir la selección pedida de su alternativa y reconocer un controlador WARP por su descripción, sin llamarlo RTX u otra GPU por suposición. `status.json` incluye `rendererRequested` y `rendererActive`.
+
+La CI de Windows abre una ventana nativa con cada selección, exige fotogramas dibujados y verifica que el motor activo pertenezca al orden de alternativas. La prueba por CPU debe permanecer en CPU. Los informes de `windows-renderers` registran las alternativas efectivamente utilizadas. Estas pruebas no certifican Vulkan con una RTX 3050 física ni una mejora de FPS; el corredor puede carecer de un controlador Vulkan y usar una alternativa.

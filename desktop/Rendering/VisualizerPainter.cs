@@ -28,7 +28,7 @@ public sealed class VisualizerPainter : IDisposable
             for (int i = 0; i < 64; i++) { bool isBass = audio.High[i] > 20 && audio.Low[i] < 160; double input = audio.Age < .3 && !paused ? audio.Bands[i] : 0, v = Math.Clamp(Math.Max(0, input - o.Gate) * o.Sensitivity * (isBass ? o.Bass : 1), 0, 1); smooth[i] = v + (smooth[i] - v) * decay; if (smooth[i] < .0001) smooth[i] = 0; if (isBass) { bass += smooth[i]; bassCount++; } }
             double beat=audio.Age<.8&&!paused?audio.Beat*Math.Exp(-audio.Age*7):0;if(o.Space is{} background)space.Draw(canvas,width,height,now,dt,background,beat,audio.Bpm,paused,gpu,o.Profile=="Ligero");
             if (!paused) angle += dt * o.Rotation; if (o.Sphere) Orb(canvas, width, height, now, bassCount > 0 ? bass / bassCount : 0, o, gpu); if (o.Spectrum) Leds(canvas, width, height, dt, o);
-            Statistics.Backend = gpu ? "GPU · Skia" : "CPU · Skia"; Statistics.Record(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
+            Statistics.Backend = GraphicsBackend.Description(gpu); Statistics.Record(Stopwatch.GetElapsedTime(start).TotalMilliseconds);
         }
     }
     void Orb(SKCanvas c, double w, double h, double time, double bass, VisualizerOptions o, bool gpu)
@@ -55,5 +55,5 @@ public sealed class VisualizerPainter : IDisposable
 public sealed class VisualizationOperation(VisualizerPainter painter, VisualizerOptions options, SpectrumFrame audio, bool paused, Rect bounds) : ICustomDrawOperation
 {
     public Rect Bounds => bounds; public bool HitTest(Point p) => false; public bool Equals(ICustomDrawOperation? other) => false; public void Dispose() { }
-    public void Render(ImmediateDrawingContext context) { var feature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>(); if (feature == null) return; using var lease = feature.Lease(); painter.Draw(lease.SkCanvas, bounds.Width, bounds.Height, options, audio, paused, lease.GrContext != null); }
+    public void Render(ImmediateDrawingContext context) { var feature = context.TryGetFeature<ISkiaSharpApiLeaseFeature>(); if (feature == null) return; using var lease = feature.Lease();if(OperatingSystem.IsWindows()&&!GraphicsBackend.Observed){using var platform=lease.TryLeasePlatformGraphicsApi();GraphicsBackend.Observe(lease.GrContext,platform?.Context.GetType().FullName);} painter.Draw(lease.SkCanvas, bounds.Width, bounds.Height, options, audio, paused, lease.GrContext != null); }
 }

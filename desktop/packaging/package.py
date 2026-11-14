@@ -11,6 +11,7 @@ shutil.copy2(root/'README.md',stage/'README.md')
 from notices import collect
 collect(root,stage/'ThirdPartyNotices')
 if rid.startswith('win'):
+ (stage/'WirePulse-SafeMode.cmd').write_text('@echo off\r\nstart "" "%~dp0WirePulse.exe" --renderer "CPU (compatibilidad)"\r\n',encoding='ascii')
  with zipfile.ZipFile(output/(name+'.zip'),'w',zipfile.ZIP_DEFLATED) as archive:
   for path in sorted(stage.rglob('*')):
    if path.is_file():archive.write(path,path.relative_to(output))
