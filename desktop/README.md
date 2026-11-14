@@ -9,7 +9,7 @@ Native audio-reactive desktop wallpaper. Black background, full-height left spec
 * Windows 10 1809 / Windows 11 x64: WASAPI output loopback, Explorer WorkerW wallpaper, Global System Media Transport Controls.
 * Linux Mint / Cinnamon **X11** x64: PulseAudio / PipeWire-Pulse output monitor, EWMH desktop surface with empty input region, MPRIS through playerctl. Cinnamon Wayland is not supported.
 
-The two repositories use the same application source. macOS retains its native Swift / Metal implementation: https://github.com/JLiveOf/wirepulse/tree/main/macos.
+Windows and Linux share this source directory. The native Swift / Metal macOS implementation is in [`../macos/`](../macos/). All platform downloads are published together in the root repository releases.
 
 ## Build
 
