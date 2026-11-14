@@ -1,0 +1,127 @@
+name: Build and publish all platforms
+on:
+  push:
+    branches: [main]
+    tags: ['v*']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  version:
+    runs-on: ubuntu-24.04
+    outputs:
+      number: ${{ steps.version.outputs.number }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: version
+        shell: bash
+        run: |
+          python3 scripts/version.py --check
+          version=$(cat VERSION)
+          if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
+            echo "Release tag and VERSION disagree" >&2
+            exit 1
+          fi
+          echo "number=$version" >> "$GITHUB_OUTPUT"
+  desktop:
+    needs: version
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: windows-latest
+            framework: net10.0-windows10.0.19041.0
+            rid: win-x64
+          - os: ubuntu-24.04
+            framework: net10.0
+            rid: linux-x64
+    runs-on: ${{ matrix.os }}
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: dotnet publish -c Release -f ${{ matrix.framework }} -r ${{ matrix.rid }} --self-contained true -o publish -p:DebugType=None -p:DebugSymbols=false
+      - name: DSP and Cider protocol
+        shell: bash
+        run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test
+      - name: Settings and independent display editing
+        run: dotnet run --project tests/UiTests -c Release
+      - name: Linux desktop dependencies
+        if: runner.os == 'Linux'
+        run: sudo apt-get update -qq && sudo apt-get install -y cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1
+      - name: Cinnamon, output capture and MPRIS
+        if: runner.os == 'Linux'
+        run: dbus-run-session -- bash tests/linux-integration.sh
+      - name: Package application
+        shell: bash
+        run: |
+          python packaging/package.py ${{ matrix.rid }} ${{ needs.version.outputs.number }}
+          rm packages/SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-${{ matrix.rid }}
+          path: desktop/packages/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always() && runner.os == 'Linux'
+        with:
+          name: linux-integration-results
+          path: desktop/test-results/
+  macos:
+    needs: version
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build native Apple silicon app
+        run: |
+          test "$(uname -m)" = arm64
+          ./macos/build.sh
+      - name: FFT, Cider, display profiles and relocation
+        run: |
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --self-test
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --display-profile-test
+          python3 macos/scripts/test-cider.py macos/dist/WirePulse.app/Contents/MacOS/WirePulse
+          python3 macos/scripts/test-relocation.py macos/dist/WirePulse.app
+          codesign --verify --deep --strict macos/dist/WirePulse.app
+      - name: Package application
+        run: |
+          mkdir -p packages
+          ditto -c -k --sequesterRsrc --keepParent macos/dist/WirePulse.app packages/WirePulse-${{ needs.version.outputs.number }}-macOS-arm64.zip
+      - uses: actions/upload-artifact@v4
+        with:
+          name: release-macOS-arm64
+          path: packages/*
+          if-no-files-found: error
+  release:
+    needs: [version, desktop, macos]
+    if: startsWith(github.ref, 'refs/tags/')
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: release-*
+          merge-multiple: true
+          path: packages
+      - name: Verify complete download set and create checksums
+        run: python3 scripts/check-release.py packages
+      - name: Publish one release with every platform
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VERSION: ${{ needs.version.outputs.number }}
+        shell: bash
+        run: |
+          if gh release view "v$VERSION" --json isDraft > release-state.json 2>/dev/null; then
+            python3 -c 'import json; assert json.load(open("release-state.json"))["isDraft"], "This version is already published; create a new version instead"'
+            gh release upload "v$VERSION" packages/* --clobber
+          else
+            gh release create "v$VERSION" packages/* --draft --verify-tag --title "WirePulse $VERSION · Windows, Linux y macOS" --notes-file RELEASE.md
+          fi
+          gh release edit "v$VERSION" --draft=false --latest

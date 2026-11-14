@@ -1,3 +1,5 @@
+> **Repositorio unificado:** [WirePulse](https://github.com/JLiveOf/wirepulse) · [Descargas para todos los sistemas](https://github.com/JLiveOf/wirepulse/releases/latest)
+
 # WirePulse para macOS
 
 Port nativo del fondo WirePulse v2 de Windows / Wallpaper Engine. Usa Swift, AppKit, SwiftUI, Metal y Core Audio process taps. No usa navegador, Electron, Wallpaper Engine, un micrófono ni un controlador de audio externo.
@@ -92,4 +94,4 @@ Referencia oficial: https://taproom.cider.sh/docs/api/.
 
 Pruebas adicionales: `python3 scripts/test-cider.py dist/WirePulse.app/Contents/MacOS/WirePulse` valida respuestas v2/v1 contra un servidor local de prueba; `--display-profile-test` comprueba persistencia aislada de perfiles. El cliente real de Cider y monitores físicos adicionales requieren comprobación en esos equipos.
 
-Versiones con renderizador compartido para [Windows](https://github.com/JLiveOf/wirepulse-windows) y [Linux Mint / Cinnamon X11](https://github.com/JLiveOf/wirepulse-linux).
+Versiones con renderizador compartido para [Windows](https://github.com/JLiveOf/wirepulse) y [Linux Mint / Cinnamon X11](https://github.com/JLiveOf/wirepulse).
