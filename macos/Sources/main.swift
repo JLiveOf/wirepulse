@@ -54,7 +54,14 @@ if CommandLine.arguments.contains("--self-test"){
 }
 if let index=CommandLine.arguments.firstIndex(of:"--render-preview"),CommandLine.arguments.count>index+1{
  let _=NSApplication.shared;let config=Configuration(),analyzer=SpectrumAnalyzer()
- let signal=(0..<8192).map{i->Float in let t=Double(i)/48000;return Float(0.3*sin(2*Double.pi*110*t)+0.15*sin(2*Double.pi*1000*t)+0.08*sin(2*Double.pi*6000*t))}
+ var signal=[Float](repeating:0,count:8192)
+ for i in signal.indices {
+  let phase:Double=Double(i)*(2*Double.pi/48000)
+  let bass:Double=0.3*sin(110*phase)
+  let mid:Double=0.15*sin(1000*phase)
+  let treble:Double=0.08*sin(6000*phase)
+  signal[i]=Float(bass+mid+treble)
+ }
  signal.withUnsafeBufferPointer{analyzer.ingest($0.baseAddress!,frames:$0.count,channels:1,rate:48000)}
  do{let r=try WallpaperRenderer(config:config,analyzer:analyzer,device:MTLCreateSystemDefaultDevice()!);signal.withUnsafeBufferPointer{analyzer.ingest($0.baseAddress!,frames:$0.count,channels:1,rate:48000)};try r.renderPreview(to:URL(fileURLWithPath:CommandLine.arguments[index+1]));print("Metal preview rendered from a three-tone PCM signal");exit(0)}catch{fputs("\(error)\n",stderr);exit(1)}
 }

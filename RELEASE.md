@@ -4,10 +4,10 @@ WirePulse ahora reúne **Windows, Linux y macOS en un único repositorio y en es
 
 | Sistema | Descarga |
 | --- | --- |
-| **Windows x64** | **WirePulse-2.0.1-win-x64.zip** — extrae todo y abre WirePulse.exe. |
-| **Linux Mint / Cinnamon X11** | **wirepulse_2.0.1_amd64.deb** — instala con el gestor de software. |
-| **Linux x64 portátil** | **WirePulse-2.0.1-linux-x64.tar.gz** — extrae y ejecuta WirePulse. |
-| **macOS · Apple silicon** | **WirePulse-2.0.1-macOS-arm64.zip** — extrae y mueve la app a Aplicaciones. |
+| **Windows x64** | **WirePulse-2.1.0-win-x64.zip** — extrae todo y abre WirePulse.exe. |
+| **Linux Mint / Cinnamon X11** | **wirepulse_2.1.0_amd64.deb** — instala con el gestor de software. |
+| **Linux x64 portátil** | **WirePulse-2.1.0-linux-x64.tar.gz** — extrae y ejecuta WirePulse. |
+| **macOS · Apple silicon** | **WirePulse-2.1.0-macOS-arm64.zip** — extrae y mueve la app a Aplicaciones. |
 
 Incluye fondo negro, orbe y espectro reactivos, tarjeta arriba centrada, soporte Cider y posiciones compartidas o independientes para cada pantalla. Ajustes se abre desde el icono de WirePulse en la barra de menús o área de notificación.
 
