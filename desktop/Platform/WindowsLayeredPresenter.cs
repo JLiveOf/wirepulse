@@ -13,9 +13,6 @@ public sealed class WindowsLayeredPresenter:IDisposable {
  static readonly string ClassName="WirePulse.LayeredPresentation";static ushort atom;
  [UnmanagedFunctionPointer(CallingConvention.Winapi)]delegate IntPtr WindowProc(IntPtr hwnd,uint msg,IntPtr w,IntPtr l);
  [StructLayout(LayoutKind.Sequential,CharSet=CharSet.Unicode)]struct WindowClass{public uint Style;public IntPtr Procedure;public int ClassBytes,WindowBytes;public IntPtr Instance,Icon,Cursor,Brush,Menu;[MarshalAs(UnmanagedType.LPWStr)]public string Name;}
- [StructLayout(LayoutKind.Sequential)]struct Size{public int Width,Height;}
- [StructLayout(LayoutKind.Sequential)]struct Point{public int X,Y;}
- [StructLayout(LayoutKind.Sequential,Pack=1)]struct Blend{public byte Operation,Flags,Alpha,Format;}
  [StructLayout(LayoutKind.Sequential)]struct BitmapInfo{public uint Size;public int Width,Height;public ushort Planes,Bits;public uint Compression,ImageSize;public int Xppm,Yppm;public uint Used,Important;}
  [DllImport("kernel32.dll",CharSet=CharSet.Unicode)]static extern IntPtr GetModuleHandle(string? name);
  [DllImport("user32.dll",CharSet=CharSet.Unicode,SetLastError=true)]static extern ushort RegisterClass(ref WindowClass cls);
@@ -23,11 +20,10 @@ public sealed class WindowsLayeredPresenter:IDisposable {
  [DllImport("user32.dll",CharSet=CharSet.Unicode)]static extern IntPtr DefWindowProc(IntPtr hwnd,uint msg,IntPtr w,IntPtr l);
  [DllImport("user32.dll")]static extern bool DestroyWindow(IntPtr window);
  [DllImport("user32.dll")]static extern bool SetWindowPos(IntPtr window,IntPtr after,int x,int y,int width,int height,uint flags);
- [DllImport("user32.dll",SetLastError=true)]static extern bool UpdateLayeredWindow(IntPtr window,IntPtr dest,IntPtr position,ref Size size,IntPtr source,ref Point sourcePosition,uint key,ref Blend blend,uint flags);
  [DllImport("user32.dll",SetLastError=true)]static extern bool SetLayeredWindowAttributes(IntPtr window,uint color,byte alpha,uint flags);
  [DllImport("user32.dll")]static extern IntPtr GetDC(IntPtr window);
  [DllImport("user32.dll")]static extern int ReleaseDC(IntPtr window,IntPtr dc);
- [DllImport("gdi32.dll")]static extern bool BitBlt(IntPtr dest,int x,int y,int width,int height,IntPtr source,int sx,int sy,uint operation);
+ [DllImport("gdi32.dll",SetLastError=true)]static extern bool BitBlt(IntPtr dest,int x,int y,int width,int height,IntPtr source,int sx,int sy,uint operation);
  [DllImport("gdi32.dll")]static extern bool GdiFlush();
  [DllImport("gdi32.dll")]static extern IntPtr CreateCompatibleDC(IntPtr dc);
  [DllImport("gdi32.dll")]static extern IntPtr CreateDIBSection(IntPtr dc,ref BitmapInfo info,uint usage,out IntPtr pixels,IntPtr section,uint offset);
