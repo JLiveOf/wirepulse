@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleDisplayName</key>
+	<string>WirePulse</string>
+	<key>CFBundleExecutable</key>
+	<string>WirePulse</string>
+	<key>CFBundleIconFile</key>
+	<string>WirePulse.icns</string>
+	<key>CFBundleIdentifier</key>
+	<string>dev.wirepulse.macos</string>
+	<key>CFBundleName</key>
+	<string>WirePulse</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.1.0</string>
+	<key>CFBundleVersion</key>
+	<string>2</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.2</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSAppleEventsUsageDescription</key>
+	<string>WirePulse consulta título, portada y progreso de Apple Music o Spotify. En modo Automático puede consultar la pestaña activa del navegador que reproduce audio para identificar servicios como YouTube.</string>
+	<key>NSAudioCaptureUsageDescription</key>
+	<string>WirePulse analiza el audio que reproducen tus aplicaciones para animar el orbe y el espectro del escritorio. No usa el micrófono ni guarda grabaciones.</string>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+</dict>
+</plist>
