@@ -17,6 +17,16 @@ if CommandLine.arguments.contains("--provider-diagnostic"){
 if CommandLine.arguments.contains("--music-artwork"){
  let index=CommandLine.arguments.firstIndex(of:"--music-artwork")!;let pid=CommandLine.arguments.count>index+1 ? CommandLine.arguments[index+1]:"";exit(exportMusicArtwork(expectedID:pid))
 }
+if let i=CommandLine.arguments.firstIndex(of:"--cider-fixture-test"),CommandLine.arguments.count>i+1{
+ guard let info=CiderReader.read(address:CommandLine.arguments[i+1],token:"fixture-token"),info["provider"] as? String=="Cider",info["title"] as? String=="WirePulse fixture",info["position"] as? Double==12 else{fputs("Cider fixture failed\n",stderr);exit(1)}
+ print("PASS Cider API metadata/state/time/artwork");exit(0)
+}
+if CommandLine.arguments.contains("--display-profile-test"){
+ let key="test-"+UUID().uuidString,root=Configuration(),before=root.n("sphereX"),a=Configuration(profile:key,template:root)
+ precondition(a.n("sphereX")==before);a.values["sphereX"]=23;let b=Configuration(profile:key,template:root);precondition(b.n("sphereX")==23 && root.n("sphereX")==before)
+ for field in ["values","colors","backgroundPath","topCentered","topMargin"]{UserDefaults.standard.removeObject(forKey:"display-"+key+"-"+field)}
+ print("PASS independent display profile persists without changing shared layout");exit(0)
+}
 if CommandLine.arguments.contains("--self-test"){
  for rate in [44100.0,48000.0,96000.0,192000.0]{
   for frequency in [20.0,1000.0,rate*0.47]{

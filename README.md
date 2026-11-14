@@ -80,3 +80,16 @@ Referencias de Apple: [formato real del tap](https://developer.apple.com/documen
 ## Corrección 1.1.1: mover la aplicación
 
 El lector de portadas usa la ruta actual del ejecutable obtenida del kernel con `proc_pidpath`, en lugar de depender de `Bundle.main.executableURL`, que conserva la ruta del lanzamiento. Así puede abrir el proceso auxiliar aunque Finder haya movido la app mientras seguía ejecutándose. La prueba `python3 scripts/test-relocation.py dist/WirePulse.app` crea una copia desechable, mueve su bundle mientras se ejecuta y comprueba el lanzamiento de un proceso hijo desde la nueva ubicación, sin modificar la app original.
+
+
+## WirePulse 1.2 · Cider y varias pantallas
+
+La tarjeta aparece arriba centrada por defecto. En Ajustes puedes mantener la misma disposición proporcional en todas las pantallas o activar «Ajustar cada pantalla por separado» y elegir la pantalla que quieres configurar. Los perfiles se guardan con el identificador de la pantalla; audio y canción se comparten.
+
+Cider se incluye como proveedor explícito y en Automático mediante su API local de solo lectura. En Cider activa Connectivity / API, crea un token con permiso Playback y pégalo en Ajustes → Tarjeta. Dirección predeterminada: `http://127.0.0.1:10767`. Se usa el snapshot v2 y se conserva compatibilidad con v1. El token se guarda en el Llavero; las peticiones no siguen redirecciones y solo admiten loopback. Portadas estáticas desde la URL publicada por Cider. No se solicitan credenciales de Apple ni acceso a la biblioteca.
+
+Referencia oficial: https://taproom.cider.sh/docs/api/.
+
+Pruebas adicionales: `python3 scripts/test-cider.py dist/WirePulse.app/Contents/MacOS/WirePulse` valida respuestas v2/v1 contra un servidor local de prueba; `--display-profile-test` comprueba persistencia aislada de perfiles. El cliente real de Cider y monitores físicos adicionales requieren comprobación en esos equipos.
+
+Versiones con renderizador compartido para [Windows](https://github.com/JLiveOf/wirepulse-windows) y [Linux Mint / Cinnamon X11](https://github.com/JLiveOf/wirepulse-linux).

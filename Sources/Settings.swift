@@ -3,6 +3,7 @@ import SwiftUI
 
 struct SettingsView:View {
  @ObservedObject var config:Configuration;@ObservedObject var audio:SystemAudio;@ObservedObject var media:NowPlaying
+ var playback:Configuration?=nil
  @State var selected="Audio"
  let groups=["Audio","Fondo","Orbe","Espectro","Tarjeta","Rendimiento"]
  var body:some View{
@@ -21,7 +22,12 @@ struct SettingsView:View {
      }
     }
     if selected=="Tarjeta"{Section("Canción actual"){
-     Picker("Leer metadatos de",selection:$config.mediaSource){Text("Automático").tag("Automático");Text("Ninguno").tag("Ninguno");Text("Apple Music").tag("Apple Music");Text("Spotify").tag("Spotify")}
+     Picker("Leer metadatos de",selection:Binding(get:{(playback ?? config).mediaSource},set:{(playback ?? config).mediaSource=$0})){Text("Automático").tag("Automático");Text("Ninguno").tag("Ninguno");Text("Apple Music").tag("Apple Music");Text("Spotify").tag("Spotify");Text("Cider").tag("Cider")}
+     Toggle("Tarjeta arriba centrada",isOn:$config.topCentered)
+     Slider(value:$config.topMargin,in:0...50,step:0.1){Text("Margen superior (%)")}
+     TextField("Dirección local de Cider",text:Binding(get:{(playback ?? config).ciderURL},set:{(playback ?? config).ciderURL=$0}))
+     SecureField("Token de la API de Cider",text:Binding(get:{(playback ?? config).ciderToken},set:{(playback ?? config).ciderToken=$0}))
+     Text("Cider: activa su API local en Connectivity y crea un token de Playback. El token se guarda en el Llavero del Mac.").font(.caption).foregroundStyle(.secondary)
      Text(media.note).font(.caption).foregroundStyle(.secondary)
      Text(media.artworkState).font(.caption).foregroundStyle(.secondary)
      Text("Automático prioriza Apple Music o Spotify en reproducción. Para audio de navegador identifica YouTube y otros servicios a partir de la pestaña activa; con varias pestañas o sin permiso, la identificación puede limitarse al navegador.").font(.caption).foregroundStyle(.secondary)
@@ -44,4 +50,11 @@ struct SettingsView:View {
   case .image:HStack{Text(spec.title);Spacer();Button("Elegir…"){config.chooseImage()};if !config.backgroundPath.isEmpty{Button("Quitar"){config.backgroundPath=""}}}
   }
  }
+}
+
+func displayKey(_ screen:NSScreen)->String{let id=(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0;if let uuid=CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(){return CFUUIDCreateString(nil,uuid) as String};return String(id)}
+struct DisplaySettingsView:View{
+ @ObservedObject var root:Configuration;@ObservedObject var audio:SystemAudio;@ObservedObject var media:NowPlaying;let profiles:[String:Configuration]
+ @State private var selected=""
+ var body:some View{VStack(spacing:0){HStack{Toggle("Ajustar cada pantalla por separado",isOn:$root.independentDisplays);Spacer();if root.independentDisplays{Picker("Pantalla",selection:$selected){ForEach(NSScreen.screens,id:\.self){screen in Text(screen.localizedName).tag(displayKey(screen))}}.frame(width:280)}}.padding();Divider();SettingsView(config:root.independentDisplays ? (profiles[selected] ?? profiles[NSScreen.screens.first.map{displayKey($0)} ?? ""] ?? root):root,audio:audio,media:media,playback:root)}.frame(minWidth:820,minHeight:700).onAppear{if selected.isEmpty{selected=NSScreen.screens.first.map{displayKey($0)} ?? ""}}}
 }

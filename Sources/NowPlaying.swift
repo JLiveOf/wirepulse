@@ -16,8 +16,8 @@ final class NowPlaying:ObservableObject {
  private var activeSource="",identity="",lastArtAttempt=0.0
  private let cache=NSCache<NSString,NSImage>()
  func elapsed()->Double{min(duration,max(0,position+(playing ? ProcessInfo.processInfo.systemUptime-updated:0)))}
- func poll(source:String){
-  guard ["Ninguno","Apple Music","Spotify","Automático"].contains(source) else{return}
+ func poll(source:String,ciderURL:String="http://127.0.0.1:10767",ciderToken:String=""){
+  guard ["Ninguno","Apple Music","Spotify","Cider","Automático"].contains(source) else{return}
   activeSource=source
   guard source != "Ninguno" else{title="";artist="";album="";identity="";provider="Audio del sistema";artwork=nil;artworkState="Sin fuente seleccionada";return}
   guard !busy else{return};busy=true
@@ -33,9 +33,11 @@ final class NowPlaying:ObservableObject {
   })())
   """
   DispatchQueue.global(qos:.utility).async{[weak self] in
-   let (data,error)=Self.run(arguments:["-l","JavaScript","-e",script]);let info=data.flatMap{try? JSONSerialization.jsonObject(with:$0) as? [String:Any]}
+   let (data,error)=source=="Cider" ? (Optional<Data>.none,""):Self.run(arguments:["-l","JavaScript","-e",script]);var info=data.flatMap{try? JSONSerialization.jsonObject(with:$0) as? [String:Any]}
+   if source=="Cider" || source=="Automático"{if let cider=CiderReader.read(address:ciderURL,token:ciderToken),source=="Cider" || cider["playing"] as? Bool==true || info?["title"] as? String==nil{info=cider}}
+   let result=info
    DispatchQueue.main.async{guard let self=self else{return};self.busy=false;guard self.activeSource==source else{return}
-    guard let info=info,error.isEmpty else{self.note="Autoriza WirePulse en Privacidad y seguridad → Automatización para leer \(source).";return}
+    guard let info=result,(error.isEmpty || result?["provider"] as? String=="Cider") else{self.note="Autoriza WirePulse en Privacidad y seguridad → Automatización para leer \(source).";return}
     let next=info["title"] as? String ?? "",artist=info["artist"] as? String ?? "",album=info["album"] as? String ?? "",pid=info["id"] as? String ?? ""
     let resolved=info["provider"] as? String ?? "Audio del sistema",isBrowser=info["kind"] as? String=="browser",spotify=resolved=="Spotify" && !isBrowser
     self.provider=resolved
@@ -45,9 +47,9 @@ final class NowPlaying:ObservableObject {
     if isBrowser{self.artworkState="Sin portada proporcionada por esta aplicación"}
     guard !isBrowser,!next.isEmpty,self.artwork==nil,!self.artBusy,ProcessInfo.processInfo.systemUptime-self.lastArtAttempt>=6 else{return}
     self.artBusy=true;self.lastArtAttempt=ProcessInfo.processInfo.systemUptime;self.artworkState="Leyendo portada de \(resolved)…"
-    if spotify,let address=info["art"] as? String,let url=URL(string:address),url.scheme=="https"{
+    if (spotify || resolved=="Cider"),let address=info["art"] as? String,let url=URL(string:address),url.scheme=="https"{
      URLSession.shared.dataTask(with:url){[weak self] bytes,_,_ in let image=bytes.flatMap{NSImage(data:$0)};DispatchQueue.main.async{self?.finishArtwork(image,key:key,message:"Spotify aún no devuelve una portada válida")}}.resume()
-    }else if !spotify{
+    }else if !spotify && resolved != "Cider"{
      guard let executable=currentExecutableURL() else{self.artBusy=false;self.artworkState="No se encuentra el lector de portadas. Cierra y vuelve a abrir WirePulse.";return}
      DispatchQueue.global(qos:.utility).async{[weak self] in let (bytes,error)=Self.run(arguments:["--music-artwork",pid],executable:executable);let image=bytes.flatMap{NSImage(data:$0)};DispatchQueue.main.async{self?.finishArtwork(image,key:key,message:error.isEmpty ? "Apple Music aún no ha cargado la portada":error)}}
     }else{self.artBusy=false;self.artworkState="Spotify no ha proporcionado una URL de portada"}
@@ -91,9 +93,11 @@ struct MusicCard:View {
      .background(.ultraThinMaterial,in:RoundedRectangle(cornerRadius:h*0.033))
      .overlay(RoundedRectangle(cornerRadius:h*0.033).stroke(.white.opacity(0.25),lineWidth:1))
      .foregroundStyle(.white).environment(\.colorScheme,.dark)
-     .scaleEffect(config.n("cardscale"),anchor:.bottomLeading)
-     .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:.bottomLeading)
-     .padding(.leading,g.size.width*config.n("cardX")/100).padding(.bottom,h*config.n("cardY")/100)
+     .scaleEffect(config.n("cardscale"),anchor:config.topCentered ? .topLeading:.bottomLeading)
+     .frame(maxWidth:.infinity,maxHeight:.infinity,alignment:config.topCentered ? .topLeading:.bottomLeading)
+     .padding(.leading,config.topCentered ? (g.size.width-width*config.n("cardscale"))/2:g.size.width*config.n("cardX")/100)
+     .padding(.top,config.topCentered ? h*config.topMargin/100:0)
+     .padding(.bottom,config.topCentered ? 0:h*config.n("cardY")/100)
    }
   }.allowsHitTesting(false)
  }

@@ -43,31 +43,45 @@ let controls: [ControlSpec] = [
  .init(id:"quality",title:"Resolución de dibujo",group:"Rendimiento",kind:.slider(0.5,1.5,0.25))
 ]
 final class Configuration: ObservableObject {
- static let defaults: [String:Double] = ["dim":0,"sensitivity":1.8,"bass":1.2,"gate":0.015,"smoothing":0.72,"sphere":1,"fullmesh":0,"radius":57,"sphereX":91,"sphereY":110,"deformation":0.65,"pulse":0.16,"rotation":0.16,"density":42,"linewidth":0.65,"glow":0,"opacity":0.6,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":1,"unlimitedfps":0,"fps":60,"quality":1]
- @Published var values: [String:Double] { didSet { UserDefaults.standard.set(values,forKey:"values") } }
- @Published var colors: [String:String] { didSet { UserDefaults.standard.set(colors,forKey:"colors") } }
- @Published var backgroundPath: String { didSet { UserDefaults.standard.set(backgroundPath,forKey:"backgroundPath") } }
+ let storagePrefix:String
+ @Published var independentDisplays:Bool { didSet{UserDefaults.standard.set(independentDisplays,forKey:"independentDisplays")} }
+ static let defaults: [String:Double] = ["dim":0,"sensitivity":0.7,"bass":1.2,"gate":0.015,"smoothing":0.5,"sphere":1,"fullmesh":1,"radius":55,"sphereX":97,"sphereY":123,"deformation":1,"pulse":0.2,"rotation":0.5,"density":42,"linewidth":0.65,"glow":6,"opacity":1,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":0.75,"unlimitedfps":0,"fps":60,"quality":1]
+ @Published var values: [String:Double] { didSet { UserDefaults.standard.set(values,forKey:storagePrefix+"values") } }
+ @Published var colors: [String:String] { didSet { UserDefaults.standard.set(colors,forKey:storagePrefix+"colors") } }
+ @Published var backgroundPath: String { didSet { UserDefaults.standard.set(backgroundPath,forKey:storagePrefix+"backgroundPath") } }
  @Published var mediaSource: String { didSet { UserDefaults.standard.set(mediaSource,forKey:"mediaSource") } }
+ @Published var topCentered:Bool { didSet{UserDefaults.standard.set(topCentered,forKey:storagePrefix+"topCentered")} }
+ @Published var topMargin:Double { didSet{UserDefaults.standard.set(topMargin,forKey:storagePrefix+"topMargin")} }
+ @Published var ciderURL:String { didSet{UserDefaults.standard.set(ciderURL,forKey:"ciderURL")} }
+ @Published var ciderToken:String { didSet{CiderReader.saveToken(ciderToken)} }
  @Published var paused = false
- init() {
-  values = Self.defaults.merging(UserDefaults.standard.dictionary(forKey:"values") as? [String:Double] ?? [:]) { _,new in new }
-  colors = ["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf"].merging(UserDefaults.standard.dictionary(forKey:"colors") as? [String:String] ?? [:]) { _,new in new }
-  backgroundPath = UserDefaults.standard.string(forKey:"backgroundPath") ?? ""
-  mediaSource = UserDefaults.standard.string(forKey:"mediaSource") ?? "Ninguno"
-  if UserDefaults.standard.integer(forKey:"desktopPresetRevision")<2 {
+ init(profile:String="",template:Configuration?=nil) {
+  storagePrefix=profile.isEmpty ? "":"display-"+profile+"-"
+  independentDisplays=UserDefaults.standard.bool(forKey:"independentDisplays")
+  topCentered=UserDefaults.standard.object(forKey:storagePrefix+"topCentered") as? Bool ?? template?.topCentered ?? true
+  topMargin=UserDefaults.standard.object(forKey:storagePrefix+"topMargin") as? Double ?? template?.topMargin ?? 4.8
+  ciderURL=UserDefaults.standard.string(forKey:"ciderURL") ?? "http://127.0.0.1:10767"
+  ciderToken=CiderReader.loadToken()
+  values = (template?.values ?? Self.defaults).merging(UserDefaults.standard.dictionary(forKey:storagePrefix+"values") as? [String:Double] ?? [:]) { _,new in new }
+  colors = (template?.colors ?? ["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf"]).merging(UserDefaults.standard.dictionary(forKey:storagePrefix+"colors") as? [String:String] ?? [:]) { _,new in new }
+  backgroundPath = UserDefaults.standard.string(forKey:storagePrefix+"backgroundPath") ?? template?.backgroundPath ?? ""
+  mediaSource = UserDefaults.standard.string(forKey:"mediaSource") ?? "Automático"
+  if profile.isEmpty && UserDefaults.standard.integer(forKey:"desktopPresetRevision")<2 {
    values["spectrumX"]=0;values["spectrumY"]=0;values["spectrumHeight"]=100;colors["backgroundcolor"]="#000000"
-   UserDefaults.standard.set(values,forKey:"values");UserDefaults.standard.set(colors,forKey:"colors");UserDefaults.standard.set(2,forKey:"desktopPresetRevision")
+   UserDefaults.standard.set(values,forKey:storagePrefix+"values");UserDefaults.standard.set(colors,forKey:storagePrefix+"colors");UserDefaults.standard.set(2,forKey:"desktopPresetRevision")
   }
  }
+ var hasSaved:Bool{UserDefaults.standard.object(forKey:storagePrefix+"values") != nil}
+ func copyLayout(from other:Configuration){values=other.values;colors=other.colors;backgroundPath=other.backgroundPath;topCentered=other.topCentered;topMargin=other.topMargin}
  func n(_ key:String)->Double { values[key] ?? Self.defaults[key] ?? 0 }
  func on(_ key:String)->Bool { n(key)>0.5 }
  func color(_ key:String)->NSColor { NSColor(hex:colors[key] ?? "#ffffff") }
- func reset() { values=Self.defaults; colors=["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf"];backgroundPath="";mediaSource="Ninguno" }
+ func reset() { values=Self.defaults; colors=["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf"];backgroundPath="";topCentered=true;topMargin=4.8 }
  func chooseImage() {
   let panel=NSOpenPanel();panel.allowedContentTypes=[.image];panel.canChooseDirectories=false
   guard panel.runModal() == .OK,let url=panel.url else{return}
   do {let folder=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("WirePulse",isDirectory:true);try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
-   let target=folder.appendingPathComponent("background."+url.pathExtension);if FileManager.default.fileExists(atPath:target.path){try FileManager.default.removeItem(at:target)};try FileManager.default.copyItem(at:url,to:target);backgroundPath=target.path
+   let target=folder.appendingPathComponent("background-"+UUID().uuidString+"."+url.pathExtension);if FileManager.default.fileExists(atPath:target.path){try FileManager.default.removeItem(at:target)};try FileManager.default.copyItem(at:url,to:target);backgroundPath=target.path
   }catch{NSAlert(error:error).runModal()}
  }
 }
