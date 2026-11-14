@@ -3,7 +3,7 @@ on:
   push:
   workflow_dispatch:
 permissions:
-  contents: read
+  contents: write
 jobs:
   build:
     strategy:
@@ -28,14 +28,24 @@ jobs:
         run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update -qq && sudo apt-get install -y cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1
+        run: sudo apt-get update -qq && sudo apt-get install -y cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1
       - name: Cinnamon X11 integration with real output audio
         if: runner.os == 'Linux'
         run: dbus-run-session -- bash tests/linux-integration.sh
+      - name: Package application
+        shell: bash
+        run: python packaging/package.py ${{ matrix.rid }} 2.0.0
+      - name: Publish platform release
+        if: startsWith(github.ref, 'refs/tags/') && ((github.event.repository.name == 'wirepulse-windows' && runner.os == 'Windows') || (github.event.repository.name == 'wirepulse-linux' && runner.os == 'Linux'))
+        uses: softprops/action-gh-release@v2
+        with:
+          name: WirePulse 2.0.0
+          body_path: RELEASE.md
+          files: packages/*
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: WirePulse-${{ matrix.rid }}
           path: |
-            publish/
+            packages/
             test-results/

@@ -23,9 +23,15 @@ paplay --device=wirepulse_test test-results/tone.wav &
 /usr/bin/python3 tests/mpris-fixture.py >test-results/mpris.log 2>&1 &
 ./publish/WirePulse --no-settings --probe-seconds 22 --probe-output "$PWD/test-results/status.json" --render-output "$PWD/test-results/render.png" >test-results/app.log 2>&1 &
 app_pid=$!
-sleep 17
+sleep 13
 xprop -name 'WirePulse Desktop' _NET_WM_WINDOW_TYPE _NET_WM_STATE >test-results/x11-properties.txt
 import -window root test-results/desktop.png
+/usr/bin/python3 tests/foreground-fixture.py >test-results/foreground.log 2>&1 &
+foreground_pid=$!
+sleep 2
+xdotool mousemove 640 100 click 1
+import -window root test-results/foreground.png
+kill "$foreground_pid"
 wait "$app_pid"
 python3 - <<'PY'
 import json
@@ -36,10 +42,13 @@ assert s['rate']==48000 and s['fft']==8192,s
 assert s['renderFrames']>100,s
 assert s['provider']=='Cider' and s['title']=='WirePulse integration tone',s
 props=open('test-results/x11-properties.txt').read()
-assert '_NET_WM_WINDOW_TYPE_DESKTOP' in props and '_NET_WM_STATE_BELOW' in props,props
+assert '_NET_WM_WINDOW_TYPE_DESKTOP' in props and '_NET_WM_STATE_SKIP_TASKBAR' in props,props
 im=Image.open('test-results/desktop.png').convert('RGB')
 # Card must be visible in the composited desktop, with Nemo desktop present.
 region=im.crop((430,32,850,150))
-assert sum(max(p)>35 for p in region.getdata())>700,'Wallpaper is hidden behind the desktop'
+assert sum(min(p)>180 for p in region.getdata())>300,'Wallpaper is hidden behind the desktop'
+assert __import__('pathlib').Path('test-results/clicked.txt').exists(),'Foreground window did not receive its click'
+front=Image.open('test-results/foreground.png').convert('RGB').crop((500,90,780,130))
+assert sum(p[1]>180 and p[0]<80 and p[2]<80 for p in front.getdata())>1000,'Wallpaper covers foreground windows'
 print('PASS: real monitor capture + 1kHz FFT + Cider MPRIS + Cinnamon/Nemo desktop surface')
 PY

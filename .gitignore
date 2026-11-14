@@ -4,3 +4,4 @@ publish/
 test-results/
 *.user
 .DS_Store
+packages/
