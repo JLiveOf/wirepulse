@@ -71,10 +71,10 @@
   },
   {
     "key": "sphere",
-    "title": "Mostrar esfera",
+    "title": "Mostrar orbe",
     "kind": "bool",
     "value": true,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 1,
     "step": 1
@@ -84,7 +84,7 @@
     "title": "Malla completa (alternativa)",
     "kind": "bool",
     "value": true,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 1,
     "step": 1
@@ -94,7 +94,7 @@
     "title": "Color de la malla",
     "kind": "color",
     "value": "#ff143c",
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 1,
     "step": 1
@@ -104,7 +104,7 @@
     "title": "Radio (% de altura)",
     "kind": "slider",
     "value": 55,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 10,
     "max": 100,
     "step": 1
@@ -114,7 +114,7 @@
     "title": "Posición horizontal",
     "kind": "slider",
     "value": 97,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 120,
     "step": 1
@@ -124,7 +124,7 @@
     "title": "Posición vertical",
     "kind": "slider",
     "value": 123,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 140,
     "step": 1
@@ -134,7 +134,7 @@
     "title": "Deformación por audio",
     "kind": "slider",
     "value": 1,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 2,
     "step": 0.05
@@ -144,7 +144,7 @@
     "title": "Pulso de graves",
     "kind": "slider",
     "value": 0.2,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 0.6,
     "step": 0.01
@@ -154,7 +154,7 @@
     "title": "Velocidad de rotación",
     "kind": "slider",
     "value": 0.5,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 1,
     "step": 0.01
@@ -164,7 +164,7 @@
     "title": "Densidad de malla",
     "kind": "slider",
     "value": 42,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 12,
     "max": 72,
     "step": 1
@@ -174,7 +174,7 @@
     "title": "Grosor de líneas",
     "kind": "slider",
     "value": 0.65,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0.25,
     "max": 2,
     "step": 0.05
@@ -184,7 +184,7 @@
     "title": "Resplandor",
     "kind": "slider",
     "value": 6,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0,
     "max": 15,
     "step": 1
@@ -194,7 +194,7 @@
     "title": "Opacidad de malla",
     "kind": "slider",
     "value": 1,
-    "group": "Esfera",
+    "group": "Orbe",
     "min": 0.1,
     "max": 1,
     "step": 0.05
@@ -321,7 +321,7 @@
   },
   {
     "key": "unlimitedfps",
-    "title": "FPS ilimitados",
+    "title": "Priorizar fluidez (hasta 120 FPS)",
     "kind": "bool",
     "value": false,
     "group": "Rendimiento",
@@ -336,7 +336,7 @@
     "value": 60,
     "group": "Rendimiento",
     "min": 15,
-    "max": 240,
+    "max": 120,
     "step": 1
   },
   {

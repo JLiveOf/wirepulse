@@ -8,6 +8,8 @@ stage=output/name
 if stage.exists():shutil.rmtree(stage)
 shutil.copytree(root/'publish',stage)
 shutil.copy2(root/'README.md',stage/'README.md')
+from notices import collect
+collect(root,stage/'ThirdPartyNotices')
 if rid.startswith('win'):
  with zipfile.ZipFile(output/(name+'.zip'),'w',zipfile.ZIP_DEFLATED) as archive:
   for path in sorted(stage.rglob('*')):
