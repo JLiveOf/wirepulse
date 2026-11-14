@@ -95,3 +95,8 @@ Referencia oficial: https://taproom.cider.sh/docs/api/.
 Pruebas adicionales: `python3 scripts/test-cider.py dist/WirePulse.app/Contents/MacOS/WirePulse` valida respuestas v2/v1 contra un servidor local de prueba; `--display-profile-test` comprueba persistencia aislada de perfiles. El cliente real de Cider y monitores físicos adicionales requieren comprobación en esos equipos.
 
 Versiones con renderizador compartido para [Windows](https://github.com/JLiveOf/wirepulse) y [Linux Mint / Cinnamon X11](https://github.com/JLiveOf/wirepulse).
+
+
+## Login startup
+
+The first normal launch asks about opening at login. Change it in Ajustes / Inicio. SMAppService.mainApp registers a native login item only after consent. The app displays approval status and links to system Login Items settings. The --startup-self-test option uses a fake service and changes no actual login items.

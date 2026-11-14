@@ -24,7 +24,7 @@ final class WallpaperSurface {
  func close(){view.isPaused=true;window.orderOut(nil);window.close()}
 }
 final class AppDelegate:NSObject,NSApplicationDelegate{
- let config=Configuration(),audio=SystemAudio(),media=NowPlaying()
+ let config=Configuration(),audio=SystemAudio(),media=NowPlaying(),startup=StartupManager()
  private var surfaces=[WallpaperSurface](),item:NSStatusItem!,settingsWindow:NSWindow?,timer:Timer?,subscriptions=Set<AnyCancellable>(),observers=[NSObjectProtocol](),resumeAudio=false,displayProfiles=[String:Configuration](),lastIndependent=false
  func applicationDidFinishLaunching(_ notification:Notification){
   NSApp.setActivationPolicy(.accessory)
@@ -37,12 +37,13 @@ final class AppDelegate:NSObject,NSApplicationDelegate{
   for name in [NSWorkspace.screensDidWakeNotification,NSWorkspace.sessionDidBecomeActiveNotification]{observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in guard let self=self else{return};for s in self.surfaces{s.view.isPaused=false};if self.resumeAudio{self.resumeAudio=false;self.audio.start()}})}
   timer=Timer.scheduledTimer(withTimeInterval:2,repeats:true){[weak self] _ in guard let self=self else{return};self.media.poll(source:self.config.mediaSource,ciderURL:self.config.ciderURL,ciderToken:self.config.ciderToken);self.writeStatus()}
   if !UserDefaults.standard.bool(forKey:"hasLaunched"){showSettings();UserDefaults.standard.set(true,forKey:"hasLaunched")}
+  DispatchQueue.main.asyncAfter(deadline:.now()+0.5){[weak self] in self?.startup.promptIfNeeded()}
   DispatchQueue.main.asyncAfter(deadline:.now()+0.8){[weak self] in self?.audio.start()}
  }
- private func rebuild(){if let window=settingsWindow{window.contentView=nil};for s in surfaces{s.close()};surfaces=[];do{for screen in NSScreen.screens{let profile=profileFor(screen);surfaces.append(try WallpaperSurface(screen:screen,config:config.independentDisplays ? profile:config,audio:audio,media:media))}}catch{NSAlert(error:error).runModal()};if let window=settingsWindow{window.contentView=NSHostingView(rootView:DisplaySettingsView(root:config,audio:audio,media:media,profiles:displayProfiles))}}
+ private func rebuild(){if let window=settingsWindow{window.contentView=nil};for s in surfaces{s.close()};surfaces=[];do{for screen in NSScreen.screens{let profile=profileFor(screen);surfaces.append(try WallpaperSurface(screen:screen,config:config.independentDisplays ? profile:config,audio:audio,media:media))}}catch{NSAlert(error:error).runModal()};if let window=settingsWindow{window.contentView=NSHostingView(rootView:DisplaySettingsView(root:config,audio:audio,media:media,profiles:displayProfiles,startup:startup))}}
  private func profileFor(_ screen:NSScreen)->Configuration{let key=displayKey(screen);if let p=displayProfiles[key]{return p};let p=Configuration(profile:key,template:config);displayProfiles[key]=p;p.objectWillChange.sink{[weak self] _ in DispatchQueue.main.async{guard let self=self else{return};for surface in self.surfaces{surface.update(config:surface.config)}}}.store(in:&subscriptions);return p}
  @objc func showSettings(){
-  if settingsWindow==nil{let window=NSWindow(contentRect:NSRect(x:0,y:0,width:820,height:680),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false);window.title="WirePulse · Ajustes";window.contentView=NSHostingView(rootView:DisplaySettingsView(root:config,audio:audio,media:media,profiles:displayProfiles));window.center();window.isReleasedWhenClosed=false;settingsWindow=window}
+  if settingsWindow==nil{let window=NSWindow(contentRect:NSRect(x:0,y:0,width:820,height:680),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false);window.title="WirePulse · Ajustes";window.contentView=NSHostingView(rootView:DisplaySettingsView(root:config,audio:audio,media:media,profiles:displayProfiles,startup:startup));window.center();window.isReleasedWhenClosed=false;settingsWindow=window}
   NSApp.activate(ignoringOtherApps:true);settingsWindow?.makeKeyAndOrderFront(nil)
  }
  @objc func toggleAnimation(){config.paused.toggle();for profile in displayProfiles.values{profile.paused=config.paused}}

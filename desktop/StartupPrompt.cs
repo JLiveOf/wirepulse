@@ -1,0 +1,9 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Layout;
+namespace WirePulse;
+
+public sealed class StartupPrompt : Window
+{
+    public StartupPrompt(Func<bool, string?> choose) { Title = "Inicio automático · WirePulse"; Icon = new WindowIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "WirePulse.png")); Width = 460; MinHeight=220;MaxHeight=500;SizeToContent=SizeToContent.Height; CanResize = false; WindowStartupLocation = WindowStartupLocation.CenterScreen; var content = new StackPanel { Spacing = 18, Margin = new Thickness(24) }; content.Children.Add(new TextBlock { Text = "¿Abrir WirePulse al iniciar sesión?", FontSize = 19, FontWeight = Avalonia.Media.FontWeight.SemiBold, TextWrapping = Avalonia.Media.TextWrapping.Wrap }); content.Children.Add(new TextBlock { Text = "El fondo se abrirá sin mostrar los ajustes. Puedes cambiar esta opción más adelante en Ajustes → Inicio.", TextWrapping = Avalonia.Media.TextWrapping.Wrap }); var buttons = new StackPanel { Orientation = Orientation.Horizontal, Spacing = 10, HorizontalAlignment = HorizontalAlignment.Right }; var error = new TextBlock { TextWrapping = Avalonia.Media.TextWrapping.Wrap, Foreground = Avalonia.Media.Brushes.OrangeRed }; content.Children.Add(error); void Apply(bool value) { var message = choose(value); if (message == null) Close(); else error.Text = message; } var no = new Button { Content = "Ahora no" }; var yes = new Button { Content = "Sí, abrir al iniciar" }; no.Click += (_, _) => { Apply(false); }; yes.Click += (_, _) => { Apply(true); }; buttons.Children.Add(no); buttons.Children.Add(yes); content.Children.Add(buttons); Content = content; }
+}

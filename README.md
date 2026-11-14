@@ -8,7 +8,8 @@ Fondo de escritorio animado y reactivo al audio para **Windows, Linux y macOS**.
 
 | Sistema | Archivo de descarga | Instalación |
 | --- | --- | --- |
-| Windows x64 | `WirePulse-…-win-x64.zip` | Extrae la carpeta completa y abre `WirePulse.exe`. |
+| Windows x64 installer | `WirePulse-...-win-x64-Setup.exe` | Install for your account, with Start menu shortcut and uninstaller. |
+| Windows x64 portable | `WirePulse-…-win-x64.zip` | Extrae la carpeta completa y abre `WirePulse.exe`. |
 | Linux Mint / Cinnamon X11 x64 | `wirepulse_…_amd64.deb` | Abre el paquete con el instalador de software. |
 | Linux x64, portátil | `WirePulse-…-linux-x64.tar.gz` | Extrae el archivo y ejecuta `WirePulse`. |
 | macOS, Apple silicon | `WirePulse-…-macOS-arm64.zip` | Cierra WirePulse, extrae la app y llévala a Aplicaciones. |
@@ -45,3 +46,8 @@ Windows/Linux incluyen perfiles Automático, Calidad y Ligero, sincronización p
 GitHub Actions compila y prueba los tres sistemas antes de publicar una release única. Incluye pruebas de FFT, Cider v1/v2 con servidores locales de prueba, controles de ajustes y persistencia independiente de pantallas. Linux se comprueba con Cinnamon/Nemo, audio real de un monitor PulseAudio y datos MPRIS generados. macOS comprueba también la reubicación de una app en ejecución.
 
 Las pruebas automáticas no sustituyen la validación de hardware de audio de Windows, monitores físicos adicionales ni un cliente Cider instalado. Las fixtures no incluyen canciones comerciales ni datos personales.
+
+
+## Inicio automatico
+
+On Windows, Linux and macOS the first normal launch asks whether WirePulse should open at login. Nothing is enabled by default. Change your choice in Ajustes / Inicio. Login launches stay quiet. Windows uses a per-user Run entry, Linux an XDG autostart entry and macOS the native login-item service, subject to system approval.

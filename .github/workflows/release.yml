@@ -68,6 +68,10 @@ jobs:
         run: |
           python packaging/package.py ${{ matrix.rid }} ${{ needs.version.outputs.number }}
           rm packages/SHA256SUMS.txt
+      - name: Install, reinstall, self-test and uninstall Windows package
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./packaging/windows/test-installer.ps1 -Installer packages/WirePulse-${{ needs.version.outputs.number }}-win-x64-Setup.exe -Version ${{ needs.version.outputs.number }}
       - uses: actions/upload-artifact@v4
         with:
           name: release-${{ matrix.rid }}
@@ -90,6 +94,7 @@ jobs:
       - name: FFT, Cider, display profiles and relocation
         run: |
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --self-test
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --startup-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --display-profile-test
           python3 macos/scripts/test-cider.py macos/dist/WirePulse.app/Contents/MacOS/WirePulse
           python3 macos/scripts/test-relocation.py macos/dist/WirePulse.app

@@ -1,16 +1,19 @@
 import AppKit
 import SwiftUI
+import ServiceManagement
 
 struct SettingsView:View {
  @ObservedObject var config:Configuration;@ObservedObject var audio:SystemAudio;@ObservedObject var media:NowPlaying
+ @ObservedObject var startup:StartupManager
  var playback:Configuration?=nil
  @State var selected="Audio"
- let groups=["Audio","Fondo","Orbe","Espectro","Tarjeta","Rendimiento"]
+ let groups=["Audio","Fondo","Orbe","Espectro","Tarjeta","Rendimiento","Inicio"]
  var body:some View{
   NavigationSplitView{
-   List(groups,id:\.self,selection:$selected){group in Label(group,systemImage:["Audio":"waveform","Fondo":"photo","Orbe":"globe","Espectro":"chart.bar","Tarjeta":"music.note","Rendimiento":"speedometer"][group]!).tag(group)}.navigationTitle("WirePulse").navigationSplitViewColumnWidth(170)
+   List(groups,id:\.self,selection:$selected){group in Label(group,systemImage:["Audio":"waveform","Fondo":"photo","Orbe":"globe","Espectro":"chart.bar","Tarjeta":"music.note","Rendimiento":"speedometer","Inicio":"power"][group]!).tag(group)}.navigationTitle("WirePulse").navigationSplitViewColumnWidth(170)
   } detail: {
    Form{
+    if selected=="Inicio"{Section("Inicio de sesión"){Toggle("Abrir WirePulse al iniciar sesión",isOn:Binding(get:{startup.enabled},set:{startup.setEnabled($0)}));Text(startup.note).font(.caption).foregroundStyle(.secondary);Button("Gestionar ítems de inicio"){SMAppService.openSystemSettingsLoginItems()}}}
     if selected=="Audio"{
      Section("Audio del sistema"){
       Text(audio.status).textSelection(.enabled)
@@ -54,7 +57,7 @@ struct SettingsView:View {
 
 func displayKey(_ screen:NSScreen)->String{let id=(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0;if let uuid=CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(){return CFUUIDCreateString(nil,uuid) as String};return String(id)}
 struct DisplaySettingsView:View{
- @ObservedObject var root:Configuration;@ObservedObject var audio:SystemAudio;@ObservedObject var media:NowPlaying;let profiles:[String:Configuration]
+ @ObservedObject var root:Configuration;@ObservedObject var audio:SystemAudio;@ObservedObject var media:NowPlaying;let profiles:[String:Configuration];@ObservedObject var startup:StartupManager
  @State private var selected=""
- var body:some View{VStack(spacing:0){HStack{Toggle("Ajustar cada pantalla por separado",isOn:$root.independentDisplays);Spacer();if root.independentDisplays{Picker("Pantalla",selection:$selected){ForEach(NSScreen.screens,id:\.self){screen in Text(screen.localizedName).tag(displayKey(screen))}}.frame(width:280)}}.padding();Divider();SettingsView(config:root.independentDisplays ? (profiles[selected] ?? profiles[NSScreen.screens.first.map{displayKey($0)} ?? ""] ?? root):root,audio:audio,media:media,playback:root)}.frame(minWidth:820,minHeight:700).onAppear{if selected.isEmpty{selected=NSScreen.screens.first.map{displayKey($0)} ?? ""}}}
+ var body:some View{VStack(spacing:0){HStack{Toggle("Ajustar cada pantalla por separado",isOn:$root.independentDisplays);Spacer();if root.independentDisplays{Picker("Pantalla",selection:$selected){ForEach(NSScreen.screens,id:\.self){screen in Text(screen.localizedName).tag(displayKey(screen))}}.frame(width:280)}}.padding();Divider();SettingsView(config:root.independentDisplays ? (profiles[selected] ?? profiles[NSScreen.screens.first.map{displayKey($0)} ?? ""] ?? root):root,audio:audio,media:media,startup:startup,playback:root)}.frame(minWidth:820,minHeight:700).onAppear{if selected.isEmpty{selected=NSScreen.screens.first.map{displayKey($0)} ?? ""}}}
 }

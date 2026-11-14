@@ -14,6 +14,7 @@ if rid.startswith('win'):
  with zipfile.ZipFile(output/(name+'.zip'),'w',zipfile.ZIP_DEFLATED) as archive:
   for path in sorted(stage.rglob('*')):
    if path.is_file():archive.write(path,path.relative_to(output))
+ subprocess.run(['powershell','-NoProfile','-ExecutionPolicy','Bypass','-File',str(root/'packaging/windows/build-installer.ps1'),'-SourceDir',str(stage),'-Version',version,'-OutputDir',str(output)],check=True)
 else:
  (stage/'WirePulse').chmod(0o755)
  with tarfile.open(output/(name+'.tar.gz'),'w:gz') as archive:archive.add(stage,arcname=name)

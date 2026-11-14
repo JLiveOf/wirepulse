@@ -1,6 +1,19 @@
 import AppKit
 import MetalKit
+import ServiceManagement
 
+if CommandLine.arguments.contains("--startup-self-test"){
+ let name="WirePulseStartupTest-"+UUID().uuidString,store=UserDefaults(suiteName:name)!
+ var state=SMAppService.Status.notRegistered,registrations=0,removals=0
+ let manager=StartupManager(defaults:store,read:{state},register:{registrations+=1;state = .enabled},unregister:{removals+=1;state = .notRegistered})
+ precondition(StartupManager.shouldPrompt(asked:false,autostart:false) && !StartupManager.shouldPrompt(asked:true,autostart:false) && !StartupManager.shouldPrompt(asked:false,autostart:true))
+ manager.setEnabled(false);precondition(store.bool(forKey:"startupPrompted") && registrations==0 && !manager.enabled)
+ manager.setEnabled(true);precondition(manager.enabled && registrations==1)
+ manager.setEnabled(true);precondition(registrations==1)
+ manager.setEnabled(false);precondition(!manager.enabled && removals==1)
+ store.removePersistentDomain(forName:name)
+ print("PASS startup consent, enable/disable and no duplicate registration; no real login item modified");exit(0)
+}
 if let index=CommandLine.arguments.firstIndex(of:"--relocation-probe"),CommandLine.arguments.count>index+1{
  do{
   let old=Bundle.main.executableURL!,destination=URL(fileURLWithPath:CommandLine.arguments[index+1])

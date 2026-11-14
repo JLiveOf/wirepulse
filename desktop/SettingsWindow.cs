@@ -9,12 +9,12 @@ public sealed class SettingsWindow : Window
 {
     Settings current; readonly Settings global; readonly Dictionary<string, Settings> displays;
     readonly StackPanel content = new() { Spacing = 15 }; readonly TextBlock status = new() { TextWrapping = TextWrapping.Wrap }; readonly TextBlock performanceText = new() { TextWrapping = TextWrapping.Wrap };
-    readonly ComboBox groups = new() { ItemsSource = new[] { "Audio", "Fondo", "Orbe", "Espectro", "Tarjeta", "Rendimiento" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 15) };
+    readonly ComboBox groups = new() { ItemsSource = new[] { "Audio", "Fondo", "Orbe", "Espectro", "Tarjeta", "Rendimiento", "Inicio" }, SelectedIndex = 0, HorizontalAlignment = HorizontalAlignment.Stretch, Margin = new Thickness(0, 0, 0, 15) };
     readonly ComboBox selector = new() { HorizontalAlignment = HorizontalAlignment.Stretch }; readonly CheckBox mode = new() { Content = "Ajustar cada pantalla de forma independiente" };
-    readonly MediaService media; readonly Spectrum spectrum; readonly Func<string> audio; readonly DispatcherTimer timer; readonly Func<string>? performance;
-    public SettingsWindow(Settings settings, Spectrum spectrum, MediaService media, Func<string> audio, Dictionary<string, Settings> displays, Func<string>? performance = null)
+    readonly MediaService media; readonly Spectrum spectrum; readonly Func<string> audio; readonly DispatcherTimer timer; readonly Func<string>? performance; readonly Func<StartupRegistration> startupFactory;
+    public SettingsWindow(Settings settings, Spectrum spectrum, MediaService media, Func<string> audio, Dictionary<string, Settings> displays, Func<string>? performance = null, Func<StartupRegistration>? startupFactory = null)
     {
-        this.performance = performance; global = settings; current = settings; this.displays = displays; this.spectrum = spectrum; this.media = media; this.audio = audio;
+        this.startupFactory = startupFactory ?? (() => new StartupRegistration()); this.performance = performance; global = settings; current = settings; this.displays = displays; this.spectrum = spectrum; this.media = media; this.audio = audio;
         Title = "WirePulse · Ajustes"; Width = 780; Height = 700; MinWidth = 600; MinHeight = 450; Icon = new WindowIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "WirePulse.png"));
         var root = new DockPanel { Margin = new Thickness(20) }; DockPanel.SetDock(groups, Dock.Top); root.Children.Add(groups);
         var screens = new StackPanel { Spacing = 8, Margin = new Thickness(0, 0, 0, 15) }; screens.Children.Add(mode); screens.Children.Add(selector); DockPanel.SetDock(screens, Dock.Top); root.Children.Add(screens);
@@ -32,6 +32,7 @@ public sealed class SettingsWindow : Window
     void ShowGroup()
     {
         var target = current; var group = groups.SelectedItem as string ?? "Audio"; content.Children.Clear();
+        if (group == "Inicio") { var registration = this.startupFactory(); bool enabled = false; try { enabled = registration.Enabled; } catch { } Toggle("Abrir WirePulse al iniciar sesión", enabled, b => { try { registration.SetEnabled(b); global.StartupAsked = true; global.Save(); } catch (Exception e) { Label("No se pudo actualizar el inicio automático: " + e.Message); } }); Label("Se aplica a tu cuenta y a todas las pantallas. Al iniciar sesión el fondo se abre sin mostrar los ajustes."); }
         if (group == "Audio") { Refresh(); content.Children.Add(status); Label("Captura la salida del sistema en memoria. No usa el micrófono ni guarda audio. El espectro cubre desde DC hasta Nyquist; la resolución depende del muestreo real de salida."); }
         if (group == "Tarjeta")
         {

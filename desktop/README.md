@@ -43,3 +43,12 @@ See the workflow logs for the exact status of the current revision. No claim of 
 ## Rendimiento desde 2.2
 
 El dibujo sigue el reloj nativo del sistema y puede adaptarse a 165 Hz u otras frecuencias detectadas por pantalla. En Rendimiento elige Automático, Calidad o Ligero; Ligero limita la malla y el resplandor para equipos antiguos. Los FPS de dibujo y el backend GPU/CPU aparecen en Ajustes. Consulta [las mediciones, el método y las limitaciones](../PERFORMANCE.md).
+
+
+## Windows installer and login startup
+
+The Setup.exe installer installs per user in %LOCALAPPDATA%/Programs/WirePulse, with a Start menu shortcut, optional desktop shortcut and uninstall registration. No administrator rights are requested. Preferences are retained when uninstalling. Close WirePulse before upgrading.
+
+The first normal launch asks about login startup; it can be changed in Settings / Inicio. Windows uses HKCU Run and Linux ~/.config/autostart/wirepulse.desktop. Both use --autostart --no-settings. If you move a portable build, disable and enable startup again to update its path.
+
+To build the installer on Windows install Inno Setup 6.4+ and run the usual packaging command. Installer sources and install/reinstall/uninstall tests are in packaging/windows/.
