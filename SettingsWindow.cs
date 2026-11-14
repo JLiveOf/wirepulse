@@ -36,7 +36,7 @@ public sealed class SettingsWindow:Window {
    Label("Cider: activa su API local y crea un token de Playback en Ajustes → Connectivity. Si publica los controles multimedia del sistema, se detecta también sin API.");Input("Dirección local de Cider",global.CiderUrl,s=>{if(Uri.TryCreate(s,UriKind.Absolute,out var u)&&u.IsLoopback&&u.Scheme=="http"){if(s!=global.CiderUrl)global.CiderToken="";global.CiderUrl=s;global.Save();}});Input("Token de Cider",global.CiderToken,s=>{global.CiderToken=s;global.Save();},true);
   }
   foreach(var spec in target.Specs.Where(x=>x.Group==group&&x.Key!="quality")){
-   if(spec.Kind=="toggle")Toggle(spec.Title,target.On(spec.Key),b=>target.Set(spec.Key,b));
+   if(spec.Kind is "toggle" or "bool")Toggle(spec.Title,target.On(spec.Key),b=>target.Set(spec.Key,b));
    else if(spec.Kind=="slider"){var caption=new TextBlock{Text=$"{spec.Title}: {target.N(spec.Key):0.###}"};content.Children.Add(caption);var slider=new Slider{Minimum=spec.Min,Maximum=spec.Max,Value=target.N(spec.Key),TickFrequency=spec.Step,IsSnapToTickEnabled=true};slider.PropertyChanged+=(_,e)=>{if(e.Property==Slider.ValueProperty){caption.Text=$"{spec.Title}: {slider.Value:0.###}";target.Set(spec.Key,slider.Value);}};content.Children.Add(slider);}
    else Input(spec.Title,target.Text(spec.Key),s=>{if(spec.Kind=="color"&&!Color.TryParse(s,out _))return;target.Set(spec.Key,s);});
   }
