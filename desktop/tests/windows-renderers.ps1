@@ -1,5 +1,7 @@
+param([switch]$Quick)
 $ErrorActionPreference = 'Stop'
 New-Item -ItemType Directory -Force test-results/renderers | Out-Null
+if (!$Quick) {
 foreach ($mode in @('Automático','DirectX 11','Vulkan','OpenGL','CPU (compatibilidad)')) {
     $name = @{'Automático'='auto';'DirectX 11'='dx11';'Vulkan'='vulkan';'OpenGL'='opengl';'CPU (compatibilidad)'='cpu'}[$mode]
     $report = Join-Path $PWD "test-results/renderers/$name.json"
@@ -11,10 +13,13 @@ foreach ($mode in @('Automático','DirectX 11','Vulkan','OpenGL','CPU (compatibi
     if ($mode -eq 'CPU (compatibilidad)' -and $result.active -ne 'CPU (compatibilidad)') { throw 'CPU request was ignored' }
     Write-Output "PASS $mode -> $($result.active): $($result.frames) native frames; $($result.description)"
 }
+}
 # Exercise the exact attachment path against classic and raised desktop-like parents.
 # The fixture owns all HWNDs and never reparents or modifies Explorer itself.
-foreach ($layout in @('classic','raised')) {
-    foreach ($mode in @('CPU (compatibilidad)','OpenGL')) {
+$layouts = if ($Quick) { @('raised') } else { @('classic','raised') }
+foreach ($layout in $layouts) {
+    $desktopModes = if ($Quick) { @('CPU (compatibilidad)') } else { @('CPU (compatibilidad)','OpenGL') }
+    foreach ($mode in $desktopModes) {
         $name = $layout + '-' + $(if ($mode -eq 'OpenGL') {'opengl'} else {'cpu'})
         $report = Join-Path $PWD "test-results/renderers/$name.json"
         $arguments = @('--renderer-smoke-test','--desktop-fixture','--renderer',('"'+$mode+'"'),'--probe-output',('"'+$report+'"'))
