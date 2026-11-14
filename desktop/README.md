@@ -38,3 +38,8 @@ All original visual groups are available: background, audio sensitivity/bass/noi
 Run `dotnet run --project tests/UiTests` to exercise all settings groups, checkboxes and independent display selection without a physical desktop. Run the executable with `--self-test` for DSP, phase, silence, DC/Nyquist and authenticated Cider HTTP fixture tests. GitHub Actions compiles self-contained Windows/Linux packages and runs Linux Cinnamon/Nemo under Xvfb with real PulseAudio monitor capture, generated 1 kHz audio, a fixture MPRIS player, compositor screenshot and X11 state checks. Fixtures contain no copyrighted recordings or private library data. CI is not a replacement for testing actual audio hardware, a signed Cider build or every Explorer/Cinnamon version.
 
 See the workflow logs for the exact status of the current revision. No claim of hardware verification is made by a successful compile.
+
+
+## Rendimiento desde 2.2
+
+El dibujo sigue el reloj nativo del sistema y puede adaptarse a 165 Hz u otras frecuencias detectadas por pantalla. En Rendimiento elige Automático, Calidad o Ligero; Ligero limita la malla y el resplandor para equipos antiguos. Los FPS de dibujo y el backend GPU/CPU aparecen en Ajustes. Consulta [las mediciones, el método y las limitaciones](../PERFORMANCE.md).

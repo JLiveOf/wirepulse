@@ -36,6 +36,10 @@ La identificación de servicios y las portadas dependen de los metadatos publica
 
 Los tres proyectos anteriores se han integrado conservando su historial. `desktop/` mantiene una sola copia compartida del código de Windows y Linux. Los repositorios anteriores quedan archivados como referencia; el desarrollo y las descargas actuales están aquí.
 
+## Rendimiento
+
+Windows/Linux incluyen perfiles Automático, Calidad y Ligero, sincronización por pantalla y diagnóstico GPU/CPU. [Ver pruebas y mediciones](PERFORMANCE.md).
+
 ## Validación
 
 GitHub Actions compila y prueba los tres sistemas antes de publicar una release única. Incluye pruebas de FFT, Cider v1/v2 con servidores locales de prueba, controles de ajustes y persistencia independiente de pantallas. Linux se comprueba con Cinnamon/Nemo, audio real de un monitor PulseAudio y datos MPRIS generados. macOS comprueba también la reubicación de una app en ejecución.

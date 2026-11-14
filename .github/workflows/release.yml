@@ -51,6 +51,12 @@ jobs:
         run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test
       - name: Settings and independent display editing
         run: dotnet run --project tests/UiTests -c Release
+      - name: CPU renderer benchmarks, stereo equivalence and allocations
+        run: dotnet run --project tests/Performance -c Release -- test-results/performance.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: performance-${{ matrix.rid }}
+          path: desktop/test-results/performance*
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update -qq && sudo apt-get install -y cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1

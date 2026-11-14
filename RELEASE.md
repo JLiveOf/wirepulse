@@ -1,20 +1,25 @@
-WirePulse ahora reúne **Windows, Linux y macOS en un único repositorio y en esta misma página de descargas**. Esta actualización unifica el proyecto y su publicación; conserva las funciones de las versiones anteriores.
+Mejoras de rendimiento y correcciones para Windows y Linux. macOS mantiene su implementación nativa, con el mismo número de versión para la publicación conjunta.
 
-### Elige tu sistema
+- Sincronización con la frecuencia de cada pantalla: se eliminan el tope de 120 FPS y el reloj fijo de 60 Hz de la biblioteca anterior. Un monitor de 165 Hz puede solicitar 165 FPS y otro de 75 Hz, 75, según el margen del equipo.
+- Se corrigen los saltos de cadencia al limitar los FPS. El dibujo sigue los fotogramas del sistema, sin temporizador de interfaz fijo.
+- Orbe por lotes en el hilo de dibujo, con buffers reutilizados y menos objetos temporales. Fondo y tarjeta se conservan en capas separadas; el texto no se reconstruye con cada fotograma del orbe.
+- Polos de la malla corregidos y deformación suavizada: se elimina la «aguja» que aparecía en Windows/Linux al sonar música.
+- Perfiles Automático, Calidad y Ligero. Ligero reduce la malla, elimina el resplandor y usa hasta 60 FPS. Automático ajusta el detalle si aumenta el coste de dibujo.
+- Suspensión automática cuando una aplicación ocupa toda la pantalla (Windows), configurable por pantalla.
+- FFT estéreo optimizada, manteniendo la cobertura DC–Nyquist y la energía en contrafase. Caché de portadas de Windows y progreso corregido; se reintentan portadas que llegan tarde.
+- FPS de dibujo, objetivo, backend GPU/CPU y tiempo de dibujo visibles en Ajustes → Audio / Rendimiento y en status.json.
 
-| Sistema | Descarga |
+### Descargas
+
+| Sistema | Archivo |
 | --- | --- |
-| **Windows x64** | **WirePulse-2.1.0-win-x64.zip** — extrae todo y abre WirePulse.exe. |
-| **Linux Mint / Cinnamon X11** | **wirepulse_2.1.0_amd64.deb** — instala con el gestor de software. |
-| **Linux x64 portátil** | **WirePulse-2.1.0-linux-x64.tar.gz** — extrae y ejecuta WirePulse. |
-| **macOS · Apple silicon** | **WirePulse-2.1.0-macOS-arm64.zip** — extrae y mueve la app a Aplicaciones. |
+| Windows x64 | **WirePulse-2.2.0-win-x64.zip** |
+| Linux Mint / Cinnamon X11 | **wirepulse_2.2.0_amd64.deb** |
+| Linux x64 portátil | **WirePulse-2.2.0-linux-x64.tar.gz** |
+| macOS / Apple silicon | **WirePulse-2.2.0-macOS-arm64.zip** |
 
-Incluye fondo negro, orbe y espectro reactivos, tarjeta arriba centrada, soporte Cider y posiciones compartidas o independientes para cada pantalla. Ajustes se abre desde el icono de WirePulse en la barra de menús o área de notificación.
+Extrae por completo el ZIP de Windows y abre WirePulse.exe. En Ajustes → Rendimiento activa «Adaptarse a la frecuencia de cada pantalla». Prueba Ligero en equipos antiguos. Las preferencias y perfiles existentes se conservan.
 
-Cider: activa su API local y crea un token de Playback; pégalo en Ajustes → Tarjeta. No se solicitan credenciales de Apple. La integración usa datos y portadas estáticas proporcionados por el reproductor.
+Las mediciones de rendimiento se hacen con rasterización por CPU y se comparan con el dibujo anterior, en el mismo proceso. Son pruebas reproducibles, no una garantía de 165 FPS en cualquier equipo ni una validación de hardware de 2012. Las pruebas de integración, audio y ajustes se ejecutan antes de publicar. Consulta PERFORMANCE.md para el método y los resultados.
 
-Windows y Linux incluyen el runtime necesario. Linux requiere Cinnamon X11; Wayland no está soportado. macOS requiere Apple silicon y macOS 14.2+, con firma ad hoc y sin notarización. Windows no está firmado comercialmente.
-
-Los tres paquetes se compilan y comprueban antes de publicar esta release. Se incluyen pruebas de FFT, protocolo Cider, ajustes y perfiles; integración Cinnamon con PulseAudio/MPRIS y pruebas de reubicación del bundle de macOS. No se ha validado hardware Windows, Cider real ni monitores físicos adicionales.
-
-El historial de los repositorios anteriores se conserva en este proyecto. El código fuente de las tres versiones está en los archivos Source code de esta release. `SHA256SUMS.txt` permite verificar todas las descargas.
+Linux requiere X11, no Wayland. macOS 14.2+, Apple silicon; firma ad hoc, sin notarización. Windows no está firmado comercialmente. Cider, portadas estáticas y ajustes independientes por pantalla siguen disponibles.

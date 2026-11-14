@@ -321,7 +321,7 @@
   },
   {
     "key": "unlimitedfps",
-    "title": "Priorizar fluidez (hasta 120 FPS)",
+    "title": "Adaptarse a la frecuencia de cada pantalla",
     "kind": "bool",
     "value": false,
     "group": "Rendimiento",
@@ -336,7 +336,7 @@
     "value": 60,
     "group": "Rendimiento",
     "min": 15,
-    "max": 120,
+    "max": 360,
     "step": 1
   },
   {
