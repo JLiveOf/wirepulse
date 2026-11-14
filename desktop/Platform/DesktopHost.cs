@@ -1,7 +1,7 @@
 using System.Runtime.InteropServices;
 namespace WirePulse;
 
-public static class DesktopHost
+public static partial class DesktopHost
 {
     public static void Attach(IntPtr window, int width, int height, int x, int y) { if (OperatingSystem.IsWindows()) Windows(window, width, height, x, y); else if (OperatingSystem.IsLinux()) Linux(window); }
     public static void Validate() { if (OperatingSystem.IsLinux() && (Environment.GetEnvironmentVariable("XDG_SESSION_TYPE") == "wayland" || string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY")))) throw new InvalidOperationException("El fondo necesita la sesión Cinnamon (X11). Cierra sesión y elige Cinnamon, no Cinnamon Wayland."); }
@@ -23,7 +23,8 @@ public static class DesktopHost
         var prog = FindWindow("Progman", null); if (prog == IntPtr.Zero) throw new Exception("No se encuentra el escritorio de Explorer."); SendMessageTimeout(prog, 0x052C, new IntPtr(0xD), new IntPtr(1), 0, 2000, out _); IntPtr worker = IntPtr.Zero;
         EnumWindows((top, _) => { if (FindWindowEx(top, IntPtr.Zero, "SHELLDLL_DefView", null) != IntPtr.Zero) worker = FindWindowEx(IntPtr.Zero, top, "WorkerW", null); return true; }, IntPtr.Zero);
         bool raised = (GetWindowLongPtr(prog, -20).ToInt64() & 0x00200000) != 0; var icons = FindWindowEx(prog, IntPtr.Zero, "SHELLDLL_DefView", null); if (raised) worker = FindWindowEx(prog, IntPtr.Zero, "WorkerW", null); if (worker == IntPtr.Zero) worker = FindWindowEx(prog, IntPtr.Zero, "WorkerW", null); if (worker == IntPtr.Zero) throw new Exception("Explorer no proporciona una superficie WorkerW para el fondo.");
-        var parent = raised ? prog : worker; long style = GetWindowLongPtr(window, -16).ToInt64(); SetWindowLongPtr(window, -16, new IntPtr((style & ~unchecked((long)0x80000000)) | 0x40000000)); long ex = GetWindowLongPtr(window, -20).ToInt64(); SetWindowLongPtr(window, -20, new IntPtr((ex & ~0x40000) | 0x80 | 0x20 | 0x08000000 | (raised ? 0x80000L : 0L))); Marshal.SetLastPInvokeError(0); var previous = SetParent(window, parent); if (previous == IntPtr.Zero && Marshal.GetLastPInvokeError() != 0) throw new Exception("No se pudo adjuntar la ventana al escritorio."); var point = new XY { X = x, Y = y }; ScreenToClient(parent, ref point); if (raised) SetLayeredWindowAttributes(window, 0, 255, 2); SetWindowPos(window, raised ? icons : IntPtr.Zero, point.X, point.Y, w, h, 0x10 | 0x20 | 0x40);
+        var parent=raised?prog:worker;var point=new XY{X=x,Y=y};ScreenToClient(parent,ref point);
+        AttachWindowsSurface(window,parent,icons,raised,w,h,point.X,point.Y,RedirectionRenderer());
     }
     [DllImport("libX11.so.6")] static extern IntPtr XOpenDisplay(IntPtr name); [DllImport("libX11.so.6")] static extern IntPtr XInternAtom(IntPtr d, string name, bool only);
     [DllImport("libX11.so.6")] static extern int XChangeProperty(IntPtr d, IntPtr w, IntPtr property, IntPtr type, int format, int mode, IntPtr[] data, int n);
