@@ -17,6 +17,7 @@ public sealed class Settings
     public bool Paused { get; set; }
     public bool IndependentDisplays { get; set; }
     readonly string file;
+    public bool HasSaved=>File.Exists(Path.Combine(Folder,file));
     public event Action? Changed;
     public Settings(string? profile = null, Settings? template = null) { file = profile == null ? "settings.json" : "display-" + Convert.ToHexString(System.Security.Cryptography.SHA256.HashData(System.Text.Encoding.UTF8.GetBytes(profile)))[..16] + ".json"; Reset(false); if (template != null) { Values = template.Values.ToDictionary(x => x.Key, x => x.Value?.DeepClone()); TopCentered = template.TopCentered; TopMargin = template.TopMargin; } try { var n = JsonNode.Parse(File.ReadAllText(Path.Combine(Folder, file)))!; IndependentDisplays = n["independentDisplays"]?.GetValue<bool>() ?? false; foreach (var kv in n["values"]!.AsObject()) if (Values.ContainsKey(kv.Key)) Values[kv.Key] = kv.Value?.DeepClone(); MediaSource = n["mediaSource"]?.GetValue<string>() ?? "Automático"; TopCentered = n["topCentered"]?.GetValue<bool>() ?? true; TopMargin = n["topMargin"]?.GetValue<double>() ?? 4.8; CiderUrl = n["ciderUrl"]?.GetValue<string>() ?? CiderUrl; CiderToken = n["ciderToken"]?.GetValue<string>() ?? ""; } catch { } }
     public double N(string key) => Values[key] is JsonValue v && v.TryGetValue<double>(out var d) ? d : 0;
