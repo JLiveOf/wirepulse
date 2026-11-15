@@ -3,6 +3,11 @@ import MetalKit
 import ServiceManagement
 import ImageIO
 
+if let i=CommandLine.arguments.firstIndex(of:"--editor-preview"),CommandLine.arguments.count>i+1{
+ _=NSApplication.shared;NSApp.setActivationPolicy(.accessory)
+ let config=Configuration(profile:"editor-preview-"+UUID().uuidString,persistent:false),window=SceneEditorWindow(screen:NSScreen.main ?? NSScreen.screens[0],config:config,audio:SystemAudio(),media:NowPlaying());window.makeKeyAndOrderFront(nil)
+ Timer.scheduledTimer(withTimeInterval:3,repeats:false){_ in let capture=Process();capture.executableURL=URL(fileURLWithPath:"/usr/sbin/screencapture");capture.arguments=["-x","-l",String(window.windowNumber),CommandLine.arguments[i+1]];try? capture.run();capture.waitUntilExit();window.orderOut(nil);exit(capture.terminationStatus)};NSApp.run();exit(0)
+}
 if CommandLine.arguments.contains("--editor-self-test"){
  _=NSApplication.shared
  let source=Configuration(profile:"editor-test-"+UUID().uuidString,persistent:false),size=CGSize(width:1000,height:600)
