@@ -1,0 +1,6 @@
+<!doctype html><html><meta charset="utf-8"><style>
+html,body{margin:0;width:100%;height:100%;overflow:hidden;background:transparent;color:white;font:700 24px system-ui;display:grid;place-items:center}
+#pulse{width:45vmin;height:45vmin;border-radius:50%;border:3px solid #7de7ff;box-shadow:0 0 30px #35bfff55;display:grid;place-items:center;transition:transform 90ms linear}
+</style><div id="pulse">WirePulse</div><script>
+window.addEventListener('wirepulse:audio',({detail:a})=>{document.querySelector('#pulse').style.transform=`scale(${1+(a.beat||0)*.35})`;document.querySelector('#pulse').textContent=a.bpm>0?`${Math.round(a.bpm)} BPM`:'WirePulse';});
+</script></html>

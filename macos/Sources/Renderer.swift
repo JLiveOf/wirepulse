@@ -5,6 +5,7 @@ import simd
 struct WireVertex { var position:SIMD2<Float>; var color:SIMD4<Float> }
 struct MeshPoint {var x:Float;var y:Float;var z:Float;var bin:Int;var phase:Float}
 final class WallpaperRenderer:NSObject,MTKViewDelegate {
+ var transparent=false
  let config:Configuration;let analyzer:SpectrumAnalyzer;let media:NowPlaying?
  let device:MTLDevice;private let commandQueue:MTLCommandQueue;private let pipeline:MTLRenderPipelineState
  private var smooth=[Float](repeating:0,count:64),peaks=[Float](repeating:0,count:64)
@@ -43,7 +44,7 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   let now=ProcessInfo.processInfo.systemUptime;let dt=min(0.1,max(0,now-last));last=now
   build(width:Float(view.bounds.width),height:Float(view.bounds.height),time:Float(now),dt:Float(dt))
   let bg=config.color("backgroundcolor").rgba
-  descriptor.colorAttachments[0].clearColor=config.backgroundPath.isEmpty ? MTLClearColor(red:Double(bg.x),green:Double(bg.y),blue:Double(bg.z),alpha:1):MTLClearColorMake(0,0,0,0)
+  descriptor.colorAttachments[0].clearColor = !transparent && config.backgroundPath.isEmpty ? MTLClearColor(red:Double(bg.x),green:Double(bg.y),blue:Double(bg.z),alpha:1):MTLClearColorMake(0,0,0,0)
   guard let command=encode(descriptor) else{return};command.present(drawable);command.commit();frameCount+=1
  }
  private func encode(_ descriptor:MTLRenderPassDescriptor)->MTLCommandBuffer?{

@@ -22,7 +22,7 @@ else:
  package=output/'deb-root';app=package/'opt'/'wirepulse';app.mkdir(parents=True,exist_ok=True)
  shutil.copytree(stage,app,dirs_exist_ok=True)
  control=package/'DEBIAN';control.mkdir(exist_ok=True)
- (control/'control').write_text(f'Package: wirepulse\nVersion: {version}\nArchitecture: amd64\nMaintainer: JLiveOf <noreply@github.com>\nDepends: pulseaudio-utils, playerctl, libx11-6, libxfixes3, libice6, libsm6, libfontconfig1, libfreetype6, libgl1\nSection: graphics\nPriority: optional\nDescription: Audio-reactive native wallpaper for Cinnamon X11\n Shared WirePulse renderer with system audio capture and media metadata.\n')
+ (control/'control').write_text(f'Package: wirepulse\nVersion: {version}\nArchitecture: amd64\nMaintainer: JLiveOf <noreply@github.com>\nDepends: pulseaudio-utils, playerctl, libx11-6, libxfixes3, libice6, libsm6, libfontconfig1, libwebkit2gtk-4.1-0, libfreetype6, libgl1\nSection: graphics\nPriority: optional\nDescription: Audio-reactive native wallpaper for Cinnamon X11\n Shared WirePulse renderer with system audio capture and media metadata.\n')
  launch=package/'usr/share/applications';launch.mkdir(parents=True,exist_ok=True)
  (launch/'wirepulse.desktop').write_text('[Desktop Entry]\nType=Application\nName=WirePulse\nComment=Audio-reactive desktop wallpaper\nExec=/opt/wirepulse/WirePulse\nIcon=wirepulse\nTerminal=false\nCategories=AudioVideo;Graphics;\nStartupNotify=false\n')
  icons=package/'usr/share/icons/hicolor/1024x1024/apps';icons.mkdir(parents=True,exist_ok=True);shutil.copy2(root/'Assets/WirePulse.png',icons/'wirepulse.png')

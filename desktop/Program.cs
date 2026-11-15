@@ -18,7 +18,7 @@ internal static class Program
             int result;
             using(var instance = new SingleInstance()){
              if (!instance.Owned) { if (!args.Contains("--autostart")) instance.Notify(); return 0; }
-             Singleton = instance;if(!args.Contains("--renderer-smoke-test"))DesktopHost.Validate();
+             Singleton = instance;if(!args.Contains("--renderer-smoke-test")&&!args.Contains("--widget-smoke-test"))DesktopHost.Validate();
              var builder=AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace();
              builder=GraphicsBackend.Configure(builder,Option("--renderer")??new Settings().WindowsRenderer);
              result=builder.StartWithClassicDesktopLifetime(args);

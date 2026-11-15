@@ -6,6 +6,7 @@ struct SettingsView:View {
  @ObservedObject var config:Configuration;@ObservedObject var audio:SystemAudio;@ObservedObject var media:NowPlaying
  @ObservedObject var startup:StartupManager
  var playback:Configuration?=nil
+ var edit:(Configuration)->Void = {_ in}
  @State var selected="Audio"
  let groups=["Audio","Fondo","Fondo animado","Orbe","Espectro","Tarjeta","Reloj","Rendimiento","Inicio"]
  var body:some View{
@@ -13,9 +14,10 @@ struct SettingsView:View {
    List(groups,id:\.self,selection:$selected){group in Label(group,systemImage:["Audio":"waveform","Fondo":"photo","Fondo animado":"sparkles","Reloj":"clock","Orbe":"globe","Espectro":"chart.bar","Tarjeta":"music.note","Rendimiento":"speedometer","Inicio":"power"][group]!).tag(group)}.navigationTitle("WirePulse").navigationSplitViewColumnWidth(170)
   } detail: {
    Form{
+    Section{Button("Editar escritorio…"){edit(config)};Text("Mueve, redimensiona y añade objetos con el ratón. Las guías se pueden desactivar.").font(.caption).foregroundStyle(.secondary)}
     if selected=="Inicio"{Section("Inicio de sesión"){Toggle("Abrir WirePulse al iniciar sesión",isOn:Binding(get:{startup.enabled},set:{startup.setEnabled($0)}));Text(startup.note).font(.caption).foregroundStyle(.secondary);Button("Gestionar ítems de inicio"){SMAppService.openSystemSettingsLoginItems()}}}
-    if selected=="Fondo animado"{Section("Material"){Picker("Tipo",selection:Binding(get:{Int(config.n("bgstyle"))},set:{config.values["bgstyle"]=Double($0)})){Text("Estrellas").tag(0);Text("Malla").tag(1)};TimelineView(.periodic(from:.now,by:1)){_ in let snapshot=audio.analyzer.snapshot(),ciderBpm=media.tempoBpm,bpm=ciderBpm>0 ? ciderBpm:(snapshot.age<2 ? snapshot.bpm:0);Text(bpm>0 ? "\(Int(bpm.rounded())) BPM"+(ciderBpm>0 ? " · Cider":" estimados"):"Esperando un ritmo estable").font(.caption).foregroundStyle(.secondary)};Text("Sin sonido mantiene la velocidad base. Los beats aceleran el desplazamiento; los BPM se estiman a partir del audio.").font(.caption).foregroundStyle(.secondary)}}
-    if selected=="Reloj"{Section("Fuente"){Picker("Fuente del reloj",selection:$config.clockFont){Text("Sistema").tag("System");ForEach(NSFontManager.shared.availableFontFamilies.sorted(),id:\.self){font in Text(font).tag(font)}}}}
+    if selected=="Fondo animado" && config.scene==nil{Section("Material"){Picker("Tipo",selection:Binding(get:{Int(config.n("bgstyle"))},set:{config.values["bgstyle"]=Double($0)})){Text("Estrellas").tag(0);Text("Malla").tag(1)};TimelineView(.periodic(from:.now,by:1)){_ in let snapshot=audio.analyzer.snapshot(),ciderBpm=media.tempoBpm,bpm=ciderBpm>0 ? ciderBpm:(snapshot.age<2 ? snapshot.bpm:0);Text(bpm>0 ? "\(Int(bpm.rounded())) BPM"+(ciderBpm>0 ? " · Cider":" estimados"):"Esperando un ritmo estable").font(.caption).foregroundStyle(.secondary)};Text("Sin sonido mantiene la velocidad base. Los beats aceleran el desplazamiento; los BPM se estiman a partir del audio.").font(.caption).foregroundStyle(.secondary)}}
+    if selected=="Reloj" && config.scene==nil{Section("Fuente"){Picker("Fuente del reloj",selection:$config.clockFont){Text("Sistema").tag("System");ForEach(NSFontManager.shared.availableFontFamilies.sorted(),id:\.self){font in Text(font).tag(font)}}}}
     if selected=="Audio"{
      Section("Audio del sistema"){
       Text(audio.status).textSelection(.enabled)
@@ -28,8 +30,6 @@ struct SettingsView:View {
     }
     if selected=="Tarjeta"{Section("Canción actual"){
      Picker("Leer metadatos de",selection:Binding(get:{(playback ?? config).mediaSource},set:{(playback ?? config).mediaSource=$0})){Text("Automático").tag("Automático");Text("Ninguno").tag("Ninguno");Text("Apple Music").tag("Apple Music");Text("Spotify").tag("Spotify");Text("Cider").tag("Cider")}
-     Toggle("Tarjeta arriba centrada",isOn:$config.topCentered)
-     Slider(value:$config.topMargin,in:0...50,step:0.1){Text("Margen superior (%)")}
      TextField("Dirección local de Cider",text:Binding(get:{(playback ?? config).ciderURL},set:{(playback ?? config).ciderURL=$0}))
      SecureField("Token de la API de Cider",text:Binding(get:{(playback ?? config).ciderToken},set:{(playback ?? config).ciderToken=$0}))
      Text("Cider: activa su API local en Connectivity y crea un token de Playback. El token se guarda en el Llavero del Mac.").font(.caption).foregroundStyle(.secondary)
@@ -38,7 +38,7 @@ struct SettingsView:View {
      Text("Automático prioriza Apple Music o Spotify en reproducción. Para audio de navegador identifica YouTube y otros servicios a partir de la pestaña activa; con varias pestañas o sin permiso, la identificación puede limitarse al navegador.").font(.caption).foregroundStyle(.secondary)
      Text("Esta opción solicita permiso de Automatización para consultar canción, portada y progreso. El análisis del sonido funciona con todas las aplicaciones, independientemente de esta selección.").font(.caption).foregroundStyle(.secondary)
     }}
-    Section(selected){ForEach(controls.filter{$0.group==selected}){spec in row(spec)}}
+    Section(selected){ForEach(controls.filter{$0.group==selected && !SceneDocument.layoutKeys.contains($0.id) && (config.scene==nil || ["Audio","Fondo","Rendimiento"].contains(selected))}){spec in row(spec)}}
     if selected=="Rendimiento"{Section{
      Toggle("Pausar la animación",isOn:$config.paused)
      Text("Se detiene durante el reposo o el bloqueo de sesión. La frecuencia máxima respeta la de cada pantalla.").font(.caption).foregroundStyle(.secondary)
@@ -60,6 +60,7 @@ struct SettingsView:View {
 func displayKey(_ screen:NSScreen)->String{let id=(screen.deviceDescription[NSDeviceDescriptionKey("NSScreenNumber")] as? NSNumber)?.uint32Value ?? 0;if let uuid=CGDisplayCreateUUIDFromDisplayID(id)?.takeRetainedValue(){return CFUUIDCreateString(nil,uuid) as String};return String(id)}
 struct DisplaySettingsView:View{
  @ObservedObject var root:Configuration;@ObservedObject var audio:SystemAudio;@ObservedObject var media:NowPlaying;let profiles:[String:Configuration];@ObservedObject var startup:StartupManager
+ var edit:(Configuration)->Void = {_ in}
  @State private var selected=""
- var body:some View{VStack(spacing:0){HStack{Toggle("Ajustar cada pantalla por separado",isOn:$root.independentDisplays);Spacer();if root.independentDisplays{Picker("Pantalla",selection:$selected){ForEach(NSScreen.screens,id:\.self){screen in Text(screen.localizedName).tag(displayKey(screen))}}.frame(width:280)}}.padding();Divider();SettingsView(config:root.independentDisplays ? (profiles[selected] ?? profiles[NSScreen.screens.first.map{displayKey($0)} ?? ""] ?? root):root,audio:audio,media:media,startup:startup,playback:root)}.frame(minWidth:820,minHeight:700).onAppear{if selected.isEmpty{selected=NSScreen.screens.first.map{displayKey($0)} ?? ""}}}
+ var body:some View{VStack(spacing:0){HStack{Toggle("Ajustar cada pantalla por separado",isOn:$root.independentDisplays);Spacer();if root.independentDisplays{Picker("Pantalla",selection:$selected){ForEach(NSScreen.screens,id:\.self){screen in Text(screen.localizedName).tag(displayKey(screen))}}.frame(width:280)}}.padding();Divider();SettingsView(config:root.independentDisplays ? (profiles[selected] ?? profiles[NSScreen.screens.first.map{displayKey($0)} ?? ""] ?? root):root,audio:audio,media:media,startup:startup,playback:root,edit:edit)}.frame(minWidth:820,minHeight:700).onAppear{if selected.isEmpty{selected=NSScreen.screens.first.map{displayKey($0)} ?? ""}}}
 }

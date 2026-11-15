@@ -2,4 +2,5 @@
  <PropertyGroup><TargetFramework>net10.0</TargetFramework><OutputType>Exe</OutputType><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
  <ItemGroup><ProjectReference Include="../../WirePulse.csproj"/><PackageReference Include="Avalonia.Headless" Version="12.1.6"/></ItemGroup>
  <ItemGroup><None Include="../../Assets/controls.json" Link="Assets/controls.json" CopyToOutputDirectory="Always"/><None Include="../../Assets/WirePulse.png" Link="Assets/WirePulse.png" CopyToOutputDirectory="Always"/></ItemGroup>
+ <ItemGroup><None Include="../fixtures/disposal.gif" Link="fixtures/disposal.gif" CopyToOutputDirectory="Always"/></ItemGroup>
 </Project>

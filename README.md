@@ -73,3 +73,7 @@ El [motor de ventanas utilizado](https://api-docs.avaloniaui.net/docs/T_Avalonia
 
 
 En Windows 11 con el escritorio elevado, CPU/OpenGL usan una capa de presentación compatible para evitar un fondo invisible. Esa ruta copia el fotograma completo y puede rendir menos que Vulkan; no cambia el motor elegido por su cuenta. Las pruebas verifican también píxeles visibles sobre Explorer, no solo que se abra una ventana de ajustes.
+
+### Manual desktop editor
+
+WirePulse 3 adds drag/resize composition editing, optional snapping, independent object copies, custom text, images, animated GIFs, and HTML widgets on all three systems. Open **Editar escritorio…** from Settings or the tray/menu bar. See [Editor guide and widget format](docs/EDITOR.md).

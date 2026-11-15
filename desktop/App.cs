@@ -10,17 +10,17 @@ namespace WirePulse;
 
 public sealed class App : Application
 {
-    Settings settings = null!; readonly Spectrum spectrum = new(); MediaService media = null!; AudioCapture audio = null!; SettingsWindow? panel; Window? screenProbe; readonly List<Surface> walls = [];
+    Settings settings = null!; readonly Spectrum spectrum = new(); MediaService media = null!; AudioCapture audio = null!; SettingsWindow? panel; EditorWindow? editor; Window? screenProbe; readonly List<Surface> walls = [];
     readonly Dictionary<string, Settings> profiles = [], available = []; DispatcherTimer? maintenance; TrayIcon? tray; bool polling, quitting, rebuilding, lastIndependent; DateTime lastStatus = DateTime.MinValue; double lastCpu, lastWall; double cpuPercent;
     sealed class Surface(Window window, WallpaperView view, string name, double hz, PixelRect bounds) { public Window Window = window; public WallpaperView View = view; public string Name = name; public double Hz = hz; public FramePacer Pacer = new(); public PixelRect Bounds = bounds; public bool Active = true, Scheduled, Covered; public double Target; }
-    public override void Initialize() { Styles.Add(new FluentTheme()); RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark; }
+    public override void Initialize() { Styles.Add(new FluentTheme()); Styles.Add(new Avalonia.Markup.Xaml.Styling.StyleInclude(new Uri("avares://WirePulse/")){Source=new Uri("avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml")}); RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark; }
     public override void OnFrameworkInitializationCompleted()
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life)
         {
-            life.ShutdownMode = ShutdownMode.OnExplicitShutdown;if(Program.Args.Contains("--renderer-smoke-test")){RendererSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;} settings = new(); media = new(settings); audio = new(spectrum); audio.Start();
+            life.ShutdownMode = ShutdownMode.OnExplicitShutdown;if(Program.Args.Contains("--widget-smoke-test")){WidgetSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;}if(Program.Args.Contains("--renderer-smoke-test")){RendererSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;} settings = new(); media = new(settings); audio = new(spectrum); audio.Start();
             life.Exit += (_, _) => { quitting = true; maintenance?.Stop(); foreach (var wall in walls) { wall.Active = false; wall.View.Dispose(); } audio.Dispose(); tray?.Dispose(); screenProbe?.Close(); };
-            var menu = new NativeMenu(); var show = new NativeMenuItem("Ajustes de WirePulse"); show.Click += (_, _) => ShowSettings(); menu.Add(show);
+            var menu = new NativeMenu(); var show = new NativeMenuItem("Ajustes de WirePulse"); show.Click += (_, _) => ShowSettings(); menu.Add(show); var edit=new NativeMenuItem("Editar escritorio…");edit.Click+=(_,_)=>ShowEditor(settings,null);menu.Add(edit);
             var pause = new NativeMenuItem("Pausar / reanudar animación"); pause.Click += (_, _) => { settings.Paused = !settings.Paused; foreach (var p in profiles.Values) p.Paused = settings.Paused; }; menu.Add(pause);
             var exit = new NativeMenuItem("Salir"); exit.Click += (_, _) => life.Shutdown(); menu.Add(exit);
             tray = new TrayIcon { Icon = new WindowIcon(Path.Combine(AppContext.BaseDirectory, "Assets", "WirePulse.png")), ToolTipText = "WirePulse", Menu = menu, IsVisible = true }; tray.Clicked += (_, _) => ShowSettings(); TrayIcon.SetIcons(this, new TrayIcons { tray });
@@ -32,7 +32,8 @@ public sealed class App : Application
         }
         base.OnFrameworkInitializationCompleted();
     }
-    void ShowSettings() { if (panel == null) { panel = new SettingsWindow(settings, spectrum, media, () => audio.Status, available, () => string.Join("\n", walls.Select(w => w.Covered ? $"{w.Name}: pausado por pantalla completa" : $"{w.Name}: {w.View.Statistics.Fps:F0} FPS de dibujo / objetivo {w.Target:F0} · {w.View.Statistics.DrawMs:F2} ms · {w.View.Statistics.Backend}")),restart:()=>{Program.RestartRequested=true;(ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();}); panel.Closed += (_, _) => panel = null; } panel.Show(); panel.Activate(); }
+    void ShowSettings() { if (panel == null) { panel = new SettingsWindow(settings, spectrum, media, () => audio.Status, available, () => string.Join("\n", walls.Select(w => w.Covered ? $"{w.Name}: pausado por pantalla completa" : $"{w.Name}: {w.View.Statistics.Fps:F0} FPS de dibujo / objetivo {w.Target:F0} · {w.View.Statistics.DrawMs:F2} ms · {w.View.Statistics.Backend}")),edit:ShowEditor,restart:()=>{Program.RestartRequested=true;(ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();}); panel.Closed += (_, _) => panel = null; } panel.Show(); panel.Activate(); }
+    void ShowEditor(Settings target,string? selected) { if(settings.IndependentDisplays&&ReferenceEquals(target,settings))target=walls.FirstOrDefault()?.View.Configuration??target; if(editor!=null){editor.Activate();return;}var wall=walls.FirstOrDefault(w=>ReferenceEquals(w.View.Configuration,target))??walls.FirstOrDefault();if(wall==null||screenProbe==null)return;var screen=screenProbe.Screens.All.FirstOrDefault(s=>s.Bounds==wall.Bounds);if(screen==null)return;editor=new EditorWindow(target,spectrum,media,wall.Bounds,screen.Scaling,wall.Name,selected);editor.Closed+=(_,_)=>editor=null;editor.Show();editor.Activate();}
     void CreateWalls()
     {
         if (rebuilding || quitting || screenProbe == null) return; rebuilding = true; try
@@ -50,7 +51,7 @@ public sealed class App : Application
         }
         finally { rebuilding = false; }
     }
-    void Schedule(Surface surface) { if (surface.Scheduled || surface.Covered || !surface.Active) return; surface.Scheduled = true; surface.Window.RequestAnimationFrame(time => { surface.Scheduled = false; if (!surface.Active || surface.Covered || quitting) return; var s = surface.View.Configuration; double target = s.On("unlimitedfps") ? surface.Hz : Math.Min(surface.Hz, Math.Clamp(s.N("fps"), 15, 360)); if (s.RenderProfile == "Ligero") target = Math.Min(target, 60); if (s.Paused) target = Math.Min(target, 15); if (!s.On("sphere") && !s.On("spectrum") && !s.On("bgshow")) target = 4; surface.Target = target; if (surface.Pacer.Due(time.TotalSeconds, target)) surface.View.Advance(time.TotalSeconds); Schedule(surface); }); }
+    void Schedule(Surface surface) { if (surface.Scheduled || surface.Covered || !surface.Active) return; surface.Scheduled = true; surface.Window.RequestAnimationFrame(time => { surface.Scheduled = false; if (!surface.Active || surface.Covered || quitting) return; var s = surface.View.Configuration; double target = s.On("unlimitedfps") ? surface.Hz : Math.Min(surface.Hz, Math.Clamp(s.N("fps"), 15, 360)); if (s.RenderProfile == "Ligero") target = Math.Min(target, 60); if (s.Paused) target = Math.Min(target, 15); if (s.Scene==null && !s.On("sphere") && !s.On("spectrum") && !s.On("bgshow")) target = 4; surface.Target = target; if (surface.Pacer.Due(time.TotalSeconds, target)) surface.View.Advance(time.TotalSeconds); Schedule(surface); }); }
     async void Maintain(object? sender, EventArgs e)
     {
         if (quitting) return; foreach (var w in walls) { try{if(w.View.Presenter==null)w.View.UsePresenter(DesktopHost.EnsurePresentation(w.Window.TryGetPlatformHandle()?.Handle??IntPtr.Zero));}catch(Exception error){Trace.WriteLine(error);}w.Covered = w.View.Configuration.SuspendFullscreen && DisplayTiming.Covered(w.Bounds); if (!w.Covered) Schedule(w); if (!w.Covered) w.View.Adapt(w.Target > 0 ? w.Target : 60); }

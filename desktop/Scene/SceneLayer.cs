@@ -1,0 +1,41 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Media;
+using Avalonia.Platform;
+using Avalonia.Rendering.SceneGraph;
+using Avalonia.Skia;
+namespace WirePulse;
+
+public sealed class SceneLayer:Panel,IDisposable {
+ readonly Settings settings;readonly Spectrum spectrum;readonly MediaService media;readonly Dictionary<string,SceneNode> nodes=[];readonly RenderStatistics stats=new();readonly Counter counter;double previous;
+ public RenderStatistics Statistics=>stats;
+ public SceneLayer(Settings settings,Spectrum spectrum,MediaService media){this.settings=settings;this.spectrum=spectrum;this.media=media;ClipToBounds=true;counter=new Counter(stats,()=>nodes.Values.Sum(x=>x.View?.Statistics.DrawMs??0));Children.Add(counter);Refresh();}
+ public void Refresh(){var items=settings.Scene?.Items??[];var ids=items.Select(x=>x.Id).ToHashSet();foreach(var id in nodes.Keys.Where(x=>!ids.Contains(x)).ToArray()){Children.Remove(nodes[id]);nodes[id].Dispose();nodes.Remove(id);}int index=0;foreach(var item in items){if(!nodes.TryGetValue(item.Id,out var node)){node=new SceneNode(item,settings,spectrum,media);nodes[item.Id]=node;}else node.Update(item);node.IsVisible=item.Visible;node.Opacity=item.Opacity;if(!Children.Contains(node))Children.Insert(index,node);else if(Children.IndexOf(node)!=index)Children.Move(Children.IndexOf(node),index);index++;}InvalidateArrange();}
+ protected override Size ArrangeOverride(Size finalSize){foreach(var item in settings.Scene?.Items??[]){if(nodes.TryGetValue(item.Id,out var node)){var r=item.Bounds(finalSize);node.Arrange(r);node.Resize(r.Size);}}counter.Arrange(new Rect(finalSize));return finalSize;}
+ public void Advance(double time){double dt=previous==0?1/60d:Math.Clamp(time-previous,0,.2);previous=time;foreach(var node in nodes.Values)node.Advance(time,dt,settings.Paused);counter.InvalidateVisual();}
+ public void Adapt(double fps){foreach(var node in nodes.Values)node.View?.Adapt(fps);}
+ public void Dispose(){foreach(var node in nodes.Values)node.Dispose();nodes.Clear();}
+ sealed class Counter(RenderStatistics stats,Func<double> milliseconds):Control{public override void Render(DrawingContext c){c.Custom(new CountOperation(new Rect(Bounds.Size),stats,milliseconds));}}
+ sealed class CountOperation(Rect bounds,RenderStatistics stats,Func<double> ms):ICustomDrawOperation{public Rect Bounds=>bounds;public bool HitTest(Point p)=>false;public bool Equals(ICustomDrawOperation? o)=>false;public void Dispose(){}public void Render(ImmediateDrawingContext c){var feature=c.TryGetFeature<ISkiaSharpApiLeaseFeature>();if(feature==null)return;using var lease=feature.Lease();if(OperatingSystem.IsWindows()&&!GraphicsBackend.Observed){using var platform=lease.TryLeasePlatformGraphicsApi();GraphicsBackend.Observe(lease.GrContext,platform?.Context.GetType().FullName);}stats.Backend=GraphicsBackend.Description(lease.GrContext!=null);stats.Record(ms());}}
+}
+public sealed class SceneNode:Decorator,IDisposable {
+ SceneItem item;readonly Settings root;readonly Settings proxy;readonly Spectrum spectrum;readonly MediaService media;ImageFrames? image;AssetVisual? asset;TextBlock? text;Size previousSize;string signature="";public WallpaperView? View{get;private set;}
+ public SceneNode(SceneItem item,Settings root,Spectrum spectrum,MediaService media){this.item=item;this.root=root;this.spectrum=spectrum;this.media=media;proxy=root.Preview();proxy.Scene=null;ClipToBounds=true;Update(item);}
+ public void Update(SceneItem next){item=next;string value=next.Kind+root.RenderProfile+root.N("sensitivity")+root.N("bass")+root.N("gate")+root.N("smoothing")+root.N("fps")+root.N("unlimitedfps")+root.N("quality")+System.Text.Json.JsonSerializer.Serialize(next.Style)+next.Asset+next.Text+next.Font+next.Color;if(signature==value)return;signature=value;View?.Dispose();image?.Dispose();asset?.Dispose();View=null;image=null;asset=null;text=null;previousSize=default;proxy.Values=root.Values.ToDictionary(x=>x.Key,x=>x.Value?.DeepClone());foreach(var pair in item.Style)if(proxy.Values.ContainsKey(pair.Key))proxy.Values[pair.Key]=pair.Value?.DeepClone();proxy.ClockFont=item.Font;proxy.RenderProfile=root.RenderProfile;foreach(string key in new[]{"sensitivity","bass","gate","smoothing","fps","unlimitedfps","quality"})proxy.Values[key]=root.Values[key]?.DeepClone();proxy.Scene=null;foreach(string key in new[]{"sphere","spectrum","card","clockshow","bgshow"})proxy.Values[key]=System.Text.Json.Nodes.JsonValue.Create(false);
+  if(item.Kind is "image" or "widget"){try{if(item.Kind=="image"){image=new ImageFrames(item.Asset);asset=new AssetVisual(image);}else asset=new AssetVisual(item.Asset,spectrum);Child=asset;}catch(Exception e){Child=new TextBlock{Text="No se puede mostrar "+item.Name+"\n"+e.Message,TextWrapping=TextWrapping.Wrap,Foreground=Brushes.Orange};}return;}
+  if(item.Kind=="text"){text=new TextBlock{Text=item.Text,Foreground=new SolidColorBrush(Color.Parse(item.Color)),FontFamily=item.Font=="System"?FontFamily.Default:new FontFamily(item.Font),TextWrapping=TextWrapping.Wrap,TextAlignment=TextAlignment.Center,VerticalAlignment=Avalonia.Layout.VerticalAlignment.Center};Child=text;return;}
+  string enabled=item.Kind switch{"orb"=>"sphere","spectrum"=>"spectrum","card"=>"card","clock"=>"clockshow",_=>"bgshow"};proxy.Values[enabled]=System.Text.Json.Nodes.JsonValue.Create(true);proxy.BackgroundStyle=item.Kind=="mesh"?"Malla":"Estrellas";View=new WallpaperView(proxy,spectrum,media,transparent:true,cardFillsBounds:item.Kind=="card");Child=View;Resize(Bounds.Size);
+ }
+ public void Resize(Size size){if(size.Width<=0||size.Height<=0||size==previousSize)return;previousSize=size;if(text!=null)text.FontSize=Math.Clamp(size.Height*.65/Math.Max(1,item.Text.Count(c=>c=='\n')+1),8,512);if(View==null)return;proxy.Values["sphereX"]=System.Text.Json.Nodes.JsonValue.Create(50d);proxy.Values["sphereY"]=System.Text.Json.Nodes.JsonValue.Create(50d);proxy.Values["radius"]=System.Text.Json.Nodes.JsonValue.Create(Math.Min(size.Width,size.Height)/size.Height*50);foreach(string key in new[]{"spectrumX","spectrumY"})proxy.Values[key]=System.Text.Json.Nodes.JsonValue.Create(0d);foreach(string key in new[]{"spectrumWidth","spectrumHeight"})proxy.Values[key]=System.Text.Json.Nodes.JsonValue.Create(100d);proxy.Values["clockX"]=System.Text.Json.Nodes.JsonValue.Create(50d);proxy.Values["clockY"]=System.Text.Json.Nodes.JsonValue.Create(50d);proxy.Values["clocksize"]=System.Text.Json.Nodes.JsonValue.Create(size.Height*.72);proxy.Save();}
+ public void Advance(double time,double dt,bool paused){proxy.Paused=paused;View?.Advance(time);image?.Update(dt,paused);asset?.Advance(dt,paused);}
+ public void Dispose(){View?.Dispose();image?.Dispose();asset?.Dispose();}
+}
+public sealed class AssetVisual:Control,IDisposable {
+ readonly ImageFrames? image;readonly HtmlWidget? widget;
+ public AssetVisual(ImageFrames image){this.image=image;}
+ public AssetVisual(string path,Spectrum spectrum){widget=new HtmlWidget(path,spectrum);widget.Changed+=()=>Avalonia.Threading.Dispatcher.UIThread.Post(InvalidateVisual);}
+ public void Advance(double dt,bool paused){if(image?.Animated==true)InvalidateVisual();widget?.Resize(Bounds.Size);widget?.Tick(paused);}
+ public override void Render(DrawingContext c){if(image!=null)c.Custom(new ImageOperation(image,new Rect(Bounds.Size)));else if(widget?.Image is{} frame)c.DrawImage(frame,new Rect(frame.Size),new Rect(Bounds.Size));else{c.DrawRectangle(new SolidColorBrush(Color.Parse("#88262b35")),null,new Rect(Bounds.Size));var label=new FormattedText(widget?.Status??"Cargando…",System.Globalization.CultureInfo.CurrentCulture,FlowDirection.LeftToRight,Typeface.Default,14,Brushes.White);c.DrawText(label,new Point(8,8));}}
+ public void Dispose(){widget?.Dispose();}
+ sealed class ImageOperation(ImageFrames image,Rect bounds):ICustomDrawOperation {public Rect Bounds=>bounds;public bool HitTest(Point p)=>false;public bool Equals(ICustomDrawOperation? o)=>false;public void Dispose(){}public void Render(ImmediateDrawingContext c){var feature=c.TryGetFeature<ISkiaSharpApiLeaseFeature>();if(feature==null)return;using var lease=feature.Lease();image.Draw(lease.SkCanvas,new(0,0,(float)bounds.Width,(float)bounds.Height));}}
+}

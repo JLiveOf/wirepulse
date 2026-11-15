@@ -1,0 +1,9 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Layout;
+using Avalonia.Media;
+namespace WirePulse;
+public static class ColorDialog {
+ public static async Task<Color?> Show(Window owner,Color original){var picker=new ColorView{Color=original,Margin=new Thickness(16)};var window=new Window{Title="Elegir color",Width=550,Height=570,CanResize=false,WindowStartupLocation=WindowStartupLocation.CenterOwner};var actions=new StackPanel{Orientation=Orientation.Horizontal,HorizontalAlignment=HorizontalAlignment.Right,Spacing=10,Margin=new Thickness(16)};var cancel=new Button{Content="Cancelar"};var apply=new Button{Content="Aplicar color"};cancel.Click+=(_,_)=>window.Close((Color?)null);apply.Click+=(_,_)=>window.Close((Color?)picker.Color);actions.Children.Add(cancel);actions.Children.Add(apply);var root=new DockPanel();DockPanel.SetDock(actions,Dock.Bottom);root.Children.Add(actions);root.Children.Add(picker);window.Content=root;return await window.ShowDialog<Color?>(owner);}
+ public static Button Button(Window owner,string value,Action<string> changed){var swatch=new Border{Width=30,Height=22,CornerRadius=new CornerRadius(5),Background=new SolidColorBrush(Color.Parse(value)),BorderBrush=Brushes.Gray,BorderThickness=new Thickness(1)};var label=new TextBlock{Text="Elegir color…",VerticalAlignment=VerticalAlignment.Center};var row=new StackPanel{Orientation=Orientation.Horizontal,Spacing=10};row.Children.Add(swatch);row.Children.Add(label);var button=new Button{Content=row,HorizontalAlignment=HorizontalAlignment.Stretch};button.Click+=async(_,_)=>{var selected=await Show(owner,((SolidColorBrush)swatch.Background!).Color);if(selected.HasValue){swatch.Background=new SolidColorBrush(selected.Value);changed(selected.Value.ToString());}};return button;}
+}
