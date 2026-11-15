@@ -398,6 +398,7 @@ final class EditorCanvasView: NSView {
 struct EditorChrome: View {
   @ObservedObject var model: SceneEditorModel
   let finish: (Bool) -> Void
+  var availableHeight: CGFloat? = nil
   var body: some View {
     ZStack(alignment: .topTrailing) {
       if model.inspector {
@@ -433,7 +434,7 @@ struct EditorChrome: View {
             }
           }.frame(height: 180)
           ScrollView { properties }
-        }.padding().frame(width: 290).frame(maxHeight: model.size.height - 120).background(
+        }.padding().frame(width: 290).frame(maxHeight: max(160, (availableHeight ?? model.size.height) - 120)).background(
           .regularMaterial, in: RoundedRectangle(cornerRadius: 14)
         ).padding()
       }
@@ -612,12 +613,16 @@ final class SceneEditorWindow: NSWindow {
     let canvas = EditorCanvasView(model)
     root.addSubview(canvas)
     let chrome = EditorHostingView(
-      rootView: EditorChrome(model: model) { [weak self] save in self?.finish(save) })
-    chrome.frame = root.bounds
+      rootView: EditorChrome(model: model, finish: { [weak self] save in self?.finish(save) }, availableHeight: screen.visibleFrame.height))
+    chrome.frame = Self.controlsFrame(screen: screen.frame, visible: screen.visibleFrame)
     root.addSubview(chrome)
     subscription = model.objectWillChange.sink { [weak canvas] _ in
       DispatchQueue.main.async { canvas?.needsDisplay = true }
     }
+  }
+  static func controlsFrame(screen: CGRect, visible: CGRect) -> CGRect {
+    let safe = screen.intersection(visible)
+    return safe.offsetBy(dx: -screen.minX, dy: -screen.minY)
   }
   override var canBecomeKey: Bool { true }
   override var canBecomeMain: Bool { true }
