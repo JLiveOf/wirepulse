@@ -44,6 +44,7 @@ internal sealed class D2DLineDrawer:INativeDrawer {
 }
 internal sealed class NativeVisualizationControl(Func<VisualizerOptions> options,Func<SpectrumFrame> audio):GpuContentControl {
  readonly VectorFrame frame=new();INativeDrawer? drawer;
+ public void Adapt(double target)=>frame.Adapt(target,Statistics);
  protected override string ContentName=>RenderEngines.Requested;
  protected override void InitializeContent(){drawer=RenderEngines.Requested==RenderEngines.Direct2D?new D2DLineDrawer(Device):new D3DLineDrawer(Device);}
  protected override void RenderContent(NativeTexture target,PixelSize size,Size logical,double scale){frame.Build(logical.Width,logical.Height,System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency,options(),audio(),Paused);drawer!.Draw(target,size,logical,scale,frame);}

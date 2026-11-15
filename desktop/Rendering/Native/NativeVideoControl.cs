@@ -13,6 +13,7 @@ internal sealed class NativeVideoControl(string path):GpuContentControl {
  static readonly object startupLock=new();static bool started;
  IMFMediaEngine? engine;IMFDXGIDeviceManager? manager;MFByteStream? stream;bool canPlay,freed;long timestamp;public long DecodedFrames{get;private set;}
  protected override bool AllowReadback=>true;
+ protected override bool RequireVideoDevice=>true;
  protected override string ContentName=>"Vídeo · Media Foundation";
  protected override void InitializeContent(){lock(startupLock){if(!started){MFStartup().CheckError();started=true;}}
   manager=MFCreateDXGIDeviceManager();manager.ResetDevice(Device.Device).CheckError();using var factory=new IMFMediaEngineClassFactory();using var attributes=MFCreateAttributes(2);attributes.VideoOutputFormat=Format.B8G8R8A8_UNorm;attributes.DxgiManager=manager;

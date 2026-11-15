@@ -12,8 +12,26 @@ namespace WirePulse;
 
 internal sealed class NativeDevice:IDisposable {
  public readonly ID3D11Device Device;public readonly ID3D11DeviceContext Context;public readonly string Description;public readonly bool Software;
- public NativeDevice(byte[]? luid=null){using var factory=CreateDXGIFactory1<IDXGIFactory1>();IDXGIAdapter1? chosen=null;try{if(luid is{Length:8})for(uint i=0;factory.EnumAdapters1(i,out var adapter).Success;i++){if(adapter.Description1.Luid.LowPart==BitConverter.ToUInt32(luid,0) && adapter.Description1.Luid.HighPart==BitConverter.ToInt32(luid,4)){chosen=adapter;break;}adapter.Dispose();}
- var flags=DeviceCreationFlags.BgraSupport|DeviceCreationFlags.VideoSupport;var levels=new[]{FeatureLevel.Level_11_0};bool software=chosen!=null&&(chosen.Description1.Flags&AdapterFlags.Software)!=0;var result=D3D11CreateDevice(software?null:chosen,software?DriverType.Warp:chosen!=null?DriverType.Unknown:DriverType.Hardware,flags,levels,out ID3D11Device device,out ID3D11DeviceContext context);if(result.Failure)result=D3D11CreateDevice(null,DriverType.Warp,flags,levels,out device,out context);result.CheckError();Device=device!;Context=context!;using var dxgi=Device.QueryInterface<IDXGIDevice>();using var actual=dxgi.GetAdapter();Description=actual.Description.Description;using var adapterInfo=actual.QueryInterface<IDXGIAdapter1>();Software=(adapterInfo.Description1.Flags&AdapterFlags.Software)!=0;using var multi=Device.QueryInterface<ID3D11Multithread>();multi.SetMultithreadProtected(true);}finally{chosen?.Dispose();}}
+ public NativeDevice(byte[]? luid=null,bool video=false){
+  string stage="crear fábrica DXGI";IDXGIAdapter1? chosen=null;
+  try{
+   using var factory=CreateDXGIFactory1<IDXGIFactory1>();stage="buscar adaptador";
+   if(luid is{Length:8})for(uint i=0;factory.EnumAdapters1(i,out var adapter).Success;i++){
+    if(adapter.Description1.Luid.LowPart==BitConverter.ToUInt32(luid,0)&&adapter.Description1.Luid.HighPart==BitConverter.ToInt32(luid,4)){chosen=adapter;break;}adapter.Dispose();
+   }
+   stage="crear dispositivo Direct3D";
+   var flags=DeviceCreationFlags.BgraSupport|(video?DeviceCreationFlags.VideoSupport:0);var levels=new[]{FeatureLevel.Level_11_0};ID3D11Device device=null!;ID3D11DeviceContext context=null!;
+   SharpGen.Runtime.Result Create(IDXGIAdapter? adapter,DriverType type,DeviceCreationFlags creationFlags){var result=D3D11CreateDevice(adapter,type,creationFlags,levels,out device,out context);if(result.Failure)Console.Error.WriteLine($"D3D11 {type} {creationFlags}: 0x{result.Code:X8}");return result;}
+   var result=chosen!=null?Create(chosen,DriverType.Unknown,flags):Create(null,DriverType.Hardware,flags);
+   if(result.Failure&&chosen!=null)result=Create(null,DriverType.Hardware,flags);
+   if(result.Failure)result=Create(null,DriverType.Warp,flags);
+   if(result.Failure&&video){flags=DeviceCreationFlags.BgraSupport;result=Create(null,DriverType.Hardware,flags);if(result.Failure)result=Create(null,DriverType.Warp,flags);}
+   result.CheckError();Device=device;Context=context;
+   stage="consultar adaptador Direct3D";using var dxgi=Device.QueryInterface<IDXGIDevice>();using var actual=dxgi.GetAdapter();Description=actual.Description.Description;
+   using var adapterInfo=actual.QueryInterface<IDXGIAdapter1>();Software=(adapterInfo.Description1.Flags&AdapterFlags.Software)!=0;
+   stage="proteger contexto Direct3D";using var multi=Device.QueryInterface<ID3D11Multithread>();multi.SetMultithreadProtected(true);
+  }catch(Exception ex){throw new NotSupportedException(stage+": "+ex.Message,ex);}finally{chosen?.Dispose();}
+ }
  public NativeTexture CreateTexture(PixelSize size,ICompositionGpuInterop? interop,CompositionDrawingSurface? surface)=>new(this,size,interop,surface);
  public void Dispose(){Context.ClearState();Context.Dispose();Device.Dispose();}
 }

@@ -53,7 +53,11 @@ public sealed class WallpaperView : Panel, IDisposable
         native?.Advance(seconds,settings.Paused);
 #endif
         animation.InvalidateVisual();if(Presenter!=null)presentation.InvalidateVisual();if(seconds-clockAt>=1){clockAt=seconds;clock.InvalidateVisual();} if (seconds - cardAt >= .25 || !ReferenceEquals(previousTrack, media.Current)) { cardAt = seconds; previousTrack = media.Current; card.InvalidateVisual(); } }
-    public void Adapt(double target) {painter.Adapt(target);sceneLayer?.Adapt(target);}
+    public void Adapt(double target) {painter.Adapt(target);sceneLayer?.Adapt(target);
+#if WINDOWS
+        native?.Adapt(target);
+#endif
+    }
     void ConfigurationChanged() { if (disposed) return; options = VisualizerOptions.Read(settings);if(!transparent)mediaBackdrop.Refresh();dimmer.InvalidateVisual();UpdateScene(); textCache.Clear();clock.InvalidateVisual(); backdrop.InvalidateVisual(); animation.InvalidateVisual(); card.InvalidateVisual(); }
     void UpdateScene(){bool active=settings.Scene!=null;animation.IsVisible=card.IsVisible=clock.IsVisible=!active;if(active){if(sceneLayer==null){sceneLayer=new SceneLayer(settings,spectrum,media);Children.Insert(Children.IndexOf(presentation),sceneLayer);}else sceneLayer.Refresh();}else if(sceneLayer!=null){Children.Remove(sceneLayer);sceneLayer.Dispose();sceneLayer=null;}UpdateNative();}
     void UpdateNative(){

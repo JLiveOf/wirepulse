@@ -463,6 +463,7 @@ struct EditorChrome: View {
         Toggle("Visible", isOn: binding(item.visible) { $0.visible = $1 })
         Toggle("Bloquear posición", isOn: binding(item.locked) { $0.locked = $1 })
         Toggle("Mantener proporciones", isOn: binding(item.keepAspect) { $0.keepAspect = $1 })
+        Text("Ángulo (°)")
         TextField(
           "Ángulo (grados)", value: binding(item.rotation) { $0.rotation = $1 }, format: .number)
         HStack {
