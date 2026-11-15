@@ -307,23 +307,27 @@ final class SceneNode: NSView {
     super.layout()
     configureGeometry()
   }
+  private var previousRotation=Double.nan
   private func configureGeometry() {
-    guard let item = item, bounds.size != previousSize || frame != previousFrame else { return }
+    guard let item = item, bounds.size != previousSize || frame != previousFrame || item.rotation != previousRotation else { return }
+    previousRotation=item.rotation
     previousFrame = frame
     previousSize = bounds.size
     if item.kind == "orb", let metal = metal {
       let radius = Double(min(bounds.width, bounds.height)) / 2
       let reach =
         radius * (1 + proxy.n("pulse")) * (1 + 0.38 * proxy.n("deformation")) + proxy.n("glow") + 4
-      var canvas = CGRect(
-        x: Double(frame.midX) - reach, y: Double(frame.midY) - reach, width: reach * 2,
-        height: reach * 2
-      ).intersection(superview?.bounds ?? frame.insetBy(dx: -reach, dy: -reach))
-      if canvas.isNull || canvas.width < 1 || canvas.height < 1 {
-        canvas = CGRect(x: frame.minX, y: frame.minY, width: 1, height: 1)
+      let viewport=superview?.bounds ?? frame.insetBy(dx:-reach,dy:-reach)
+      let nominal=item.rect(superview?.bounds.size ?? bounds.size)
+      var clip=viewport
+      if item.rotation != 0 {
+        let center=CGPoint(x:nominal.midX,y:nominal.midY),angle = -item.rotation * .pi / 180
+        let points=[CGPoint(x:viewport.minX,y:viewport.minY),CGPoint(x:viewport.maxX,y:viewport.minY),CGPoint(x:viewport.minX,y:viewport.maxY),CGPoint(x:viewport.maxX,y:viewport.maxY)].map{p -> CGPoint in let x=p.x-center.x,y=p.y-center.y;return CGPoint(x:center.x+x*cos(angle)-y*sin(angle),y:center.y+x*sin(angle)+y*cos(angle))}
+        let x=points.map(\.x),y=points.map(\.y);clip=CGRect(x:x.min()!,y:y.min()!,width:x.max()!-x.min()!,height:y.max()!-y.min()!)
       }
-      canvas.origin.x -= frame.minX
-      canvas.origin.y -= frame.minY
+      var canvas=CGRect(x:nominal.midX-reach,y:nominal.midY-reach,width:reach*2,height:reach*2).intersection(clip)
+      if canvas.isNull || canvas.width<1 || canvas.height<1 {canvas=CGRect(x:nominal.minX,y:nominal.minY,width:1,height:1)}
+      canvas.origin.x-=nominal.minX;canvas.origin.y-=nominal.minY
       metal.autoresizingMask = []
       metal.frame = canvas
       proxy.values["sphereX"] = Double(bounds.midX - canvas.minX) / Double(canvas.width) * 100
