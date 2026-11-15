@@ -23,6 +23,7 @@ final class SceneEditorModel: ObservableObject {
     self.size = size
     snap = config.editorSnap
     draft.scene = config.scene ?? SceneDocument.migrate(config, size)
+    selected = draft.scene?.items.first { $0.kind == "card" && $0.visible }?.id
   }
   func checkpoint() {
     undo.append(document)
@@ -376,12 +377,12 @@ struct EditorChrome: View {
           }
           Button("↶") { model.history(true) }
           Button("↷") { model.history(false) }
-          Toggle("Ajustar a guías", isOn: $model.snap)
+          Toggle("Ajustar a guías", isOn: $model.snap).fixedSize()
           Button("Propiedades") { model.inspector.toggle() }
           Button("Cancelar") { finish(false) }
           Button("Guardar diseño") { finish(true) }.buttonStyle(.borderedProminent)
         }.padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14)).padding()
-      }
+      }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
   }
   @ViewBuilder var properties: some View {
@@ -511,14 +512,22 @@ final class SceneEditorWindow: NSWindow {
     model = SceneEditorModel(config, screen.frame.size)
     initial = model.document
     super.init(
-      contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false,
-      screen: screen)
+      contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
     isReleasedWhenClosed = false
     level = .floating
     title = "WirePulse · Editar escritorio"
     let root = NSView(frame: CGRect(origin: .zero, size: screen.frame.size))
     root.wantsLayer = true
     root.layer?.backgroundColor = config.color("backgroundcolor").cgColor
+    root.layer?.contents = NSImage(contentsOfFile: config.backgroundPath)?.cgImage(
+      forProposedRect: nil, context: nil, hints: nil)
+    root.layer?.contentsGravity = .resizeAspectFill
+    if !config.backgroundPath.isEmpty {
+      let dim = NSView(frame: root.bounds)
+      dim.wantsLayer = true
+      dim.layer?.backgroundColor = NSColor.black.withAlphaComponent(config.n("dim") / 100).cgColor
+      root.addSubview(dim)
+    }
     contentView = root
     let scene = SceneRoot(frame: root.bounds, config: model.draft, audio: audio, media: media)
     root.addSubview(scene)

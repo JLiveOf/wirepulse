@@ -3,10 +3,11 @@ import MetalKit
 import ServiceManagement
 import ImageIO
 
+if let i=CommandLine.arguments.firstIndex(of:"--widget-self-test"),CommandLine.arguments.count>i+1{exit(testNativeWidget(path:CommandLine.arguments[i+1]))}
 if let i=CommandLine.arguments.firstIndex(of:"--editor-preview"),CommandLine.arguments.count>i+1{
  _=NSApplication.shared;NSApp.setActivationPolicy(.accessory)
  let config=Configuration(profile:"editor-preview-"+UUID().uuidString,persistent:false),window=SceneEditorWindow(screen:NSScreen.main ?? NSScreen.screens[0],config:config,audio:SystemAudio(),media:NowPlaying());window.makeKeyAndOrderFront(nil)
- Timer.scheduledTimer(withTimeInterval:3,repeats:false){_ in let capture=Process();capture.executableURL=URL(fileURLWithPath:"/usr/sbin/screencapture");capture.arguments=["-x","-l",String(window.windowNumber),CommandLine.arguments[i+1]];try? capture.run();capture.waitUntilExit();window.orderOut(nil);exit(capture.terminationStatus)};NSApp.run();exit(0)
+ Timer.scheduledTimer(withTimeInterval:3,repeats:false){_ in let capture=Process();capture.executableURL=URL(fileURLWithPath:"/usr/sbin/screencapture");capture.arguments=["-x","-l",String(window.windowNumber),CommandLine.arguments[i+1]];try? capture.run();capture.waitUntilExit();if capture.terminationStatus != 0,let view=window.contentView,let rep=view.bitmapImageRepForCachingDisplay(in:view.bounds){view.cacheDisplay(in:view.bounds,to:rep);try? rep.representation(using:.png,properties:[:])?.write(to:URL(fileURLWithPath:CommandLine.arguments[i+1]))};window.orderOut(nil);exit(0)};NSApp.run();exit(0)
 }
 if CommandLine.arguments.contains("--editor-self-test"){
  _=NSApplication.shared
@@ -18,6 +19,9 @@ if CommandLine.arguments.contains("--editor-self-test"){
  canvas.mouseDown(with:pointer(.leftMouseDown,CGPoint(x:160,y:110)));canvas.mouseDragged(with:pointer(.leftMouseDragged,CGPoint(x:235,y:150)));canvas.mouseUp(with:pointer(.leftMouseUp,CGPoint(x:235,y:150)));precondition(abs(model.item!.x-0.175)<0.001 && abs(model.item!.y-1.0/6)<0.001,"Native pointer did not move original text");let r=model.item!.rect(size);canvas.mouseDown(with:pointer(.leftMouseDown,CGPoint(x:r.maxX,y:r.maxY)));canvas.mouseDragged(with:pointer(.leftMouseDragged,CGPoint(x:r.maxX+40,y:r.maxY+24)));canvas.mouseUp(with:pointer(.leftMouseUp,CGPoint(x:r.maxX+40,y:r.maxY+24)));precondition(abs(model.item!.width-0.24)<0.001)
  let chrome=EditorHostingView(rootView:EditorChrome(model:model){_ in});chrome.frame=CGRect(origin:.zero,size:size);precondition(chrome.hitTest(CGPoint(x:400,y:300))==nil,"Chrome blocks canvas");precondition(abs(canvas.nearest([397,497,597],[0,500,1000])-3)<0.001)
  let root=SceneRoot(frame:CGRect(origin:.zero,size:size),config:model.draft,audio:SystemAudio(),media:NowPlaying());root.refresh();precondition(root.subviews.count==2);let originalNodes=root.subviews;model.update{$0.x=0.3};root.refresh();precondition(root.subviews[0] === originalNodes[0] && root.subviews[1] === originalNodes[1],"Dragging recreated views")
+ let actualEditor=SceneEditorWindow(screen:NSScreen.main ?? NSScreen.screens[0],config:source,audio:SystemAudio(),media:NowPlaying());precondition(actualEditor.contentView!.subviews.count==3);actualEditor.finish(true)
+ let orbConfig=source.preview();orbConfig.scene=SceneDocument(items:[SceneItem(kind:"orb",x:0.3,y:0.2,width:0.3,height:0.5)]);let orbRoot=SceneRoot(frame:CGRect(origin:.zero,size:size),config:orbConfig,audio:SystemAudio(),media:NowPlaying());let orb=orbRoot.subviews.first as! SceneNode;precondition(orb.metal!.frame.width>orb.bounds.width && abs(orb.proxy.n("radius")/100*orb.metal!.frame.height-150)<1,"Orb deformation clipped or nominal radius changed")
+ if let i=CommandLine.arguments.firstIndex(of:"--gif-fixture"),CommandLine.arguments.count>i+1{let path=CommandLine.arguments[i+1];let codec=CGImageSourceCreateWithURL(URL(fileURLWithPath:path) as CFURL,nil)!;precondition(CGImageSourceGetCount(codec)==3);let image=NSImage(contentsOfFile:path)!;let view=NSImageView();view.image=image;view.animates=true;view.imageScaling = .scaleAxesIndependently;precondition(view.animates && view.image != nil)}
  print("PASS native editor draft isolation, duplicate/undo/redo/save, mouse drag/resize, snapping, canvas hit testing and retained scene nodes");exit(0)
 }
 if CommandLine.arguments.contains("--scene-self-test"){

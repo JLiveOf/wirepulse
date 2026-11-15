@@ -109,7 +109,8 @@ jobs:
       - name: FFT, Cider, display profiles and relocation
         run: |
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --self-test
-          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --editor-self-test
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --widget-self-test desktop/tests/fixtures/widget.html
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --editor-self-test --gif-fixture desktop/tests/fixtures/disposal.gif
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --scene-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --startup-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --display-profile-test

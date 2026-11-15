@@ -158,12 +158,12 @@ final class SceneRoot: NSView {
         nodes[item.id] = node
       }
       node.frame = item.rect(bounds.size)
-      node.apply(item)
       if node.superview !== self
         || subviews.firstIndex(of: node) != doc.items.firstIndex(where: { $0.id == item.id })
       {
         addSubview(node, positioned: .above, relativeTo: previous)
       }
+      node.apply(item)
       previous = node
     }
   }
@@ -173,7 +173,8 @@ final class SceneNode: NSView {
   override var isFlipped: Bool { true }
   let root: Configuration, proxy: Configuration, audio: SystemAudio, media: NowPlaying
   var metal: MTKView?, renderer: WallpaperRenderer?, widget: NativeWidget?
-  private var item: SceneItem?, signature = "", child: NSView?, previousSize = CGSize.zero
+  private var item: SceneItem?, signature = "", child: NSView?, previousSize = CGSize.zero,
+    previousFrame = CGRect.null
   init(config: Configuration, audio: SystemAudio, media: NowPlaying) {
     root = config
     proxy = config.preview()
@@ -186,6 +187,8 @@ final class SceneNode: NSView {
   }
   required init?(coder: NSCoder) { fatalError() }
   func apply(_ next: SceneItem) {
+    clipsToBounds = next.kind != "orb"
+    layer?.masksToBounds = next.kind != "orb"
     isHidden = !next.visible
     alphaValue = next.opacity
     let encoder = JSONEncoder()
@@ -196,6 +199,7 @@ final class SceneNode: NSView {
     if self.signature != signature {
       self.signature = signature
       previousSize = .zero
+      previousFrame = .null
       child?.removeFromSuperview()
       metal?.isPaused = true
       metal = nil
@@ -275,12 +279,28 @@ final class SceneNode: NSView {
     configureGeometry()
   }
   private func configureGeometry() {
-    guard let item = item, bounds.size != previousSize else { return }
+    guard let item = item, bounds.size != previousSize || frame != previousFrame else { return }
+    previousFrame = frame
     previousSize = bounds.size
-    proxy.values["sphereX"] = 50
-    proxy.values["sphereY"] = 50
-    proxy.values["radius"] = max(
-      1, Double(min(bounds.width, bounds.height)) * 0.46 / max(1, Double(bounds.height)) * 100)
+    if item.kind == "orb", let metal = metal {
+      let radius = Double(min(bounds.width, bounds.height)) / 2
+      let reach =
+        radius * (1 + proxy.n("pulse")) * (1 + 0.38 * proxy.n("deformation")) + proxy.n("glow") + 4
+      var canvas = CGRect(
+        x: Double(frame.midX) - reach, y: Double(frame.midY) - reach, width: reach * 2,
+        height: reach * 2
+      ).intersection(superview?.bounds ?? frame.insetBy(dx: -reach, dy: -reach))
+      if canvas.isNull || canvas.width < 1 || canvas.height < 1 {
+        canvas = CGRect(x: frame.minX, y: frame.minY, width: 1, height: 1)
+      }
+      canvas.origin.x -= frame.minX
+      canvas.origin.y -= frame.minY
+      metal.autoresizingMask = []
+      metal.frame = canvas
+      proxy.values["sphereX"] = Double(bounds.midX - canvas.minX) / Double(canvas.width) * 100
+      proxy.values["sphereY"] = Double(bounds.midY - canvas.minY) / Double(canvas.height) * 100
+      proxy.values["radius"] = radius / Double(canvas.height) * 100
+    }
     proxy.values["spectrumX"] = 0
     proxy.values["spectrumY"] = 0
     proxy.values["spectrumWidth"] = 100

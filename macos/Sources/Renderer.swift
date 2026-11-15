@@ -5,6 +5,8 @@ import simd
 struct WireVertex { var position:SIMD2<Float>; var color:SIMD4<Float> }
 struct MeshPoint {var x:Float;var y:Float;var z:Float;var bin:Int;var phase:Float}
 final class WallpaperRenderer:NSObject,MTKViewDelegate {
+ private static var pipelines=[UInt64:MTLRenderPipelineState]()
+ private static let pipelineLock=NSLock()
  var transparent=false
  let config:Configuration;let analyzer:SpectrumAnalyzer;let media:NowPlaying?
  let device:MTLDevice;private let commandQueue:MTLCommandQueue;private let pipeline:MTLRenderPipelineState
@@ -21,6 +23,8 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
  init(config:Configuration,analyzer:SpectrumAnalyzer,device:MTLDevice,media:NowPlaying?=nil)throws{
   self.config=config;self.analyzer=analyzer;self.device=device;self.media=media
   guard let q=device.makeCommandQueue() else{throw NSError(domain:"WirePulse",code:2,userInfo:[NSLocalizedDescriptionKey:"Metal no pudo crear una cola de dibujo"])};commandQueue=q
+  Self.pipelineLock.lock();defer{Self.pipelineLock.unlock()}
+  if let cached=Self.pipelines[device.registryID]{pipeline=cached}else{
   let source="""
   #include <metal_stdlib>
   using namespace metal;
@@ -32,7 +36,8 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   let lib=try device.makeLibrary(source:source,options:nil),descriptor=MTLRenderPipelineDescriptor()
   descriptor.vertexFunction=lib.makeFunction(name:"wire_vertex");descriptor.fragmentFunction=lib.makeFunction(name:"wire_fragment");descriptor.colorAttachments[0].pixelFormat = .bgra8Unorm
   let a=descriptor.colorAttachments[0]!;a.isBlendingEnabled=true;a.sourceRGBBlendFactor = .sourceAlpha;a.destinationRGBBlendFactor = .oneMinusSourceAlpha;a.sourceAlphaBlendFactor = .one;a.destinationAlphaBlendFactor = .oneMinusSourceAlpha
-  pipeline=try device.makeRenderPipelineState(descriptor:descriptor)
+  pipeline=try device.makeRenderPipelineState(descriptor:descriptor);Self.pipelines[device.registryID]=pipeline
+  }
   super.init();vertices.reserveCapacity(100000)
  }
  func mtkView(_ view:MTKView,drawableSizeWillChange size:CGSize){}

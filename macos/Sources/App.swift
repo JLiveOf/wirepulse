@@ -7,6 +7,7 @@ final class WallpaperSurface {
  let config:Configuration;let window:NSWindow;let view:MTKView;let renderer:WallpaperRenderer;let background:NSView
  private var imagePath=""
  private var sceneRoot:SceneRoot?
+ private let backgroundDim=CALayer()
  private let audio:SystemAudio,media:NowPlaying
  private var legacy=[NSView]()
  init(screen:NSScreen,config:Configuration,audio:SystemAudio,media:NowPlaying)throws{
@@ -16,7 +17,7 @@ final class WallpaperSurface {
   window=NSWindow(contentRect:screen.frame,styleMask:.borderless,backing:.buffered,defer:false,screen:screen)
   window.title="WirePulse · fondo animado";window.level=NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.desktopWindow))+1);window.collectionBehavior=[.canJoinAllSpaces,.stationary,.ignoresCycle];window.ignoresMouseEvents=true;window.hasShadow=false;window.isOpaque=true;window.isReleasedWhenClosed=false;window.hidesOnDeactivate=false
   let root=NSView(frame:NSRect(origin:.zero,size:screen.frame.size));root.wantsLayer=true;window.contentView=root
-  background=NSView(frame:root.bounds);background.wantsLayer=true;background.layer?.contentsGravity = .resizeAspectFill;background.layer?.masksToBounds=true;background.autoresizingMask=[.width,.height];root.addSubview(background)
+  background=NSView(frame:root.bounds);background.wantsLayer=true;background.layer?.contentsGravity = .resizeAspectFill;background.layer?.masksToBounds=true;background.autoresizingMask=[.width,.height];root.addSubview(background);backgroundDim.backgroundColor=NSColor.black.cgColor;background.layer?.addSublayer(backgroundDim)
   view=MTKView(frame:root.bounds,device:device);view.colorPixelFormat = .bgra8Unorm;view.autoResizeDrawable=false;view.framebufferOnly=true;view.layer?.isOpaque=false;view.autoresizingMask=[.width,.height];view.delegate=renderer;view.preferredFramesPerSecond=Int(config.n("fps"));root.addSubview(view)
   let overlay=NSHostingView(rootView:MusicCard(config:config,media:media,audio:audio));overlay.frame=root.bounds;overlay.autoresizingMask=[.width,.height];root.addSubview(overlay)
   let clock=NSHostingView(rootView:ClockOverlay(config:config));clock.frame=root.bounds;clock.autoresizingMask=[.width,.height];root.addSubview(clock)
@@ -24,12 +25,15 @@ final class WallpaperSurface {
   update(config:config);window.orderFrontRegardless()
  }
  func update(config:Configuration){
+  backgroundDim.frame=background.bounds;backgroundDim.opacity=config.scene != nil && !config.backgroundPath.isEmpty ? Float(config.n("dim")/100):0
+
   for child in legacy{child.isHidden=config.scene != nil};view.isPaused=config.scene != nil
   if config.scene != nil{if sceneRoot==nil,let root=window.contentView{let scene=SceneRoot(frame:root.bounds,config:config,audio:audio,media:media);scene.autoresizingMask=[.width,.height];root.addSubview(scene);sceneRoot=scene};sceneRoot?.refresh()}else{sceneRoot?.removeFromSuperview();sceneRoot=nil}
 background.layer?.backgroundColor=config.color("backgroundcolor").cgColor
   if imagePath != config.backgroundPath{imagePath=config.backgroundPath;background.layer?.contents=NSImage(contentsOfFile:imagePath)?.cgImage(forProposedRect:nil,context:nil,hints:nil)}
  }
- func close(){view.isPaused=true;window.orderOut(nil);window.close()}
+ func suspend(_ paused:Bool){view.isPaused=paused || config.scene != nil;sceneRoot?.pause(paused)}
+ func close(){suspend(true);window.orderOut(nil);window.close()}
 }
 final class AppDelegate:NSObject,NSApplicationDelegate{
  let config=Configuration(),audio=SystemAudio(),media=NowPlaying(),startup=StartupManager()
@@ -42,8 +46,8 @@ final class AppDelegate:NSObject,NSApplicationDelegate{
   lastIndependent=config.independentDisplays;rebuild()
   config.objectWillChange.sink{[weak self] _ in DispatchQueue.main.async{guard let self=self else{return};if self.lastIndependent != self.config.independentDisplays{self.lastIndependent=self.config.independentDisplays;if self.lastIndependent{for p in self.displayProfiles.values{if !p.hasSaved{p.copyLayout(from:self.config)}}};self.rebuild()}else{for surface in self.surfaces{surface.update(config:surface.config)}}}}.store(in:&subscriptions)
   observers.append(NotificationCenter.default.addObserver(forName:NSApplication.didChangeScreenParametersNotification,object:nil,queue:.main){[weak self] _ in self?.rebuild()})
-  for name in [NSWorkspace.screensDidSleepNotification,NSWorkspace.sessionDidResignActiveNotification]{observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in guard let self=self else{return};self.resumeAudio=self.resumeAudio||self.audio.running;self.audio.stop();for s in self.surfaces{s.view.isPaused=true}})}
-  for name in [NSWorkspace.screensDidWakeNotification,NSWorkspace.sessionDidBecomeActiveNotification]{observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in guard let self=self else{return};for s in self.surfaces{s.view.isPaused=false};if self.resumeAudio{self.resumeAudio=false;self.audio.start()}})}
+  for name in [NSWorkspace.screensDidSleepNotification,NSWorkspace.sessionDidResignActiveNotification]{observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in guard let self=self else{return};self.resumeAudio=self.resumeAudio||self.audio.running;self.audio.stop();for s in self.surfaces{s.suspend(true)}})}
+  for name in [NSWorkspace.screensDidWakeNotification,NSWorkspace.sessionDidBecomeActiveNotification]{observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in guard let self=self else{return};for s in self.surfaces{s.suspend(false)};if self.resumeAudio{self.resumeAudio=false;self.audio.start()}})}
   timer=Timer.scheduledTimer(withTimeInterval:2,repeats:true){[weak self] _ in guard let self=self else{return};self.media.poll(source:self.config.mediaSource,ciderURL:self.config.ciderURL,ciderToken:self.config.ciderToken);self.writeStatus()}
   if !UserDefaults.standard.bool(forKey:"hasLaunched"){showSettings();UserDefaults.standard.set(true,forKey:"hasLaunched")}
   DispatchQueue.main.asyncAfter(deadline:.now()+0.5){[weak self] in self?.startup.promptIfNeeded()}
