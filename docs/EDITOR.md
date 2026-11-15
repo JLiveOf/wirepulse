@@ -1,6 +1,6 @@
 # Desktop editor
 
-Open **Editar escritorio…** from Settings or the tray/menu-bar menu. In independent-display mode, Settings edits the selected display; the tray opens the primary/first display. In shared mode the saved normalized composition is applied to every display.
+Open **Editar escritorio…** from Settings or the tray/menu-bar menu. On macOS, opening the app again shows Settings; Command+E opens the editor while WirePulse is active. In independent-display mode, Settings edits the selected display; the tray opens the primary/first display. In shared mode the saved normalized composition is applied to every display.
 
 Select an object on the canvas or in the layer list. Drag its body to move it, or use an edge/corner handle to resize. Unlock background layers in the list to move them. **Mantener proporciones** controls aspect ratio; hold Alt/Option to temporarily resize freely or bypass snapping. **Ajustar a guías** enables screen and other-object alignment within eight logical pixels. Objects stay partly reachable when dragged beyond the screen.
 

@@ -371,9 +371,21 @@ final class NativeWidget: WKWebView, WKNavigationDelegate {
     root = URL(fileURLWithPath: path).deletingLastPathComponent()
     let config = WKWebViewConfiguration()
     config.mediaTypesRequiringUserActionForPlayback = .all
+    // WebKit does not expose a public macOS switch for the white page backing.
+    // Check the setter before using its compatibility KVC key (also used by Wry).
+    if config.responds(to: NSSelectorFromString("_setDrawsBackground:"))
+      || config.responds(to: NSSelectorFromString("setDrawsBackground:"))
+    {
+      config.setValue(false, forKey: "drawsBackground")
+    }
     super.init(frame: .zero, configuration: config)
     navigationDelegate = self
     underPageBackgroundColor = .clear
+    if responds(to: NSSelectorFromString("_setDrawsBackground:"))
+      || responds(to: NSSelectorFromString("setDrawsBackground:"))
+    {
+      setValue(false, forKey: "drawsBackground")
+    }
     loadFileURL(URL(fileURLWithPath: path), allowingReadAccessTo: root)
     timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) {
       [weak self, weak audio, weak media] _ in

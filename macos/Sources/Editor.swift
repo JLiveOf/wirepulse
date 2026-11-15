@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 
 final class SceneEditorModel: ObservableObject {
   let original: Configuration, draft: Configuration, size: CGSize
+  weak var window: NSWindow?
   @Published var selected: String?
   @Published var snap: Bool
   @Published var inspector = true
@@ -77,6 +78,9 @@ final class SceneEditorModel: ObservableObject {
     var item = SceneDocument.make(kind, draft, size)
     if kind == "image" || kind == "widget" {
       let panel = NSOpenPanel()
+      panel.title = kind == "image" ? "Añadir imagen o GIF" : "Añadir widget HTML"
+      panel.prompt = "Añadir"
+      defer { window?.makeKeyAndOrderFront(nil) }
       panel.canChooseDirectories = kind == "widget"
       panel.canChooseFiles = true
       panel.allowsMultipleSelection = false
@@ -213,8 +217,10 @@ enum SceneAssets {
       (FileManager.default.enumerator(at: folder, includingPropertiesForKeys: nil)?.allObjects
       as? [URL] ?? []).filter { ["html", "htm"].contains($0.pathExtension.lowercased()) }.sorted {
         a, b in
-        a.lastPathComponent == "index.html" && b.lastPathComponent != "index.html"
-          || a.path.count < b.path.count
+        if (a.lastPathComponent == "index.html") != (b.lastPathComponent == "index.html") {
+          return a.lastPathComponent == "index.html"
+        }
+        return a.path.count == b.path.count ? a.path < b.path : a.path.count < b.path.count
       }
     guard let first = files.first else { throw failure("El widget necesita index.html.") }
     return first
@@ -358,10 +364,23 @@ struct EditorChrome: View {
         VStack(alignment: .leading, spacing: 10) {
           Text("Objetos").font(.title2.bold())
           Text("Arrastra · esquinas para redimensionar · ⌥ sin guías").font(.caption)
-          List(selection: $model.selected) {
-            ForEach(model.document.items.reversed()) { item in
-              Text((item.visible ? "● " : "◌ ") + item.name + (item.locked ? " 🔒" : "")).tag(
-                item.id)
+          ScrollView {
+            LazyVStack(alignment: .leading, spacing: 4) {
+              ForEach(model.document.items.reversed()) { item in
+                Button {
+                  model.selected = item.id
+                } label: {
+                  HStack {
+                    Text((item.visible ? "● " : "◌ ") + item.name + (item.locked ? " 🔒" : ""))
+                      .lineLimit(1)
+                    Spacer()
+                  }.padding(8).contentShape(Rectangle())
+                }.buttonStyle(.plain).background(
+                  model.selected == item.id ? Color.accentColor.opacity(0.55) : Color.clear,
+                  in: RoundedRectangle(cornerRadius: 8)
+                )
+                .accessibilityAddTraits(model.selected == item.id ? .isSelected : [])
+              }
             }
           }.frame(height: 180)
           ScrollView { properties }
@@ -513,6 +532,7 @@ final class SceneEditorWindow: NSWindow {
     initial = model.document
     super.init(
       contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+    model.window = self
     isReleasedWhenClosed = false
     level = .floating
     title = "WirePulse · Editar escritorio"
@@ -542,6 +562,7 @@ final class SceneEditorWindow: NSWindow {
     }
   }
   override var canBecomeKey: Bool { true }
+  override var canBecomeMain: Bool { true }
   func finish(_ save: Bool) {
     if !save && model.document != initial {
       let alert = NSAlert()

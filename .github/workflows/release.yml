@@ -52,6 +52,7 @@ jobs:
       - name: Settings and independent display editing
         run: dotnet run --project tests/UiTests -c Release
       - name: Native HTML widget and audio event (Windows)
+        timeout-minutes: 2
         if: runner.os == 'Windows'
         run: ./publish/WirePulse.exe --widget-smoke-test tests/fixtures/widget.html --widget-output widget.png
       - name: CPU renderer benchmarks, stereo equivalence and allocations
@@ -64,6 +65,7 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update -qq && sudo apt-get install -y cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
       - name: Native HTML widget and audio event (Linux)
+        timeout-minutes: 2
         if: runner.os == 'Linux'
         run: dbus-run-session -- xvfb-run -a ./publish/WirePulse --widget-smoke-test tests/fixtures/widget.html --widget-output widget.png
       - name: Cinnamon, output capture and MPRIS

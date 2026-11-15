@@ -18,11 +18,12 @@ func testNativeWidget(path: String) -> Int32 {
   defer { withExtendedLifetime((audio, media)) {} }
   var done = false
   var busy = false
+  var checkingAlpha = false
   var code: Int32 = 1
   var diagnostic = "no callback"
   let deadline = Date().addingTimeInterval(25)
   let timer = Timer.scheduledTimer(withTimeInterval: 0.25, repeats: true) { _ in
-    if busy || done { return }
+    if busy || done || checkingAlpha { return }
     busy = true
     widget.evaluateJavaScript("window.wirepulseAudio && window.wirepulseAudio.bands.length===64") {
       value, error in
@@ -45,8 +46,27 @@ func testNativeWidget(path: String) -> Int32 {
           diagnostic = "pixel=\(color.redComponent),\(color.greenComponent),\(color.blueComponent)"
           if color.redComponent < 0.25 && color.greenComponent > 0.45 && color.blueComponent > 0.7 {
             print("PASS native WebKit widget load, live audio event and rendered pixels")
-            code = 0
-            done = true
+            busy = true
+            checkingAlpha = true
+            widget.evaluateJavaScript(
+              "document.documentElement.style.background='transparent';document.body.style.background='transparent';"
+            ) { _, _ in
+              widget.takeSnapshot(with: nil) { image, error in
+                defer {
+                  busy = false
+                  done = true
+                }
+                guard let data = image?.tiffRepresentation,
+                  let bitmap = NSBitmapImageRep(data: data), let corner = bitmap.colorAt(x: 2, y: 2)
+                else { return }
+                if corner.alphaComponent < 0.05 {
+                  code = 0
+                  print("PASS native WebKit preserves transparent pixels")
+                } else {
+                  diagnostic = "Transparent HTML became opaque"
+                }
+              }
+            }
           }
         }
       }
