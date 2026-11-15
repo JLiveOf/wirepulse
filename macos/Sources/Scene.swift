@@ -6,6 +6,7 @@ import WebKit
 
 struct SceneItem: Codable, Identifiable, Equatable {
   var id = UUID().uuidString, kind = "orb", name = "Orbe"
+  var rotation = 0.0
   var x = 0.35, y = 0.3, width = 0.3, height = 0.4
   var visible = true, locked = false, keepAspect = true, opacity = 1.0
   var asset = "", text = "Tu texto", font = "System", color = "#ffffff"
@@ -20,6 +21,33 @@ struct SceneItem: Codable, Identifiable, Equatable {
     y = r.minY / size.height
     width = r.width / size.width
     height = r.height / size.height
+  }
+}
+extension SceneItem {
+  enum CodingKeys: String, CodingKey {
+    case id, kind, name, x, y, width, height, visible, locked, keepAspect, opacity, asset, text,
+      font, color, style, rotation
+  }
+  init(from decoder: Decoder) throws {
+    self.init()
+    let c = try decoder.container(keyedBy: CodingKeys.self)
+    id = try c.decodeIfPresent(String.self, forKey: .id) ?? id
+    kind = try c.decodeIfPresent(String.self, forKey: .kind) ?? kind
+    name = try c.decodeIfPresent(String.self, forKey: .name) ?? name
+    x = try c.decodeIfPresent(Double.self, forKey: .x) ?? x
+    y = try c.decodeIfPresent(Double.self, forKey: .y) ?? y
+    width = try c.decodeIfPresent(Double.self, forKey: .width) ?? width
+    height = try c.decodeIfPresent(Double.self, forKey: .height) ?? height
+    rotation = try c.decodeIfPresent(Double.self, forKey: .rotation) ?? 0
+    visible = try c.decodeIfPresent(Bool.self, forKey: .visible) ?? true
+    locked = try c.decodeIfPresent(Bool.self, forKey: .locked) ?? false
+    keepAspect = try c.decodeIfPresent(Bool.self, forKey: .keepAspect) ?? true
+    opacity = try c.decodeIfPresent(Double.self, forKey: .opacity) ?? 1
+    asset = try c.decodeIfPresent(String.self, forKey: .asset) ?? ""
+    text = try c.decodeIfPresent(String.self, forKey: .text) ?? "Tu texto"
+    font = try c.decodeIfPresent(String.self, forKey: .font) ?? "System"
+    color = try c.decodeIfPresent(String.self, forKey: .color) ?? "#ffffff"
+    style = try c.decodeIfPresent([String: SceneValue].self, forKey: .style) ?? [:]
   }
 }
 enum SceneValue: Codable, Equatable {
@@ -89,8 +117,7 @@ struct SceneDocument: Codable, Equatable {
       doc.items.append(item)
     }
     add(
-      c.n("bgstyle") < 0.5 ? "stars" : "mesh", CGRect(origin: .zero, size: size), c.on("bgshow"),
-      true)
+      c.n("bgstyle") < 0.5 ? "stars" : "mesh", CGRect(origin: .zero, size: size), c.on("bgshow"))
     add(
       "orb",
       CGRect(
@@ -157,6 +184,7 @@ final class SceneRoot: NSView {
         node = SceneNode(config: config, audio: audio, media: media)
         nodes[item.id] = node
       }
+      node.frameCenterRotation = 0
       node.frame = item.rect(bounds.size)
       if node.superview !== self
         || subviews.firstIndex(of: node) != doc.items.firstIndex(where: { $0.id == item.id })
@@ -164,6 +192,7 @@ final class SceneRoot: NSView {
         addSubview(node, positioned: .above, relativeTo: previous)
       }
       node.apply(item)
+      node.frameCenterRotation = CGFloat(item.rotation)
       previous = node
     }
   }

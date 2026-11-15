@@ -51,6 +51,11 @@ jobs:
         run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test
       - name: Settings and independent display editing
         run: dotnet run --project tests/UiTests -c Release
+      - name: Optimized orb pixel equivalence
+        run: dotnet run --project tests/OrbRendering -c Release
+      - name: Direct3D and Direct2D native render targets
+        if: runner.os == 'Windows'
+        run: ./publish/WirePulse.exe --native-draw-self-test
       - name: Native HTML widget and audio event (Windows)
         timeout-minutes: 2
         if: runner.os == 'Windows'
@@ -113,6 +118,7 @@ jobs:
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --widget-self-test desktop/tests/fixtures/widget.html
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --editor-self-test --gif-fixture desktop/tests/fixtures/disposal.gif
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --orb-render-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --scene-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --startup-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --display-profile-test

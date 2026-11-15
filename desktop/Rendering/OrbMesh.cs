@@ -6,6 +6,7 @@ public sealed class OrbMesh
 {
     public OrbVertex[] Vertices { get; }
     public (int A, int B)[] Edges { get; }
+    public OrbVisibility Visibility{get;}
     public OrbMesh(int density)
     {
         density = Math.Clamp(density, 8, 72); int columns = density * 2; var vertices = new List<OrbVertex>(); var edges = new List<(int, int)>();
@@ -16,11 +17,12 @@ public sealed class OrbMesh
         int bottom = vertices.Count; Add(Math.PI, 0, 0, 0);
         for (int i = 0; i < columns; i++) edges.Add((0, 1 + i));
         for (int j = 0; j < density - 1; j++) for (int i = 0; i < columns; i++) { int a = 1 + j * columns + i; edges.Add((a, 1 + j * columns + (i + 1) % columns)); if (j < density - 2) { edges.Add((a, a + columns)); edges.Add((a, 1 + (j + 1) * columns + (i + 1) % columns)); } else edges.Add((a, bottom)); }
-        Vertices = vertices.ToArray(); Edges = edges.ToArray();
+        Vertices = vertices.ToArray(); Edges = edges.ToArray(); Visibility=new OrbVisibility(this);
     }
-    public void Project(Span<Vector3> output, ReadOnlySpan<double> bands, double angle, double time, double radius, double x, double y, double deformation, bool full)
+    public void Project(Span<Vector3> output, ReadOnlySpan<double> bands, double angle, double time, double radius, double x, double y, double deformation, bool full,Avalonia.Rect? visibleBounds=null)
     {
+        Visibility.Prepare(bands,angle,radius,x,y,deformation,full,visibleBounds);
         double ca = Math.Cos(angle), sa = Math.Sin(angle), ct = Math.Cos(.23), st = Math.Sin(.23), sp = Math.Sin(time * 1.7), cp = Math.Cos(time * 1.7);
-        for (int i = 0; i < Vertices.Length; i++) { var p = Vertices[i]; double energy = bands[p.Band], noise = p.SinPhase * cp + p.CosPhase * sp; double d = 1 + deformation * p.Envelope * energy * ((full ? .22 : .045) + noise * (full ? .16 : .025)); double px = (p.X * ca - p.Z * sa) * d, py = p.Y * d, pz = (p.X * sa + p.Z * ca) * d; output[i] = new((float)(x + px * radius), (float)(y + (py * ct - pz * st) * radius), (float)(pz * ct + py * st)); }
+        for (int i = 0; i < Vertices.Length; i++) { if(!Visibility.Vertex(i))continue;var p = Vertices[i]; double energy = bands[p.Band], noise = p.SinPhase * cp + p.CosPhase * sp; double d = 1 + deformation * p.Envelope * energy * ((full ? .22 : .045) + noise * (full ? .16 : .025)); double px = (p.X * ca - p.Z * sa) * d, py = p.Y * d, pz = (p.X * sa + p.Z * ca) * d; output[i] = new((float)(x + px * radius), (float)(y + (py * ct - pz * st) * radius), (float)(pz * ct + py * st)); }
     }
 }

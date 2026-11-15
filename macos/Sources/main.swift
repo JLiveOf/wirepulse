@@ -3,6 +3,12 @@ import MetalKit
 import ServiceManagement
 import ImageIO
 
+if CommandLine.arguments.contains("--orb-render-self-test"){
+ let config=Configuration(profile:UUID().uuidString,persistent:false)
+ guard let device=MTLCreateSystemDefaultDevice() else{fatalError("Metal unavailable")}
+ let renderer=try WallpaperRenderer(config:config,analyzer:SpectrumAnalyzer(),device:device)
+ renderer.testOptimizedOrb();exit(0)
+}
 if let i=CommandLine.arguments.firstIndex(of:"--widget-self-test"),CommandLine.arguments.count>i+1{exit(testNativeWidget(path:CommandLine.arguments[i+1]))}
 if let i=CommandLine.arguments.firstIndex(of:"--editor-preview"),CommandLine.arguments.count>i+1{
  _=NSApplication.shared;NSApp.setActivationPolicy(.accessory)
@@ -19,6 +25,9 @@ if CommandLine.arguments.contains("--editor-self-test"){
  canvas.mouseDown(with:pointer(.leftMouseDown,CGPoint(x:160,y:110)));canvas.mouseDragged(with:pointer(.leftMouseDragged,CGPoint(x:235,y:150)));canvas.mouseUp(with:pointer(.leftMouseUp,CGPoint(x:235,y:150)));precondition(abs(model.item!.x-0.175)<0.001 && abs(model.item!.y-1.0/6)<0.001,"Native pointer did not move original text");let r=model.item!.rect(size);canvas.mouseDown(with:pointer(.leftMouseDown,CGPoint(x:r.maxX,y:r.maxY)));canvas.mouseDragged(with:pointer(.leftMouseDragged,CGPoint(x:r.maxX+40,y:r.maxY+24)));canvas.mouseUp(with:pointer(.leftMouseUp,CGPoint(x:r.maxX+40,y:r.maxY+24)));precondition(abs(model.item!.width-0.24)<0.001)
  let chrome=EditorHostingView(rootView:EditorChrome(model:model){_ in});chrome.frame=CGRect(origin:.zero,size:size);precondition(chrome.hitTest(CGPoint(x:400,y:300))==nil,"Chrome blocks canvas");precondition(abs(canvas.nearest([397,497,597],[0,500,1000])-3)<0.001)
  let root=SceneRoot(frame:CGRect(origin:.zero,size:size),config:model.draft,audio:SystemAudio(),media:NowPlaying());root.refresh();precondition(root.subviews.count==2);let originalNodes=root.subviews;model.update{$0.x=0.3};root.refresh();precondition(root.subviews[0] === originalNodes[0] && root.subviews[1] === originalNodes[1],"Dragging recreated views")
+ model.update{$0.rotation=90};root.refresh();let rotatedNode=root.subviews.first!,r0=model.item!.rect(size),tip=rotatedNode.convert(CGPoint(x:rotatedNode.bounds.maxX,y:rotatedNode.bounds.midY),to:root)
+ precondition(abs(tip.x-r0.midX)<0.01 && abs(tip.y-(r0.midY+r0.width/2))<0.01,"Native object rotation disagrees with editor handles")
+ let legacy=try! JSONDecoder().decode(SceneDocument.self,from:Data("{\"version\":1,\"items\":[{\"kind\":\"orb\"}]}".utf8));precondition(legacy.items[0].rotation==0,"Legacy scene failed without rotation field")
  let actualEditor=SceneEditorWindow(screen:NSScreen.main ?? NSScreen.screens[0],config:source,audio:SystemAudio(),media:NowPlaying());precondition(actualEditor.contentView!.subviews.count==3);actualEditor.finish(true)
  let orbConfig=source.preview();orbConfig.scene=SceneDocument(items:[SceneItem(kind:"orb",x:0.3,y:0.2,width:0.3,height:0.5)]);let orbRoot=SceneRoot(frame:CGRect(origin:.zero,size:size),config:orbConfig,audio:SystemAudio(),media:NowPlaying());let orb=orbRoot.subviews.first as! SceneNode;precondition(orb.metal!.frame.width>orb.bounds.width && abs(orb.proxy.n("radius")/100*orb.metal!.frame.height-150)<1,"Orb deformation clipped or nominal radius changed")
  if let i=CommandLine.arguments.firstIndex(of:"--gif-fixture"),CommandLine.arguments.count>i+1{let path=CommandLine.arguments[i+1];let codec=CGImageSourceCreateWithURL(URL(fileURLWithPath:path) as CFURL,nil)!;precondition(CGImageSourceGetCount(codec)==3);let image=NSImage(contentsOfFile:path)!;let view=NSImageView();view.image=image;view.animates=true;view.imageScaling = .scaleAxesIndependently;precondition(view.animates && view.image != nil)}

@@ -12,6 +12,7 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
  let device:MTLDevice;private let commandQueue:MTLCommandQueue;private let pipeline:MTLRenderPipelineState
  private var smooth=[Float](repeating:0,count:64),peaks=[Float](repeating:0,count:64)
  private var mesh=[MeshPoint](),edges=[(Int,Int)](),density=0
+ private var visibility=OrbVisibility(),projected=[SIMD3<Float>]()
  var backgroundPulse=0.0
  var spaceNodes=[SIMD2<Float>]()
  var backgroundMotion=BackgroundMotion()
@@ -71,6 +72,7 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
    mesh.append(MeshPoint(x:sin(lat)*cos(lon),y:cos(lat),z:sin(lat)*sin(lon),bin:min(63,Int((1-abs(cos(lat)))*46+Float(i)/Float(m)*17)),phase:Float(i)*2.399+Float(j)*0.7))
    let a=j*m+i;if j<n{edges.append((a,a+m));edges.append((a,(j+1)*m+(i+1)%m))};edges.append((a,j*m+(i+1)%m))
   }}
+  visibility.rebuild(mesh:mesh,edges:edges);projected=Array(repeating:.zero,count:mesh.count)
  }
  var width:Float=1,height:Float=1
  private func point(_ x:Float,_ y:Float)->SIMD2<Float>{SIMD2(x/width*2-1,1-y/height*2)}
@@ -95,11 +97,12 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
    let n=Int(config.n("density"));if n != density{makeMesh(n)}
    let radius=height*Float(config.n("radius")/100)*(1+low*Float(config.n("pulse"))),cx=width*Float(config.n("sphereX")/100),cy=height*Float(config.n("sphereY")/100),full=config.on("fullmesh"),deformation=Float(config.n("deformation"))
    let ca=cos(angle),sa=sin(angle),ct=cos(Float(0.23)),st=sin(Float(0.23))
-   let projected=mesh.map{p->SIMD3<Float> in let e=smooth[p.bin],ripple=sin(p.phase+time*1.7)*e,d:Float=1+deformation*(e*(full ? 0.22:0.045)+ripple*(full ? 0.16:0.025));let x=(p.x*ca-p.z*sa)*d,y=p.y*d,z=(p.x*sa+p.z*ca)*d;return SIMD3(cx+x*radius,cy+(y*ct-z*st)*radius,z*ct+y*st)}
+   visibility.prepare(bands:smooth,angle:angle,radius:radius,center:SIMD2(cx,cy),deformation:deformation,full:full,width:width,height:height,margin:Float(config.n("glow")+config.n("linewidth")+2),enabled:config.on("orboptimized"))
+   for i in mesh.indices where visibility.vertex(i){let p=mesh[i];let e=smooth[p.bin],ripple=sin(p.phase+time*1.7)*e,d:Float=1+deformation*(e*(full ? 0.22:0.045)+ripple*(full ? 0.16:0.025));let x=(p.x*ca-p.z*sa)*d,y=p.y*d,z=(p.x*sa+p.z*ca)*d;projected[i]=SIMD3(cx+x*radius,cy+(y*ct-z*st)*radius,z*ct+y*st)}
    let base=config.color("wirecolor").rgba,opacity=Float(config.n("opacity")),thickness=Float(config.n("linewidth")),glow=Float(config.n("glow"))
    for pass in 0...1{
     var c=base;c.w=opacity*(pass==1 ? 0.85:0.24)
-    for (a,b) in edges{let p=projected[a],q=projected[b],z=(p.z+q.z)*0.5;if !full && abs(z)>0.25{continue};if (z>0) != (pass==1){continue};let aa=SIMD2(p.x,p.y),bb=SIMD2(q.x,q.y)
+    for (index,edge) in edges.enumerated(){if !visibility.edge(index){continue};let (a,b)=edge;let p=projected[a],q=projected[b],z=(p.z+q.z)*0.5;if !full && abs(z)>0.25{continue};if (z>0) != (pass==1){continue};let aa=SIMD2(p.x,p.y),bb=SIMD2(q.x,q.y)
      if glow>0{var halo=c;halo.w *= 0.06;line(aa,bb,thickness+glow,halo);halo.w *= 1.5;line(aa,bb,thickness+glow*0.4,halo)}
      line(aa,bb,thickness,c)
     }
@@ -115,6 +118,18 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
     if peaks[i]>3{rect(x+peaks[i],y+Float(i)*row,1,barHeight,SIMD4(1,0.15,0.2,0.45))}
    }
   }
+ }
+ func testOptimizedOrb(){
+  config.paused=true;config.values["sphere"]=1;config.values["spectrum"]=0;config.values["bgshow"]=0
+  var cases=0
+  for detail in [12.0,42.0,72.0]{for full in [0.0,1.0]{for glow in [0.0,15.0]{for center in [(50.0,50.0),(97.0,123.0),(-40.0,120.0),(60.0,-35.0),(300.0,300.0)]{
+   config.values["density"]=detail;config.values["fullmesh"]=full;config.values["glow"]=glow;config.values["sphereX"]=center.0;config.values["sphereY"]=center.1;config.values["deformation"]=2
+   smooth=(0..<64).map{Float($0%13)/13};angle=Float(cases)*0.371;config.values["orboptimized"]=0;build(width:320,height:180,time:Float(cases)*1.713,dt:0);let before=vertices
+   config.values["orboptimized"]=1;build(width:320,height:180,time:Float(cases)*1.713,dt:0)
+   precondition(before.count==vertices.count,"Optimized orb changed primitive count")
+   for i in before.indices{precondition(before[i].position==vertices[i].position && before[i].color==vertices[i].color,"Optimized orb changed geometry or order")};cases+=1
+  }}}}
+  print("PASS \(cases) Metal orb frames retain identical visible triangles, colors and order with Render optimizado on/off")
  }
  func renderPreview(to url:URL)throws{
   width=1920;height=1080;build(width:width,height:height,time:1,dt:1/60)

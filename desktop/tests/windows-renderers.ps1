@@ -41,3 +41,28 @@ if (!(Test-Path $report)) { throw 'Regression control did not produce a report' 
 $result = Get-Content $report -Raw | ConvertFrom-Json
 if ($process.ExitCode -ne 1 -or $result.visible -or !$result.presentation.classHasOwnDc) { throw 'Direct presentation is visible; inspect regression expectations' }
 Write-Output 'PASS direct CPU presentation is invisible on the raised desktop; compatible presentation shows desktop pixels'
+
+if (!$Quick) {
+foreach ($engine in @('Direct3D 11 · lotes GPU','Direct2D · vectorial')) {
+    $name = if ($engine.StartsWith('Direct3D')) {'native-d3d11'} else {'native-d2d'}
+    $report = Join-Path $PWD "test-results/renderers/$name.json"
+    $process = Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--explorer-desktop','--engine',('"'+$engine+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
+    if (!$process.WaitForExit(25000)) {$process.Kill($true);throw "Native engine timed out: $engine"}
+    if ($process.ExitCode -ne 0 -or !(Test-Path $report)) {Get-Content "test-results/renderers/$name.err";throw "Native engine failed: $engine"}
+    $result=Get-Content $report -Raw | ConvertFrom-Json
+    if (!$result.valid -or $result.coloredPixels -lt 300 -or !$result.engine.Contains('textura compartida GPU')) {throw "Native visualizer not visible on Explorer: $engine"}
+    Write-Output "PASS $engine visible on Explorer: $($result.coloredPixels) red orb pixels"
+}
+}
+
+foreach ($mediaFile in @('background.mp4','disposal.gif')) {
+    $name = 'background-' + [IO.Path]::GetExtension($mediaFile).TrimStart('.')
+    $report=Join-Path $PWD "test-results/renderers/$name.json"
+    $file=Join-Path $PWD "tests/fixtures/$mediaFile"
+    $process=Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--explorer-desktop','--background-fixture',('"'+$file+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
+    if (!$process.WaitForExit(25000)) {$process.Kill($true);throw "Background timed out: $mediaFile"}
+    if ($process.ExitCode -ne 0 -or !(Test-Path $report)) {Get-Content "test-results/renderers/$name.err";throw "Background failed: $mediaFile"}
+    $result=Get-Content $report -Raw | ConvertFrom-Json
+    if (!$result.valid) {throw "Background pixels/decoding failed: $mediaFile"}
+    Write-Output "PASS $mediaFile visible on Explorer; video frames=$($result.videoFrames); $($result.backgroundStatus)"
+}

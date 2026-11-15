@@ -24,3 +24,17 @@ window.addEventListener('wirepulse:audio', ({ detail }) => {
 BPM may be zero while the detector is settling; it is an estimate from captured audio. The animated background still uses the existing optional Cider tempo when available. See `examples/beat-widget/index.html`.
 
 Windows requires the Microsoft Edge WebView2 Evergreen Runtime for HTML widgets (already present on most supported Windows installations). Linux Mint requires `libwebkit2gtk-4.1-0`; the DEB declares it. macOS includes WebKit. Windows/Linux widgets use snapshots at up to 10 FPS and at most 1920×1080; other visualizers render separately at their selected refresh rate. Large GIFs, multiple mesh layers or complex web animations can increase GPU/CPU usage; reduce density and layer count on older computers.
+
+### Object locks, angle and orb projection
+
+Use the padlock next to each layer to decide whether it can move. New/migrated meshes are unlocked; previously saved lock choices are preserved. Unlock an object before deleting it with **Eliminar objeto**. Delete/Backspace while typing edits the text instead of deleting the object.
+
+**Ángulo (°)** rotates every type of object, including images/GIFs, text, cards and widgets. Resize handles and hit testing follow the rotated object. ±90° and **Sin giro** are shortcuts.
+
+An orb's **Render optimizado** option conservatively rejects complete mesh patches outside the viewport before projecting their vertices. It preserves all rear wire that remains visible through the front mesh. It does not change density, approximate the sphere with an image or flatten its audio deformation. Disable the option to retain the earlier full projection. The gain depends on how much of the orb is offscreen; a fully visible orb avoids the patch-culling overhead.
+
+On Windows, **Rendimiento → Motor de visualizadores** changes actual line drawing between Skia, batched Direct3D 11, and Direct2D paths. Native engines require compatible shared D3D textures; otherwise Skia handles drawing. These choices are separate from the interface API. Native engines use the DirectX 11 interface; choose Skia to retain Vulkan/OpenGL/CPU selection. The status report identifies active engines and fallback messages. Native Windows drawing does not replace the native Metal implementation on macOS.
+
+Windows backgrounds accept images, animated GIFs and muted looping video through **Elegir archivo…**. Files are copied into managed app storage, so moving the original does not break the background. Videos have a 2 GB import limit; codec availability follows Windows Media Foundation. Background videos are not audio sources for beat detection. No video encoder is used.
+
+Implementation references: [Avalonia GPU interop](https://github.com/AvaloniaUI/Avalonia/tree/master/samples/GpuInterop), [Direct2D/Direct3D interoperation](https://learn.microsoft.com/en-us/windows/win32/direct2d/direct2d-and-direct3d-interoperation-overview), [Vortice Windows bindings](https://github.com/amerkoleci/Vortice.Windows), [Media Engine sample](https://github.com/amerkoleci/Vortice.Windows.Samples/tree/main/src/MediaFoundation/MediaEnginePlayVideo).

@@ -80,6 +80,16 @@
     "step": 1
   },
   {
+    "key": "orboptimized",
+    "title": "Render optimizado",
+    "kind": "bool",
+    "value": true,
+    "group": "Orbe",
+    "min": 0,
+    "max": 1,
+    "step": 1
+  },
+  {
     "key": "fullmesh",
     "title": "Malla completa (alternativa)",
     "kind": "bool",

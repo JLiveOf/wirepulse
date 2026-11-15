@@ -14,13 +14,16 @@ internal static class Program
         {
             if (args.Contains("--instance-lock-probe")) { using var probe = new SingleInstance(Option("--probe-name") ?? ""); if (!probe.Owned) return 2; Console.WriteLine("ACQUIRED"); Thread.Sleep(int.Parse(Option("--instance-lock-probe") ?? "1000")); return 0; }
             if (args.Contains("--disable-autostart")) { new StartupRegistration().SetEnabled(false); return 0; }
+#if WINDOWS
+            if (args.Contains("--native-draw-self-test"))return NativeDrawSelfTest.Run();
+#endif
             if (args.Contains("--self-test")) return SelfTest.Run();
             int result;
             using(var instance = new SingleInstance()){
              if (!instance.Owned) { if (!args.Contains("--autostart")) instance.Notify(); return 0; }
              Singleton = instance;if(!args.Contains("--renderer-smoke-test")&&!args.Contains("--widget-smoke-test"))DesktopHost.Validate();
              var builder=AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace();
-             builder=GraphicsBackend.Configure(builder,Option("--renderer")??new Settings().WindowsRenderer);
+             var preferences=new Settings();RenderEngines.Configure(Option("--engine")??preferences.WindowsEngine);builder=GraphicsBackend.Configure(builder,Option("--renderer")??(RenderEngines.Native?"DirectX 11":preferences.WindowsRenderer));
              result=builder.StartWithClassicDesktopLifetime(args);
             }
             Singleton=null;

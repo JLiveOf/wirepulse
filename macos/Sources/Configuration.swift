@@ -14,6 +14,7 @@ let controls: [ControlSpec] = [
  .init(id:"gate",title:"Umbral de ruido",group:"Audio",kind:.slider(0,0.2,0.005)),
  .init(id:"smoothing",title:"Suavizado",group:"Audio",kind:.slider(0,0.98,0.01)),
  .init(id:"sphere",title:"Mostrar orbe",group:"Orbe",kind:.toggle),
+ .init(id:"orboptimized",title:"Render optimizado",group:"Orbe",kind:.toggle),
  .init(id:"fullmesh",title:"Malla completa",group:"Orbe",kind:.toggle),
  .init(id:"wirecolor",title:"Color de la malla",group:"Orbe",kind:.color),
  .init(id:"radius",title:"Radio (% de altura)",group:"Orbe",kind:.slider(10,100,1)),
@@ -62,7 +63,7 @@ final class Configuration: ObservableObject {
  let persistent:Bool
  let storagePrefix:String
  @Published var independentDisplays:Bool { didSet{if persistent{UserDefaults.standard.set(independentDisplays,forKey:"independentDisplays")} }}
- static let defaults: [String:Double] = ["dim":0,"sensitivity":0.7,"bass":1.2,"gate":0.015,"smoothing":0.5,"sphere":1,"fullmesh":1,"radius":55,"sphereX":97,"sphereY":123,"deformation":1,"pulse":0.2,"rotation":0.5,"density":42,"linewidth":0.65,"glow":6,"opacity":1,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":0.75,"unlimitedfps":0,"fps":60,"quality":1,"bgshow":1,"bgreact":1,"bgstyle":0,"bgopacity":0.3,"bgdensity":120,"bgspacing":100,"bgline":0.65,"bgspeed":20,"bgdirection":135,"bgboost":3,"clockshow":1,"clock24":1,"clocksize":48,"clockX":50,"clockY":82]
+ static let defaults: [String:Double] = ["dim":0,"sensitivity":0.7,"bass":1.2,"gate":0.015,"smoothing":0.5,"sphere":1,"orboptimized":1,"fullmesh":1,"radius":55,"sphereX":97,"sphereY":123,"deformation":1,"pulse":0.2,"rotation":0.5,"density":42,"linewidth":0.65,"glow":6,"opacity":1,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":0.75,"unlimitedfps":0,"fps":60,"quality":1,"bgshow":1,"bgreact":1,"bgstyle":0,"bgopacity":0.3,"bgdensity":120,"bgspacing":100,"bgline":0.65,"bgspeed":20,"bgdirection":135,"bgboost":3,"clockshow":1,"clock24":1,"clocksize":48,"clockX":50,"clockY":82]
  @Published var values: [String:Double] { didSet { if persistent{UserDefaults.standard.set(values,forKey:storagePrefix+"values") } }}
  @Published var colors: [String:String] { didSet { if persistent{UserDefaults.standard.set(colors,forKey:storagePrefix+"colors") } }}
  @Published var backgroundPath: String { didSet { if persistent{UserDefaults.standard.set(backgroundPath,forKey:storagePrefix+"backgroundPath") } }}

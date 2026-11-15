@@ -8,33 +8,70 @@ namespace WirePulse;
 /// Independent retained layers: static background and music text are not rebuilt at audio frame rate.
 public sealed class WallpaperView : Panel, IDisposable
 {
-    readonly bool transparent,cardFillsBounds;SceneLayer? sceneLayer;readonly Settings settings; readonly Spectrum spectrum; readonly MediaService media; readonly VisualizerPainter painter = new(); readonly Layer backdrop, animation, card,clock,presentation;
+    readonly bool transparent,cardFillsBounds;SceneLayer? sceneLayer;readonly Settings settings; readonly Spectrum spectrum; readonly MediaService media; readonly VisualizerPainter painter = new(); readonly BackdropMedia mediaBackdrop;readonly Layer dimmer;readonly Layer backdrop, animation, card,clock,presentation;
     public WindowsLayeredPresenter? Presenter{get;private set;}
     public void UsePresenter(WindowsLayeredPresenter? presenter){if(presenter==null||Presenter!=null)return;Presenter=presenter;presentation.InvalidateVisual();}
-    VisualizerOptions options; Bitmap? cover, background; string artKey = "", backgroundPath = ""; bool loading, disposed; byte[]? artBytes; DateTime retryAt; readonly CancellationTokenSource artworkStop = new(); string measuredProvider = ""; double measuredTagSize, measuredTagWidth; double clockAt;string lastClock="",lastFont="",lastClockColor="";double lastClockSize;FormattedText? clockText;double cardAt; Track? previousTrack;
+    VisualizerOptions options; Bitmap? cover; string artKey = ""; bool loading, disposed; byte[]? artBytes; DateTime retryAt; readonly CancellationTokenSource artworkStop = new(); string measuredProvider = ""; double measuredTagSize, measuredTagWidth; double clockAt;string lastClock="",lastFont="",lastClockColor="";double lastClockSize;FormattedText? clockText;double cardAt; Track? previousTrack;
     readonly Dictionary<string, IBrush> brushes = []; readonly Dictionary<(string, double, bool, IBrush), FormattedText> textCache = [];
     static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(8) };
-    public Settings Configuration => settings; public long Frames => sceneLayer?.Statistics.Frames??painter.Statistics.Frames; public RenderStatistics Statistics => sceneLayer?.Statistics??painter.Statistics;
+    public bool HasAnimatedMedia=>!transparent&&mediaBackdrop.Animated;public string MediaBackdropStatus=>mediaBackdrop.Status;public long VideoFrames=>mediaBackdrop.VideoFrames;
+#if WINDOWS
+    NativeVisualizationControl? native;
+#endif
+    public string EngineStatus {
+        get {
+            if(sceneLayer!=null)return sceneLayer.EngineStatus;
+#if WINDOWS
+            if(native!=null)return native.Status;
+#endif
+            return RenderEngines.Skia;
+        }
+    }
+    public Settings Configuration => settings; public long Frames => Statistics.Frames; public RenderStatistics Statistics {
+        get {
+            if(sceneLayer!=null)return sceneLayer.Statistics;
+#if WINDOWS
+            if(native?.Ready==true)return native.Statistics;
+#endif
+            return painter.Statistics;
+        }
+    }
     public WallpaperView(Settings settings, Spectrum spectrum, MediaService media,bool transparent=false,bool cardFillsBounds=false)
     {
         this.transparent=transparent;this.cardFillsBounds=cardFillsBounds;this.settings = settings; this.spectrum = spectrum; this.media = media; options = VisualizerOptions.Read(settings); ClipToBounds = true;
-        backdrop = new(c => DrawBackground(c, Bounds.Width, Bounds.Height)); animation = new(c => c.Custom(new VisualizationOperation(painter, options, AnimationAudio(), settings.Paused, new Rect(Bounds.Size)))); card = new(c => { if (settings.On("card") && (!settings.On("hideidle") || media.Current.Title.Length > 0)) Card(c, Bounds.Width, Bounds.Height); });
-        presentation=new Layer(c=>{if(Presenter is{} output)c.Custom(new LayeredFrameOperation(output,new Rect(Bounds.Size)));});clock=new Layer(DrawClock);Children.Add(backdrop); Children.Add(animation); Children.Add(card);Children.Add(clock);Children.Add(presentation);UpdateScene(); settings.Changed += ConfigurationChanged;
+        mediaBackdrop=new BackdropMedia(settings,!transparent);dimmer=new(c=>{if(settings.Text("backgroundimage").Length>0)c.FillRectangle(new SolidColorBrush(Color.FromArgb((byte)(255*settings.N("dim")/100),0,0,0)),new Rect(Bounds.Size));});backdrop = new(c => DrawBackground(c, Bounds.Width, Bounds.Height)); animation = new(c => c.Custom(new VisualizationOperation(painter, options, AnimationAudio(), settings.Paused, new Rect(Bounds.Size)))); card = new(c => { if (settings.On("card") && (!settings.On("hideidle") || media.Current.Title.Length > 0)) Card(c, Bounds.Width, Bounds.Height); });
+        presentation=new Layer(c=>{if(Presenter is{} output)c.Custom(new LayeredFrameOperation(output,new Rect(Bounds.Size)));});clock=new Layer(DrawClock);Children.Add(backdrop);if(!transparent){Children.Add(mediaBackdrop);Children.Add(dimmer);} Children.Add(animation);
+#if WINDOWS
+        if(RenderEngines.Native && (options.Sphere||options.Spectrum||options.Space?.Visible==true)){native=new NativeVisualizationControl(()=>options,AnimationAudio);native.AvailabilityChanged+=UpdateNative;Children.Insert(Children.IndexOf(animation),native);}
+#endif
+        Children.Add(card);Children.Add(clock);Children.Add(presentation);UpdateScene(); settings.Changed += ConfigurationChanged;
     }
     IBrush Brush(string color) { if (!brushes.TryGetValue(color, out var brush)) { brush = new SolidColorBrush(Color.Parse(color)); brushes[color] = brush; } return brush; }
     SpectrumFrame AnimationAudio(){var audio=spectrum.Snapshot();return audio with{Bpm=PlaybackTempo.Resolve(media.Current,audio.Bpm)};}
-    public void Advance(double seconds) { if (disposed) return; sceneLayer?.Advance(seconds);animation.InvalidateVisual();if(Presenter!=null)presentation.InvalidateVisual();if(seconds-clockAt>=1){clockAt=seconds;clock.InvalidateVisual();} if (seconds - cardAt >= .25 || !ReferenceEquals(previousTrack, media.Current)) { cardAt = seconds; previousTrack = media.Current; card.InvalidateVisual(); } }
+    public void Advance(double seconds) { if (disposed) return;if(!transparent)mediaBackdrop.Advance(seconds,settings.Paused); sceneLayer?.Advance(seconds);
+#if WINDOWS
+        native?.Advance(seconds,settings.Paused);
+#endif
+        animation.InvalidateVisual();if(Presenter!=null)presentation.InvalidateVisual();if(seconds-clockAt>=1){clockAt=seconds;clock.InvalidateVisual();} if (seconds - cardAt >= .25 || !ReferenceEquals(previousTrack, media.Current)) { cardAt = seconds; previousTrack = media.Current; card.InvalidateVisual(); } }
     public void Adapt(double target) {painter.Adapt(target);sceneLayer?.Adapt(target);}
-    void ConfigurationChanged() { if (disposed) return; options = VisualizerOptions.Read(settings);UpdateScene(); textCache.Clear();clock.InvalidateVisual(); backdrop.InvalidateVisual(); animation.InvalidateVisual(); card.InvalidateVisual(); }
-    void UpdateScene(){bool active=settings.Scene!=null;animation.IsVisible=card.IsVisible=clock.IsVisible=!active;if(active){if(sceneLayer==null){sceneLayer=new SceneLayer(settings,spectrum,media);Children.Insert(Children.IndexOf(presentation),sceneLayer);}else sceneLayer.Refresh();}else if(sceneLayer!=null){Children.Remove(sceneLayer);sceneLayer.Dispose();sceneLayer=null;}}
+    void ConfigurationChanged() { if (disposed) return; options = VisualizerOptions.Read(settings);if(!transparent)mediaBackdrop.Refresh();dimmer.InvalidateVisual();UpdateScene(); textCache.Clear();clock.InvalidateVisual(); backdrop.InvalidateVisual(); animation.InvalidateVisual(); card.InvalidateVisual(); }
+    void UpdateScene(){bool active=settings.Scene!=null;animation.IsVisible=card.IsVisible=clock.IsVisible=!active;if(active){if(sceneLayer==null){sceneLayer=new SceneLayer(settings,spectrum,media);Children.Insert(Children.IndexOf(presentation),sceneLayer);}else sceneLayer.Refresh();}else if(sceneLayer!=null){Children.Remove(sceneLayer);sceneLayer.Dispose();sceneLayer=null;}UpdateNative();}
+    void UpdateNative(){
+#if WINDOWS
+        if(native!=null){native.IsVisible=settings.Scene==null;animation.IsVisible=settings.Scene==null&&!native.Ready;}
+#endif
+    }
     void DrawBackground(DrawingContext c, double w, double h)
     {
-        if(transparent)return; c.FillRectangle(Brush(settings.Text("backgroundcolor")), new Rect(0, 0, w, h)); var path = settings.Text("backgroundimage"); if (path != backgroundPath) { backgroundPath = path; background?.Dispose(); background = null; try { if (File.Exists(path)) background = new Bitmap(path); } catch { } }
-        if (background != null) { DrawCover(c, background, new Rect(0, 0, w, h)); c.FillRectangle(new SolidColorBrush(Color.FromArgb((byte)(255 * settings.N("dim") / 100), 0, 0, 0)), new Rect(0, 0, w, h)); }
+        if(transparent)return; c.FillRectangle(Brush(settings.Text("backgroundcolor")), new Rect(0, 0, w, h));
     }
     void Text(DrawingContext c, string text, double x, double y, double width, double size, IBrush? color = null, bool bold = false) { var ink = color ?? Brush("#ffffff"); var key = (text, size, bold, ink); if (!textCache.TryGetValue(key, out var formatted)) { if (textCache.Count > 40) textCache.Clear(); formatted = new FormattedText(text, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Inter", FontStyle.Normal, bold ? FontWeight.Bold : FontWeight.Normal), size, ink); textCache[key] = formatted; } using (c.PushClip(new Rect(x, y, Math.Max(0, width), size * 1.6))) c.DrawText(formatted, new Point(x, y)); }
     protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e) { base.OnDetachedFromVisualTree(e); Dispose(); }
-    public void Dispose() { if (disposed) return; disposed = true; settings.Changed -= ConfigurationChanged; painter.Dispose();sceneLayer?.Dispose();Presenter?.Dispose(); artworkStop.Cancel(); cover?.Dispose(); background?.Dispose(); }
+    public void Dispose() { if (disposed) return; disposed = true; settings.Changed -= ConfigurationChanged; painter.Dispose();mediaBackdrop.Dispose();sceneLayer?.Dispose();Presenter?.Dispose(); artworkStop.Cancel(); cover?.Dispose();
+#if WINDOWS
+        native?.Dispose();
+#endif
+     }
     sealed class Layer(Action<DrawingContext> draw) : Control { public override void Render(DrawingContext context) { base.Render(context); if (Bounds.Width > 0 && Bounds.Height > 0) draw(context); } }
     void DrawClock(DrawingContext c){if(!settings.On("clockshow"))return;string value=ClockText.Format(DateTime.Now,settings.On("clock24")),font=settings.ClockFont,color=settings.Text("clockcolor");double size=settings.N("clocksize");if(clockText==null||value!=lastClock||font!=lastFont||size!=lastClockSize||color!=lastClockColor){lastClock=value;lastFont=font;lastClockSize=size;lastClockColor=color;clockText=new FormattedText(value,CultureInfo.CurrentCulture,FlowDirection.LeftToRight,font=="System"?Typeface.Default:new Typeface(font),size,Brush(color));}double x=Math.Clamp(Bounds.Width*settings.N("clockX")/100-clockText.Width/2,0,Math.Max(0,Bounds.Width-clockText.Width)),y=Math.Clamp(Bounds.Height*settings.N("clockY")/100-clockText.Height/2,0,Math.Max(0,Bounds.Height-clockText.Height));c.DrawText(clockText,new Point(x,y));}
     double ProviderWidth(string provider, double size) { if (measuredProvider != provider || measuredTagSize != size) { measuredProvider = provider; measuredTagSize = size; measuredTagWidth = new FormattedText(provider, CultureInfo.CurrentCulture, FlowDirection.LeftToRight, new Typeface("Inter"), size, Brush("#ffffff")).Width; } return measuredTagWidth; }

@@ -247,15 +247,35 @@ final class EditorCanvasView: NSView {
     guard let item = model.item, item.visible else { return }
     let r = item.rect(bounds.size)
     (item.locked ? NSColor.systemOrange : NSColor.systemCyan).setStroke()
-    let outline = NSBezierPath(rect: r)
+    let outline = outlinePath(r, model.item?.rotation ?? 0)
     outline.lineWidth = 2
     outline.stroke()
     if !item.locked {
-      for p in Self.handles(r) {
+      for p in Self.handles(r).map({ Self.rotate($0, CGPoint(x: r.midX, y: r.midY), item.rotation) }
+      ) {
         NSColor.white.setFill()
         NSBezierPath(rect: CGRect(x: p.x - 4, y: p.y - 4, width: 8, height: 8)).fill()
       }
     }
+  }
+  static func rotate(_ p: CGPoint, _ c: CGPoint, _ degrees: Double) -> CGPoint {
+    let a = degrees * Double.pi / 180
+    let co = cos(a)
+    let si = sin(a)
+    let x = Double(p.x - c.x)
+    let y = Double(p.y - c.y)
+    return CGPoint(x: Double(c.x) + x * co - y * si, y: Double(c.y) + x * si + y * co)
+  }
+  func outlinePath(_ r: CGRect, _ angle: Double) -> NSBezierPath {
+    let p = NSBezierPath()
+    let corners = [
+      CGPoint(x: r.minX, y: r.minY), CGPoint(x: r.maxX, y: r.minY), CGPoint(x: r.maxX, y: r.maxY),
+      CGPoint(x: r.minX, y: r.maxY),
+    ].map { Self.rotate($0, CGPoint(x: r.midX, y: r.midY), angle) }
+    p.move(to: corners[0])
+    for c in corners.dropFirst() { p.line(to: c) }
+    p.close()
+    return p
   }
   override func mouseDown(with event: NSEvent) {
     window?.makeFirstResponder(self)
@@ -263,11 +283,21 @@ final class EditorCanvasView: NSView {
     handle = -1
     if let item = model.item, !item.locked {
       handle =
-        Self.handles(item.rect(bounds.size)).firstIndex { hypot($0.x - p.x, $0.y - p.y) < 11 } ?? -1
+        Self.handles(item.rect(bounds.size)).map {
+          Self.rotate(
+            $0, CGPoint(x: item.rect(bounds.size).midX, y: item.rect(bounds.size).midY),
+            item.rotation)
+        }.firstIndex { hypot($0.x - p.x, $0.y - p.y) < 11 } ?? -1
     }
     if handle < 0 {
       model.selected =
-        model.document.items.last { $0.visible && !$0.locked && $0.rect(bounds.size).contains(p) }?
+        model.document.items.last {
+          $0.visible && !$0.locked
+            && $0.rect(bounds.size).contains(
+              Self.rotate(
+                p, CGPoint(x: $0.rect(bounds.size).midX, y: $0.rect(bounds.size).midY), -$0.rotation
+              ))
+        }?
         .id
     }
     guard let item = model.item, !item.locked else {
@@ -303,6 +333,9 @@ final class EditorCanvasView: NSView {
       r.origin.x = max(min(0, 24 - r.width), min(bounds.width - 24, r.minX))
       r.origin.y = max(min(0, 24 - r.height), min(bounds.height - 24, r.minY))
     } else {
+      let local = Self.rotate(CGPoint(x: dx, y: dy), .zero, -item.rotation)
+      let dx = local.x
+      let dy = local.y
       var left = initial.minX
       var top = initial.minY
       var right = initial.maxX
@@ -324,6 +357,13 @@ final class EditorCanvasView: NSView {
         if [0, 1, 2].contains(handle) { top = initial.maxY - h }
       }
       r = CGRect(x: left, y: top, width: w, height: h)
+      let old = Self.rotate(
+        Self.handles(initial)[(handle + 4) % 8], CGPoint(x: initial.midX, y: initial.midY),
+        item.rotation)
+      let new = Self.rotate(
+        Self.handles(r)[(handle + 4) % 8], CGPoint(x: r.midX, y: r.midY), item.rotation)
+      r.origin.x += old.x - new.x
+      r.origin.y += old.y - new.y
     }
     model.update { $0.setRect(r, bounds.size) }
     needsDisplay = true
@@ -367,19 +407,28 @@ struct EditorChrome: View {
           ScrollView {
             LazyVStack(alignment: .leading, spacing: 4) {
               ForEach(model.document.items.reversed()) { item in
-                Button {
-                  model.selected = item.id
-                } label: {
-                  HStack {
-                    Text((item.visible ? "● " : "◌ ") + item.name + (item.locked ? " 🔒" : ""))
-                      .lineLimit(1)
-                    Spacer()
-                  }.padding(8).contentShape(Rectangle())
-                }.buttonStyle(.plain).background(
+                HStack(spacing: 4) {
+                  Button {
+                    model.selected = item.id
+                  } label: {
+                    HStack {
+                      Text((item.visible ? "● " : "◌ ") + item.name).lineLimit(1)
+                      Spacer()
+                    }.padding(8).contentShape(Rectangle())
+                  }.buttonStyle(.plain)
+                  Button {
+                    model.selected = item.id
+                    model.change { $0.locked.toggle() }
+                  } label: {
+                    Image(systemName: item.locked ? "lock.fill" : "lock.open")
+                  }.buttonStyle(.borderless).help(
+                    item.locked ? "Desbloquear objeto" : "Bloquear objeto"
+                  ).accessibilityLabel((item.locked ? "Desbloquear " : "Bloquear ") + item.name)
+                    .padding(.trailing, 8)
+                }.background(
                   model.selected == item.id ? Color.accentColor.opacity(0.55) : Color.clear,
                   in: RoundedRectangle(cornerRadius: 8)
-                )
-                .accessibilityAddTraits(model.selected == item.id ? .isSelected : [])
+                ).accessibilityAddTraits(model.selected == item.id ? .isSelected : [])
               }
             }
           }.frame(height: 180)
@@ -397,6 +446,8 @@ struct EditorChrome: View {
           Button("↶") { model.history(true) }
           Button("↷") { model.history(false) }
           Toggle("Ajustar a guías", isOn: $model.snap).fixedSize()
+          Button("Eliminar objeto") { model.delete() }.disabled(
+            model.item == nil || model.item?.locked == true)
           Button("Propiedades") { model.inspector.toggle() }
           Button("Cancelar") { finish(false) }
           Button("Guardar diseño") { finish(true) }.buttonStyle(.borderedProminent)
@@ -411,6 +462,13 @@ struct EditorChrome: View {
         Toggle("Visible", isOn: binding(item.visible) { $0.visible = $1 })
         Toggle("Bloquear posición", isOn: binding(item.locked) { $0.locked = $1 })
         Toggle("Mantener proporciones", isOn: binding(item.keepAspect) { $0.keepAspect = $1 })
+        TextField(
+          "Ángulo (grados)", value: binding(item.rotation) { $0.rotation = $1 }, format: .number)
+        HStack {
+          Button("↶ 90°") { model.change { $0.rotation -= 90 } }
+          Button("↷ 90°") { model.change { $0.rotation += 90 } }
+          Button("Sin giro") { model.change { $0.rotation = 0 } }
+        }
         HStack {
           Button("Duplicar") { model.duplicate() }
           Button("Eliminar") { model.delete() }
