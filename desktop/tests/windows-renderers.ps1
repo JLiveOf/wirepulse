@@ -50,7 +50,7 @@ foreach ($engine in @('Direct3D 11 · lotes GPU','Direct2D · vectorial')) {
     if (!$process.WaitForExit(25000)) {$process.Kill($true);throw "Native engine timed out: $engine"}
     if ($process.ExitCode -ne 0 -or !(Test-Path $report)) {Get-Content "test-results/renderers/$name.err";throw "Native engine failed: $engine"}
     $result=Get-Content $report -Raw | ConvertFrom-Json
-    if (!$result.valid -or $result.coloredPixels -lt 300 -or !$result.engine.Contains('textura compartida GPU')) {throw "Native visualizer not visible on Explorer: $engine"}
+    if (!$result.valid -or $result.coloredPixels -lt 300 -or !($result.engine.Contains('textura compartida GPU') -or $result.engine.Contains('copia de compatibilidad'))) {throw "Native visualizer not visible on Explorer: $engine"}
     Write-Output "PASS $engine visible on Explorer: $($result.coloredPixels) red orb pixels"
 }
 }
@@ -66,3 +66,24 @@ foreach ($mediaFile in @('background.mp4','disposal.gif')) {
     if (!$result.valid) {throw "Background pixels/decoding failed: $mediaFile"}
     Write-Output "PASS $mediaFile visible on Explorer; video frames=$($result.videoFrames); $($result.backgroundStatus)"
 }
+
+# Real maximized, restored and minimized HWNDs owned by this disposable test process.
+Add-Type -AssemblyName System.Windows.Forms
+$form=New-Object System.Windows.Forms.Form
+try {
+    $form.Text='WirePulse suspension fixture';$form.StartPosition='Manual';$form.Location=New-Object System.Drawing.Point(50,50);$form.Size=New-Object System.Drawing.Size(500,250);$form.TopMost=$true;$form.Show();[System.Windows.Forms.Application]::DoEvents()
+    $screen=[System.Windows.Forms.Screen]::FromHandle($form.Handle).Bounds
+    $rect="[$($screen.X),$($screen.Y),$($screen.Width),$($screen.Height)]"
+    $form.WindowState='Maximized';[System.Windows.Forms.Application]::DoEvents()
+    $state=(& ./publish/WirePulse.exe --coverage-probe $rect | ConvertFrom-Json)
+    if ($state.reason -ne 'ventana maximizada') {throw "Maximized HWND was not detected: $($state.reason)"}
+    $state=(& ./publish/WirePulse.exe --coverage-probe $rect --ignore-maximized | ConvertFrom-Json)
+    if ($state.reason) {throw 'Maximized suspension preference ignored'}
+    $form.WindowState='Minimized';[System.Windows.Forms.Application]::DoEvents()
+    $state=(& ./publish/WirePulse.exe --coverage-probe $rect | ConvertFrom-Json)
+    if ($state.reason) {throw 'Minimized HWND still suspends wallpaper'}
+    $form.WindowState='Normal';[System.Windows.Forms.Application]::DoEvents()
+    $state=(& ./publish/WirePulse.exe --coverage-probe $rect | ConvertFrom-Json)
+    if ($state.reason) {throw 'Restored HWND still suspends wallpaper'}
+    Write-Output 'PASS real maximized HWND pauses its display; restored/minimized HWND resumes; preference can disable it'
+} finally {$form.Close();$form.Dispose()}

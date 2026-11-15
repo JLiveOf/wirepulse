@@ -1,6 +1,7 @@
 WirePulse 3.1 adds native Windows visualization engines and more control over desktop objects.
 
 - **Windows → Settings → Performance → Visualization engine**: choose Skia, Direct3D 11 GPU batches, or Direct2D vector drawing. Native engines share GPU textures with the interface; Skia remains available and is the fallback when sharing is unsupported. The existing Vulkan, DirectX 11, OpenGL and CPU interface choices remain under Skia. Performance varies with hardware and drivers.
+- Windows pauses animation independently on each display when a maximized window covers it; minimizing/restoring resumes rendering. A separate setting controls this behavior alongside the existing fullscreen setting.
 - **Orb properties → Render optimizado** skips mesh patches that cannot contribute to the screen, while retaining visible rear wires, deformation, glow and draw order. Disable it to use the previous projection. Tests compare old/new pixels on Windows/Linux and visible triangles on Metal.
 - Every object has a visible padlock in the layer list. The default mesh is no longer automatically locked when migrating a layout; saved user locks remain respected. A toolbar **Eliminar objeto** button makes deletion discoverable.
 - macOS editor controls stay inside the visible screen area, above the Dock and below the menu bar, while the canvas keeps full-desktop coordinates.

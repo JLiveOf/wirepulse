@@ -26,5 +26,24 @@ public static class DisplayTiming
     [DllImport("user32.dll")] static extern bool GetWindowRect(IntPtr window, out NativeRect rect);
     [DllImport("user32.dll", CharSet = CharSet.Unicode)] static extern int GetClassName(IntPtr window, System.Text.StringBuilder name, int count);
     [StructLayout(LayoutKind.Sequential)] struct NativeRect { public int Left, Top, Right, Bottom; }
-    public static bool Covered(PixelRect bounds) { if (!OperatingSystem.IsWindows()) return false; var window = GetForegroundWindow(); var name = new System.Text.StringBuilder(128); GetClassName(window, name, 128); if (name.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd") return false; if (!GetWindowRect(window, out var r)) return false; return r.Left <= bounds.X + 1 && r.Top <= bounds.Y + 1 && r.Right >= bounds.Right - 1 && r.Bottom >= bounds.Bottom - 1; }
+    [DllImport("user32.dll")] static extern bool EnumWindows(EnumWindow callback,IntPtr parameter);
+    delegate bool EnumWindow(IntPtr window,IntPtr parameter);
+    [DllImport("user32.dll")] static extern bool IsWindowVisible(IntPtr window);
+    [DllImport("user32.dll")] static extern bool IsIconic(IntPtr window);
+    [DllImport("user32.dll")] static extern bool IsZoomed(IntPtr window);
+    [DllImport("user32.dll")] static extern IntPtr MonitorFromWindow(IntPtr window,uint flags);
+    [DllImport("user32.dll")] static extern uint GetWindowThreadProcessId(IntPtr window,out uint processId);
+    [DllImport("dwmapi.dll")] static extern int DwmGetWindowAttribute(IntPtr window,int attribute,out int value,int size);
+    public static string CoverageReason(PixelRect bounds,bool fullscreen,bool maximized){
+        if(!OperatingSystem.IsWindows()||(!fullscreen&&!maximized))return "";
+        string reason="";var monitor=MonitorFromPoint(new(){X=bounds.X+bounds.Width/2,Y=bounds.Y+bounds.Height/2},2);var info=new MonitorInfo{Size=Marshal.SizeOf<MonitorInfo>(),Device=""};if(!GetMonitorInfo(monitor,ref info))return "";
+        EnumWindows((window,_)=>{if(!IsWindowVisible(window)||IsIconic(window))return true;GetWindowThreadProcessId(window,out uint pid);if(pid==Environment.ProcessId)return true;var name=new System.Text.StringBuilder(128);GetClassName(window,name,128);if(name.ToString() is "Progman" or "WorkerW" or "Shell_TrayWnd" or "Shell_SecondaryTrayWnd" or "#32769")return true;if(DwmGetWindowAttribute(window,14,out int cloaked,4)==0&&cloaked!=0)return true;if(!GetWindowRect(window,out var r))return true;var rect=new PixelRect(r.Left,r.Top,Math.Max(0,r.Right-r.Left),Math.Max(0,r.Bottom-r.Top));reason=Coverage(bounds,info.Work,rect,MonitorFromWindow(window,2)==monitor,IsZoomed(window),fullscreen,maximized);return reason.Length==0;},IntPtr.Zero);return reason;
+    }
+    public static string Coverage(PixelRect bounds,PixelRect work,PixelRect window,bool sameMonitor,bool maximized,bool pauseFullscreen,bool pauseMaximized){
+        static bool Contains(PixelRect outer,PixelRect inner,int tolerance)=>outer.X<=inner.X+tolerance&&outer.Y<=inner.Y+tolerance&&outer.Right>=inner.Right-tolerance&&outer.Bottom>=inner.Bottom-tolerance;
+        if(maximized)return pauseMaximized&&sameMonitor&&Contains(window,work,2)?"ventana maximizada":"";
+        if(pauseFullscreen&&Contains(window,bounds,1))return "pantalla completa";
+        return "";
+    }
+    public static bool Covered(PixelRect bounds)=>CoverageReason(bounds,true,false).Length>0;
 }

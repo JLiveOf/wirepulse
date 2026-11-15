@@ -28,11 +28,12 @@ struct OrbVisibility {
   all = !enabled
   if all{return}
   let factor:Float=full ? 0.38:0.07,extent=radius*(1+deformation*factor*(bands.max() ?? 0))
-  if center.x-extent >= -margin && center.x+extent <= width+margin && center.y-extent >= -margin && center.y+extent <= height+margin{all=true;return}
+  let visibleWidth=max(0,min(width+margin,center.x+extent)-max(-margin,center.x-extent)),visibleHeight=max(0,min(height+margin,center.y+extent)-max(-margin,center.y-extent))
+  if visibleWidth*visibleHeight >= extent*extent*4*0.65{all=true;return}
   for i in vertices.indices{vertices[i]=false};for i in edges.indices{edges[i]=false}
   let ca=cos(angle),sa=sin(angle),ct=cos(Float(0.23)),st=sin(Float(0.23))
+  let energy=bands.max() ?? 0
   for patch in patches{
-   var energy:Float=0;for bin in patch.bins{energy=max(energy,bands[bin])}
    let growth=1+deformation*factor*energy,mid=(1+growth)*0.5,c=patch.center
    let x=c.x*ca-c.z*sa,z=c.x*sa+c.z*ca,y=c.y*ct-z*st
    let r=radius*(patch.radius*growth+simd_length(c)*(growth-1)*0.5)+0.01,cx=center.x+x*radius*mid,cy=center.y+y*radius*mid
