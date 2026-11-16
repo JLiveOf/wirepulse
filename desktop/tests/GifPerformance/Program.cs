@@ -10,3 +10,10 @@ for(int loop=0;loop<3;loop++)for(int i=0;i<count;i++){
 }
 if(frames.CacheHits==0)throw new Exception("Animation did not reuse cached frames");Console.WriteLine($"PASS {count*3} full GIF frame comparisons; old decode {oldMs:F1} ms; new decode {frames.DecodeMilliseconds:F1} ms; decoded={frames.DecodedFrames}; cache hits={frames.CacheHits}");
 using var asyncFrames=new ImageFrames(fixture,asynchronous:true);var watch=Stopwatch.StartNew();for(int i=0;i<200;i++)asyncFrames.Update(.04,false);watch.Stop();if(watch.Elapsed.TotalMilliseconds>100)throw new Exception("UI update blocked on animated decoding");await Task.Delay(300);using var output=new SKBitmap(640,360);using var draw=new SKCanvas(output);asyncFrames.Draw(draw,new(0,0,640,360));if(asyncFrames.DecodedFrames==0)throw new Exception("Background decoder did not complete");Console.WriteLine($"PASS asynchronous UI submission: {watch.Elapsed.TotalMilliseconds:F2} ms for 200 updates; pause, resume and disposal bounded");
+
+// Invalid timestamps must not poison the animation clock or prevent later valid frames.
+using var timing=new ImageFrames(fixture);using var timingBitmap=new SKBitmap(640,360);using var timingCanvas=new SKCanvas(timingBitmap);
+void ExpectFrame(int frame){codec.GetPixels(legacy.Info,legacy.GetPixels(),new SKCodecOptions(frame));timingCanvas.Clear(SKColors.Transparent);timing.Draw(timingCanvas,new(0,0,640,360));for(int y=0;y<360;y++)for(int x=0;x<640;x++)if(legacy.GetPixel(x,y)!=timingBitmap.GetPixel(x,y))throw new Exception($"Invalid elapsed time corrupted GIF frame {frame}");}
+foreach(var dt in new[]{double.NaN,double.PositiveInfinity,double.NegativeInfinity,-1d}){timing.Update(dt,false);ExpectFrame(0);}
+timing.Update(.040001,false);ExpectFrame(1);timing.Update(double.MaxValue,true);ExpectFrame(1);timing.Update(double.MaxValue,false);timing.Update(.04,false);
+Console.WriteLine("PASS nonfinite/negative timestamps, paused clock and finite clock overflow");

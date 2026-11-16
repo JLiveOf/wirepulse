@@ -97,5 +97,5 @@ foreach ($engine in @('Skia','Direct3D 11 · lotes GPU','Direct2D · vectorial')
     if ($process.ExitCode -ne 0 -or !(Test-Path $report)) {Get-Content "test-results/renderers/$name.err";throw "Live edits failed: $engine"}
     $result=Get-Content $report -Raw | ConvertFrom-Json
     if (!$result.valid -or !$result.retainedValid -or $result.liveEdits -lt 10) {throw "Live edits recreated scene objects: $engine"}
-    Write-Output "PASS $engine: $($result.liveEdits) live edits retain $($result.retainedObjects) objects with animated GIF and visible wallpaper"
+    Write-Output "PASS ${engine}: $($result.liveEdits) live edits retain $($result.retainedObjects) objects with animated GIF and visible wallpaper"
 }

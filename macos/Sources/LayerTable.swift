@@ -3,7 +3,7 @@ import SwiftUI
 
 /// Native row dragging, insertion gaps and auto-scrolling; style edits never reload the list.
 final class LayerScrollView:NSScrollView {
- override func tile(){super.tile();guard let table=documentView as? NSTableView else{return};let width=contentSize.width;if width>0 && abs(table.frame.width-width)>0.5{table.setFrameSize(NSSize(width:width,height:table.frame.height));table.tableColumns.first?.width=width}}
+ override func tile(){super.tile();guard let table=documentView as? NSTableView else{return};let width=contentSize.width;guard width>0 else{return};if abs(table.frame.width-width)>0.5{table.setFrameSize(NSSize(width:width,height:table.frame.height))};if let column=table.tableColumns.first,abs(column.width-width)>0.5{column.width=width}}
 }
 struct LayerTable:NSViewRepresentable {
  @ObservedObject var model:SceneEditorModel

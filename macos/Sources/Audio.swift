@@ -37,7 +37,7 @@ final class SpectrumAnalyzer {
    starts.append(boundary);ends.append(end)
    ranges.append((Double(boundary)-0.5)*rate/Double(count)...min(rate/2,(Double(end)-0.5)*rate/Double(count)));boundary=end
   }
-  lock.lock();published=[Float](repeating:0,count:64);publishedRate=rate;publishedSize=count;publishedRanges=ranges;peak=0;peakHz=0;lastSample=0;lock.unlock()
+  lock.lock();publishedBeat=BeatFrame();published=[Float](repeating:0,count:64);publishedRate=rate;publishedSize=count;publishedRanges=ranges;peak=0;peakHz=0;lastSample=0;lock.unlock()
  }
  func bandIndex(for frequency:Double)->Int {ranges.firstIndex{$0.contains(frequency)} ?? 63}
  private func append(_ l:Float,_ r:Float){
