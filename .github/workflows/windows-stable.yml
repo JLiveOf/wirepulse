@@ -1,0 +1,83 @@
+name: Publish Windows stable
+on:
+  create:
+  push:
+    branches: [windows-stable]
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: windows-stable-publication
+  cancel-in-progress: false
+jobs:
+  windows-stable:
+    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/windows-stable' || (github.event.ref_type == 'branch' && startsWith(github.event.ref, 'windows-stable'))
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build Windows renderer and native WinUI; run hardware-aware checks
+        shell: pwsh
+        run: ./build-windows.ps1 -Test
+      - name: DSP and configuration regressions
+        shell: pwsh
+        run: |
+          $p=Start-Process -WindowStyle Hidden ./publish/WirePulse.exe -ArgumentList '--self-test' -Wait -PassThru
+          if($p.ExitCode -ne 0){throw 'Self-test failed'}
+          dotnet run --project tests/UiTests -c Release
+          if($LASTEXITCODE -ne 0){throw 'Editor regression failed'}
+          dotnet run --project tests/GifPerformance -c Release
+          if($LASTEXITCODE -ne 0){throw 'GIF regression failed'}
+          dotnet run --project tests/OrbRendering -c Release
+          if($LASTEXITCODE -ne 0){throw 'Orb regression failed'}
+      - name: Native graphics, desktop presentation and monitor isolation
+        shell: pwsh
+        run: |
+          ./tests/windows-renderers.ps1
+          ./tests/windows-displays.ps1
+      - name: Package only Windows
+        shell: pwsh
+        run: |
+          $version=(Get-Content ../VERSION -Raw).Trim()
+          $tag="windows-v$version-tulipan"
+          Copy-Item WINDOWS-3.2.0.md publish/WINDOWS-RELEASE.md
+          python packaging/package.py win-x64 $version
+          if($LASTEXITCODE -ne 0){throw 'Packaging failed'}
+          ./packaging/windows/test-installer.ps1 -Installer "packages/WirePulse-$version-win-x64-Setup.exe" -Version $version
+          Get-ChildItem packages -File | Where-Object Extension -in @('.exe','.zip') | ForEach-Object {
+            Rename-Item -LiteralPath $_.FullName -NewName $_.Name.Replace("$version-win-x64","$version-windows-tulipan")
+          }
+          Get-ChildItem packages -File | Where-Object Extension -in @('.exe','.zip') | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content packages/SHA256SUMS.txt -Encoding ascii
+          "RELEASE_TAG=$tag" >> $env:GITHUB_ENV
+      - name: Publish Windows stable release
+        shell: pwsh
+        run: |
+          $version=(Get-Content ../VERSION -Raw).Trim()
+          $notes=@"
+          Tulipan, versión estable exclusiva de Windows. El editor de objetos y su barra de herramientas utilizan WinUI 3: deslizadores nativos, selección de color, capas reordenables, bloqueo, deshacer/rehacer y guardar/cancelar. Los gestos conservan el renderizador y una sola acción de historial.
+
+          Direct3D 11 por lotes es el motor predeterminado. Incluye la corrección de orientación de texturas, ocultación de las aristas traseras del orbe en render optimizado, límite de envíos GPU por monitor y medición de FPS que excluye repintados de texto. Las pantallas pausadas muestran 0 FPS. La frecuencia de cada monitor se vuelve a consultar durante la ejecución.
+
+          Validada localmente con RTX 3050 y dos pantallas de 165 y 75 Hz; pruebas nativas de editor, gráficos, audio y vídeo en CI. Setup.exe instala; ZIP es portable y requiere conservar WindowsSettings. Mantiene las preferencias existentes. Esta publicación contiene únicamente Windows; macOS y Linux conservan su publicación actual.
+
+          Código: ${{ github.sha }}
+          "@
+          $notes | Set-Content windows-stable-notes.md -Encoding utf8
+          gh release create $env:RELEASE_TAG packages/*.exe packages/*.zip packages/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "WirePulse $version · Tulipan · Windows estable" --latest=false --notes-file windows-stable-notes.md
+          if($LASTEXITCODE -ne 0){throw 'Windows stable publication failed'}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-stable-validation
+          path: |
+            desktop/test-results/
+            desktop/packages/
+          if-no-files-found: warn

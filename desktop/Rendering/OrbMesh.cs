@@ -19,6 +19,12 @@ public sealed class OrbMesh
         for (int j = 0; j < density - 1; j++) for (int i = 0; i < columns; i++) { int a = 1 + j * columns + i; edges.Add((a, 1 + j * columns + (i + 1) % columns)); if (j < density - 2) { edges.Add((a, a + columns)); edges.Add((a, 1 + (j + 1) * columns + (i + 1) % columns)); } else edges.Add((a, bottom)); }
         Vertices = vertices.ToArray(); Edges = edges.ToArray(); Visibility=new OrbVisibility(this);
     }
+    public static bool ClipFront(ref Vector3 a,ref Vector3 b){
+        if(a.Z<0&&b.Z<0)return false;
+        if(a.Z<0)a=Vector3.Lerp(a,b,-a.Z/(b.Z-a.Z));
+        else if(b.Z<0)b=Vector3.Lerp(b,a,-b.Z/(a.Z-b.Z));
+        return true;
+    }
     public void Project(Span<Vector3> output, ReadOnlySpan<double> bands, double angle, double time, double radius, double x, double y, double deformation, bool full,Avalonia.Rect? visibleBounds=null)
     {
         Visibility.Prepare(bands,angle,radius,x,y,deformation,full,visibleBounds);

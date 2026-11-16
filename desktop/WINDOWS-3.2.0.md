@@ -29,3 +29,14 @@ Native WinUI pages, slider-to-renderer updates, capture stop/resume, real low-vo
 In a seven-second video fixture, transfers decreased from 307 before the change to roughly 136–152 afterward, depending on scheduling. During the paused interval the transfer count stays constant. This measures transfers, not overall GPU utilization or sustained desktop FPS. The current Windows session exposes 60 Hz and 75 Hz; this is not a claim of validation at 165 Hz.
 
 Use `./build-windows.ps1 -Test` and `./tests/windows-displays.ps1` to reproduce the Windows checks. Hardware-less CI runners explicitly skip WASAPI hardware checks. Build output remains version 3.2.0 to preserve the repository's cross-platform version scheme; no macOS or Linux release is republished by this change alone.
+
+## Tulipan estable · Windows
+
+El inspector de objetos y la barra inferior son ventanas WinUI 3 nativas, vinculadas al borrador del editor. Los rangos usan Slider; colores, interruptores, capas y diálogos usan controles WinUI. Guardar confirma el borrador; cancelar lo descarta; los gestos de deslizador se agrupan en una acción de deshacer. Las propiedades generales están en un desplegable para priorizar los ajustes del objeto.
+
+El límite de FPS usa tiempo monotónico y un presupuesto de envíos GPU por monitor; se consulta de nuevo la frecuencia en ejecución. El contador de escenas toma el visualizador animado, excluyendo repintados de tarjeta/reloj. Sin fotogramas recientes indica cero y una pantalla cubierta se informa con cero FPS. En dos ventanas de prueba simultáneas la Acer de 75 Hz produjo 71,5 FPS durante seis segundos, contador 73,9; el objetivo era 75. La prueba no es un benchmark del escritorio a pantalla completa.
+
+En Windows, el modo de render optimizado descarta aristas traseras y recorta las que cruzan el plano de silueta; desactivarlo conserva la malla transparente completa. Los datos geométricos se mantienen para la rotación. Las publicaciones de macOS y Linux no cambian.
+
+Pruebas añadidas: editor WinUI guardar/descartar, identidad retenida del renderizador, sliders sin NumberBox, historial por gesto, orden de capas, límite en las pantallas físicas y presupuesto móvil de un segundo. Los informes y la imagen del panel se conservan en los artefactos de validación.
+Local validation note: the audible 1 kHz WASAPI self-test could not isolate its quiet tone while music was already playing (dominant peak 46.875 Hz). Capture delivered 181 frames at 48 kHz. No audio-capture implementation changed in this release; CI repeats this check on a clean endpoint.

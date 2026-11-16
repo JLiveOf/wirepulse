@@ -53,6 +53,11 @@ public sealed class WallpaperView : Panel, IDisposable
         native?.Advance(seconds,settings.Paused);
 #endif
         animation.InvalidateVisual();if(Presenter!=null)presentation.InvalidateVisual();if(seconds-clockAt>=1){clockAt=seconds;clock.InvalidateVisual();} if (seconds - cardAt >= .25 || !ReferenceEquals(previousTrack, media.Current)) { cardAt = seconds; previousTrack = media.Current; card.InvalidateVisual(); } }
+    public void SetFrameLimit(double target){sceneLayer?.SetFrameLimit(target);
+#if WINDOWS
+        native?.SetFrameLimit(target);
+#endif
+    }
     public void Adapt(double target) {painter.Adapt(target);sceneLayer?.Adapt(target);
 #if WINDOWS
         native?.Adapt(target);

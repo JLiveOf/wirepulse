@@ -10,7 +10,7 @@ using System.Text.Json.Nodes;
 namespace WirePulse;
 
 // The WinUI window has its own dispatcher. Only this renderer owns and saves settings.
-internal sealed class WindowsSettingsHost(Func<JsonObject,JsonNode> handle):IDisposable {
+internal sealed partial class WindowsSettingsHost(Func<JsonObject,JsonNode> handle):IDisposable {
  readonly string pipe="WirePulse-Settings-"+Guid.NewGuid().ToString("N");readonly CancellationTokenSource stop=new();Process? process;Task? serverTask;
  [DllImport("user32.dll")]static extern bool ShowWindow(IntPtr hwnd,int command);
  [DllImport("user32.dll")]static extern bool SetForegroundWindow(IntPtr hwnd);
@@ -24,19 +24,22 @@ internal sealed class WindowsSettingsHost(Func<JsonObject,JsonNode> handle):IDis
   await server.WaitForConnectionAsync(stop.Token);using var reader=new StreamReader(server,Encoding.UTF8,leaveOpen:true);using var writer=new StreamWriter(server,new UTF8Encoding(false),leaveOpen:true){AutoFlush=true};
   string? line=await reader.ReadLineAsync(stop.Token);if(line==null||line.Length>65536)continue;
   var request=JsonNode.Parse(line)?.AsObject()??throw new InvalidDataException("Solicitud inválida");JsonNode reply;
-  try{if(request["op"]?.GetValue<string>()=="import"){string asset=await AssetStore.ImportMediaAsync(request["value"]!.GetValue<string>());request["op"]="set";request["key"]="backgroundimage";request["value"]=asset;}reply=await Dispatcher.UIThread.InvokeAsync(()=>handle(request));}catch(Exception ex){reply=new JsonObject{["error"]=ex.Message};}
+  try{if(request["op"]?.GetValue<string>()=="import"){string asset=await AssetStore.ImportMediaAsync(request["value"]!.GetValue<string>());request["op"]="set";request["key"]="backgroundimage";request["value"]=asset;}if(request["op"]?.GetValue<string>()=="editor-add"&&request["path"] is JsonValue pathValue){request["asset"]=await Task.Run(()=>AssetStore.Import(pathValue.GetValue<string>(),request["kind"]?.GetValue<string>()=="widget"));}reply=await Dispatcher.UIThread.InvokeAsync(()=>handle(request));}catch(Exception ex){reply=new JsonObject{["error"]=ex.Message};}
   await writer.WriteLineAsync(reply.ToJsonString());
  }catch(OperationCanceledException){break;}catch(Exception ex){Trace.WriteLine(ex);}}}
- public void Dispose(){stop.Cancel();if(process is{HasExited:false})process.CloseMainWindow();}
+ public void Dispose(){stop.Cancel();if(process is{HasExited:false})process.CloseMainWindow();if(editorProcess is{HasExited:false})editorProcess.CloseMainWindow();}
 }
 
 public sealed partial class App {
  WindowsSettingsHost? windowsSettings;bool windowsAudioPaused;
- bool ShowWindowsSettings(){
+ WindowsSettingsHost WindowsHost(){
   if(windowsSettings==null){windowsSettings=new WindowsSettingsHost(WindowsSettingsRequest);if(ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life)life.Exit+=(_,_)=>windowsSettings.Dispose();}
-  return windowsSettings.Show();
+  return windowsSettings;
  }
+ bool ShowWindowsSettings()=>WindowsHost().Show();
+ void ShowWindowsEditor()=>WindowsHost().ShowEditor();
  JsonNode WindowsSettingsRequest(JsonObject request){
+  if(request["op"]?.GetValue<string>().StartsWith("editor-",StringComparison.Ordinal)==true)return editor?.WindowsRequest(request)??new JsonObject{["open"]=false};
   string op=request["op"]?.GetValue<string>()??"get",profile=request["profile"]?.GetValue<string>()??"";
   var target=settings.IndependentDisplays&&available.TryGetValue(profile,out var selected)?selected:settings;
   if(request["global"]?.GetValue<bool>()==true)target=settings;
@@ -68,7 +71,7 @@ public sealed partial class App {
   }
   object Values(Settings s)=>new{values=s.Values,scene=s.Scene!=null,profile=s.RenderProfile,backgroundStyle=s.BackgroundStyle,clockFont=s.ClockFont,suspendMaximized=s.SuspendMaximized,suspendFullscreen=s.SuspendFullscreen};
   var spectrumFrame=spectrum.Snapshot();bool startup=false;try{startup=new StartupRegistration().Enabled;}catch{}
-  return JsonSerializer.SerializeToNode(new{global=Values(settings),displays=available.ToDictionary(p=>p.Key,p=>Values(p.Value)),specs=settings.Specs.Select(s=>new{key=s.Key,title=s.Title,kind=s.Kind,group=s.Group,min=s.Min,max=s.Max,step=s.Step}),independent=settings.IndependentDisplays,mediaSource=settings.MediaSource,ciderUrl=settings.CiderUrl,ciderToken=settings.CiderToken,engine=settings.WindowsEngine,renderer=settings.WindowsRenderer,activeEngine=RenderEngines.Requested,activeRenderer=GraphicsBackend.Requested,startup,paused=settings.Paused,audioRunning=!windowsAudioPaused,audio=windowsAudioPaused?"Captura detenida":audio.Status,sampleRate=spectrumFrame.SampleRate,fft=spectrumFrame.FftSize,bands=spectrumFrame.Bands,age=spectrumFrame.Age,bpm=PlaybackTempo.Resolve(media.Current,spectrumFrame.Bpm),media=media.Status,performance=walls.Select(w=>new{name=w.Name,fps=w.View.Statistics.Fps,target=w.Target,drawMs=w.View.Statistics.DrawMs,backend=w.View.EngineStatus,suspended=w.SuspensionReason})})!;
+  return JsonSerializer.SerializeToNode(new{global=Values(settings),displays=available.ToDictionary(p=>p.Key,p=>Values(p.Value)),specs=settings.Specs.Select(s=>new{key=s.Key,title=s.Title,kind=s.Kind,group=s.Group,min=s.Min,max=s.Max,step=s.Step}),independent=settings.IndependentDisplays,mediaSource=settings.MediaSource,ciderUrl=settings.CiderUrl,ciderToken=settings.CiderToken,engine=settings.WindowsEngine,renderer=settings.WindowsRenderer,activeEngine=RenderEngines.Requested,activeRenderer=GraphicsBackend.Requested,startup,paused=settings.Paused,audioRunning=!windowsAudioPaused,audio=windowsAudioPaused?"Captura detenida":audio.Status,sampleRate=spectrumFrame.SampleRate,fft=spectrumFrame.FftSize,bands=spectrumFrame.Bands,age=spectrumFrame.Age,bpm=PlaybackTempo.Resolve(media.Current,spectrumFrame.Bpm),media=media.Status,performance=walls.Select(w=>new{name=w.Name,fps=w.Covered?0:w.View.Statistics.Fps,target=w.Target,drawMs=w.View.Statistics.DrawMs,backend=w.View.EngineStatus,suspended=w.SuspensionReason})})!;
  }
 }
 #endif

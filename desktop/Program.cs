@@ -23,7 +23,7 @@ internal static class Program
             int result;
             using(var instance = new SingleInstance(
 #if WINDOWS
-                args.Contains("--renderer-smoke-test") || args.Contains("--widget-smoke-test") || args.Contains("--windows-video-test") || args.Contains("--winui-test-output") ? "-windows-tests" :
+                args.Contains("--renderer-smoke-test") || args.Contains("--widget-smoke-test") || args.Contains("--windows-video-test") || args.Contains("--winui-test-output") || args.Contains("--winui-editor-test-output") || args.Contains("--windows-fps-test-output") ? "-windows-tests" :
 #endif
                 "")){
              if (!instance.Owned) { if (!args.Contains("--autostart")) instance.Notify(); return 0; }

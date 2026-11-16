@@ -38,6 +38,9 @@ try {
  if($Test){
   New-Item -ItemType Directory -Force test-results | Out-Null
   foreach($case in @(
+   @{Name='editor-save';Args=@('--winui-editor-test-output','test-results/editor-save.json')},
+   @{Name='editor-discard';Args=@('--winui-editor-test-output','test-results/editor-discard.json','--editor-test-discard')},
+   @{Name='monitor-fps';Args=@('--windows-fps-test-output','test-results/monitor-fps.json')},
    @{Name='winui-native';Args=@('--winui-test-output','test-results/winui-native.json','--probe-seconds','35','--autostart')},
    @{Name='video-cadence';Args=@('--windows-video-test','--verify-video-cadence','--background-fixture','tests/fixtures/background.mp4','--probe-output','test-results/video-cadence.json')},
    @{Name='video-lifecycle';Args=@('--windows-video-test','--stress-disposal','--background-fixture','tests/fixtures/background.mp4','--probe-output','test-results/video-lifecycle.json')},

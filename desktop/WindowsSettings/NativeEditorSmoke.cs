@@ -1,0 +1,40 @@
+using Microsoft.UI.Xaml;
+using Microsoft.UI.Xaml.Controls;
+using Microsoft.UI.Xaml.Media;
+using System.Runtime.InteropServices;
+using System.Text.Json;
+using System.Text.Json.Nodes;
+using Windows.Graphics.Imaging;
+using Windows.Storage;
+using Windows.Storage.Streams;
+using WinRT.Interop;
+namespace WirePulse.WindowsSettings;
+
+sealed partial class NativeEditorShell {
+ [DllImport("user32.dll",EntryPoint="GetWindowLongPtrW")]static extern IntPtr GetOwner(IntPtr hwnd,int index);
+ static IEnumerable<T> Controls<T>(DependencyObject parent)where T:DependencyObject{for(int i=0;i<VisualTreeHelper.GetChildrenCount(parent);i++){var child=VisualTreeHelper.GetChild(parent,i);if(child is T item)yield return item;foreach(var descendant in Controls<T>(child))yield return descendant;}}
+ async Task SnapshotPanel(string path){
+  var bitmap=new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap();await bitmap.RenderAsync(panelRoot);var pixels=await bitmap.GetPixelsAsync();using var reader=DataReader.FromBuffer(pixels);var bytes=new byte[pixels.Length];reader.ReadBytes(bytes);
+  string directory=System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(path))!;Directory.CreateDirectory(directory);var folder=await StorageFolder.GetFolderFromPathAsync(directory);var file=await folder.CreateFileAsync(System.IO.Path.GetFileName(path),CreationCollisionOption.ReplaceExisting);using var stream=await file.OpenAsync(FileAccessMode.ReadWrite);var encoder=await BitmapEncoder.CreateAsync(BitmapEncoder.PngEncoderId,stream);encoder.SetPixelData(BitmapPixelFormat.Bgra8,BitmapAlphaMode.Premultiplied,(uint)bitmap.PixelWidth,(uint)bitmap.PixelHeight,96,96,bytes);await encoder.FlushAsync();
+ }
+ async Task Smoke(string output){
+  poll.Stop();var checks=new List<string>();string? failure=null;
+  try{
+   await Task.Delay(200);if(GetOwner(WindowNative.GetWindowHandle(panel),-8).ToInt64()!=state["owner"]!.GetValue<long>())throw new Exception("El panel WinUI no pertenece a la ventana de previsualización");
+   if(layers.Items.Count!=2)throw new Exception("Faltan capas nativas");checks.Add("Owned native WinUI inspector and toolbar");
+   var sliders=Controls<Slider>(panelRoot).ToArray();var density=sliders.Single(s=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(s)=="Densidad de malla");if(sliders.Length<6||Controls<NumberBox>(panelRoot).Any())throw new Exception("El inspector sigue usando campos numéricos en vez de deslizadores");
+   int renderer=state["rendererIdentity"]!.GetValue<int>();density.Value=27;await Task.Delay(200);await Drain();Apply(await Request(Command("editor-get")));
+   if(state["selected"]!["style"]!["density"]!.GetValue<double>()!=27||state["savedUnchanged"]!.GetValue<bool>()!=true||state["rendererIdentity"]!.GetValue<int>()!=renderer)throw new Exception("El deslizador no conserva el renderizador o modifica el diseño antes de Guardar");checks.Add("Native slider updates retained renderer without saving the draft");
+   await Send(Command("editor-undo"));if(state["selected"]!["style"]!["density"]!.GetValue<double>()!=24)throw new Exception("Deshacer no restaura el valor anterior");
+   await Send(Command("editor-redo"));if(state["selected"]!["style"]!["density"]!.GetValue<double>()!=27)throw new Exception("Rehacer no restaura el valor del deslizador");
+   string gesture=Guid.NewGuid().ToString("N");foreach(double value in new[]{28d,29d}){var change=Command("editor-style","density",JsonValue.Create(value));change["gesture"]=gesture;await Send(change);}
+   await Send(Command("editor-undo"));if(state["selected"]!["style"]!["density"]!.GetValue<double>()!=27)throw new Exception("Un gesto de deslizador crea varias acciones de deshacer");checks.Add("Undo/redo and one history entry per slider gesture");
+   var order=state["items"]!.AsArray().Select(i=>i!["id"]!.GetValue<string>()).Reverse().ToArray();await Send(new(){["op"]="editor-order",["ids"]=new JsonArray(order.Select(id=>(JsonNode?)JsonValue.Create(id)).ToArray())});
+   if(!state["items"]!.AsArray().Select(i=>i!["id"]!.GetValue<string>()).SequenceEqual(order))throw new Exception("El orden de capas no coincide con el orden visible");checks.Add("Arbitrary front-to-back layer order");
+   var opacity=Controls<Slider>(panelRoot).Single(s=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(s)=="Opacidad");opacity.Value=.64;await Task.Delay(160);await Drain();Apply(await Request(Command("editor-get")));if(Math.Abs(state["selected"]!["opacity"]!.GetValue<double>()-.64)>.001)throw new Exception("El deslizador de opacidad no se aplica");
+   await SnapshotPanel(output+".png");checks.Add("Native color, range and opacity controls render correctly");
+  }catch(Exception ex){failure=ex.ToString();}
+  Directory.CreateDirectory(System.IO.Path.GetDirectoryName(System.IO.Path.GetFullPath(output))!);await File.WriteAllTextAsync(output+".ui.json",JsonSerializer.Serialize(new{valid=failure==null,error=failure,checks},new JsonSerializerOptions{WriteIndented=true}));
+  bool discard=args.Contains("--editor-discard-test")||failure!=null;await Send(Command(discard?"editor-discard":"editor-save"));
+ }
+}
