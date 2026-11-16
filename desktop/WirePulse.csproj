@@ -8,7 +8,7 @@
  <ItemGroup>
   <PackageReference Include="Avalonia" Version="12.1.6"/><PackageReference Include="Avalonia.Desktop" Version="12.1.6"/>
   <PackageReference Include="Avalonia.Themes.Fluent" Version="12.1.6"/><PackageReference Include="Avalonia.Fonts.Inter" Version="12.1.6"/><PackageReference Include="Avalonia.Controls.ColorPicker" Version="12.1.6"/>
-  <InternalsVisibleTo Include="Performance"/><AvaloniaResource Include="Assets/**"/><Compile Remove="tests/**/*.cs"/>
+  <InternalsVisibleTo Include="Performance"/><AvaloniaResource Include="Assets/**"/><Compile Remove="tests/**/*.cs"/><Compile Remove="WindowsSettings/**/*.cs"/>
  </ItemGroup>
  <PropertyGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"><ApplicationManifest>Properties/app.manifest</ApplicationManifest></PropertyGroup>
  <ItemGroup Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'">

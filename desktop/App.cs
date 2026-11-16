@@ -8,7 +8,7 @@ using System.Diagnostics;
 using System.Text.Json;
 namespace WirePulse;
 
-public sealed class App : Application
+public sealed partial class App : Application
 {
     Settings settings = null!; readonly Spectrum spectrum = new(); MediaService media = null!; AudioCapture audio = null!; SettingsWindow? panel; EditorWindow? editor; Window? screenProbe; readonly List<Surface> walls = [];
     readonly Dictionary<string, Settings> profiles = [], available = []; DispatcherTimer? maintenance; TrayIcon? tray; bool polling, quitting, rebuilding, lastIndependent; DateTime lastStatus = DateTime.MinValue; double lastCpu, lastWall; double cpuPercent;
@@ -18,7 +18,11 @@ public sealed class App : Application
     {
         if (ApplicationLifetime is IClassicDesktopStyleApplicationLifetime life)
         {
-            life.ShutdownMode = ShutdownMode.OnExplicitShutdown;if(Program.Args.Contains("--widget-smoke-test")){WidgetSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;}if(Program.Args.Contains("--renderer-smoke-test")){RendererSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;} settings = new(); media = new(settings); audio = new(spectrum); audio.Start();
+            life.ShutdownMode = ShutdownMode.OnExplicitShutdown;
+#if WINDOWS
+            if(Program.Args.Contains("--windows-video-test")){WindowsVideoTest.Run(life);base.OnFrameworkInitializationCompleted();return;}
+#endif
+            if(Program.Args.Contains("--widget-smoke-test")){WidgetSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;}if(Program.Args.Contains("--renderer-smoke-test")){RendererSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;} settings = new(); media = new(settings); audio = new(spectrum); audio.Start();
             life.Exit += (_, _) => { quitting = true; maintenance?.Stop(); foreach (var wall in walls) { wall.Active = false; wall.View.Dispose(); } audio.Dispose(); tray?.Dispose(); screenProbe?.Close(); };
             var menu = new NativeMenu(); var show = new NativeMenuItem("Ajustes de WirePulse"); show.Click += (_, _) => ShowSettings(); menu.Add(show); var edit=new NativeMenuItem("Editar escritorio…");edit.Click+=(_,_)=>ShowEditor(settings,null);menu.Add(edit);
             var pause = new NativeMenuItem("Pausar / reanudar animación"); pause.Click += (_, _) => { settings.Paused = !settings.Paused; foreach (var p in profiles.Values) p.Paused = settings.Paused; }; menu.Add(pause);
@@ -32,7 +36,11 @@ public sealed class App : Application
         }
         base.OnFrameworkInitializationCompleted();
     }
-    void ShowSettings() { if (panel == null) { panel = new SettingsWindow(settings, spectrum, media, () => audio.Status, available, () => string.Join("\n", walls.Select(w => w.Covered ? $"{w.Name}: pausado por {w.SuspensionReason}" : $"{w.Name}: {w.View.Statistics.Fps:F0} FPS de dibujo / objetivo {w.Target:F0} · {w.View.Statistics.DrawMs:F2} ms · {w.View.Statistics.Backend}")),edit:ShowEditor,restart:()=>{Program.RestartRequested=true;(ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();}); panel.Closed += (_, _) => panel = null; } panel.Show(); panel.Activate(); }
+    void ShowSettings() {
+#if WINDOWS
+        if(ShowWindowsSettings())return;
+#endif
+        if (panel == null) { panel = new SettingsWindow(settings, spectrum, media, () => audio.Status, available, () => string.Join("\n", walls.Select(w => w.Covered ? $"{w.Name}: pausado por {w.SuspensionReason}" : $"{w.Name}: {w.View.Statistics.Fps:F0} FPS de dibujo / objetivo {w.Target:F0} · {w.View.Statistics.DrawMs:F2} ms · {w.View.Statistics.Backend}")),edit:ShowEditor,restart:()=>{Program.RestartRequested=true;(ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();}); panel.Closed += (_, _) => panel = null; } panel.Show(); panel.Activate(); }
     void ShowEditor(Settings target,string? selected) { if(settings.IndependentDisplays&&ReferenceEquals(target,settings))target=walls.FirstOrDefault()?.View.Configuration??target; if(editor!=null){editor.Activate();return;}var wall=walls.FirstOrDefault(w=>ReferenceEquals(w.View.Configuration,target))??walls.FirstOrDefault();if(wall==null||screenProbe==null)return;var screen=screenProbe.Screens.All.FirstOrDefault(s=>s.Bounds==wall.Bounds);if(screen==null)return;editor=new EditorWindow(target,spectrum,media,wall.Bounds,screen.Scaling,wall.Name,selected);editor.Closed+=(_,_)=>editor=null;editor.Show();editor.Activate();}
     void CreateWalls()
     {

@@ -17,12 +17,17 @@ internal static class Program
             if (args.Contains("--disable-autostart")) { new StartupRegistration().SetEnabled(false); return 0; }
 #if WINDOWS
             if (args.Contains("--native-draw-self-test"))return NativeDrawSelfTest.Run();
+            if (args.Contains("--windows-audio-test"))return WindowsAudioTest.Run();
 #endif
             if (args.Contains("--self-test")) return SelfTest.Run();
             int result;
-            using(var instance = new SingleInstance()){
+            using(var instance = new SingleInstance(
+#if WINDOWS
+                args.Contains("--renderer-smoke-test") || args.Contains("--widget-smoke-test") || args.Contains("--windows-video-test") || args.Contains("--winui-test-output") ? "-windows-tests" :
+#endif
+                "")){
              if (!instance.Owned) { if (!args.Contains("--autostart")) instance.Notify(); return 0; }
-             Singleton = instance;if(!args.Contains("--renderer-smoke-test")&&!args.Contains("--widget-smoke-test"))DesktopHost.Validate();
+             Singleton = instance;if(!args.Contains("--renderer-smoke-test")&&!args.Contains("--widget-smoke-test")&&!args.Contains("--windows-video-test"))DesktopHost.Validate();
              var builder=AppBuilder.Configure<App>().UsePlatformDetect().WithInterFont().LogToTrace();
              var preferences=new Settings();RenderEngines.Configure(Option("--engine")??preferences.WindowsEngine);builder=GraphicsBackend.Configure(builder,Option("--renderer")??(RenderEngines.Native?"DirectX 11":preferences.WindowsRenderer));
              result=builder.StartWithClassicDesktopLifetime(args);

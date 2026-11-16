@@ -1,0 +1,80 @@
+name: Publish Windows beta
+on:
+  create:
+  workflow_dispatch:
+permissions:
+  contents: write
+concurrency:
+  group: windows-beta-publication
+  cancel-in-progress: false
+jobs:
+  windows-beta:
+    if: github.event_name == 'workflow_dispatch' || (github.event.ref_type == 'branch' && github.event.ref == 'windows-beta')
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: desktop
+    env:
+      GH_TOKEN: ${{ github.token }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build Windows renderer and native WinUI; run hardware-aware checks
+        shell: pwsh
+        run: ./build-windows.ps1 -Test
+      - name: DSP and configuration regressions
+        shell: pwsh
+        run: |
+          $p=Start-Process -WindowStyle Hidden ./publish/WirePulse.exe -ArgumentList '--self-test' -Wait -PassThru
+          if($p.ExitCode -ne 0){throw 'Self-test failed'}
+          dotnet run --project tests/UiTests -c Release
+          if($LASTEXITCODE -ne 0){throw 'Editor regression failed'}
+          dotnet run --project tests/GifPerformance -c Release
+          if($LASTEXITCODE -ne 0){throw 'GIF regression failed'}
+          dotnet run --project tests/OrbRendering -c Release
+          if($LASTEXITCODE -ne 0){throw 'Orb regression failed'}
+      - name: Native graphics, desktop presentation and monitor isolation
+        shell: pwsh
+        run: |
+          ./tests/windows-renderers.ps1
+          ./tests/windows-displays.ps1
+      - name: Package only Windows
+        shell: pwsh
+        run: |
+          $version=(Get-Content ../VERSION -Raw).Trim()
+          $tag="windows-v$version-beta.${{ github.run_number }}"
+          Copy-Item WINDOWS-3.2.0.md publish/BETA-WINDOWS.md
+          python packaging/package.py win-x64 $version
+          if($LASTEXITCODE -ne 0){throw 'Packaging failed'}
+          ./packaging/windows/test-installer.ps1 -Installer "packages/WirePulse-$version-win-x64-Setup.exe" -Version $version
+          Get-ChildItem packages -File | Where-Object Extension -in @('.exe','.zip') | ForEach-Object {
+            Rename-Item -LiteralPath $_.FullName -NewName $_.Name.Replace("$version-win-x64","$version-windows-beta.${{ github.run_number }}")
+          }
+          Get-ChildItem packages -File | Where-Object Extension -in @('.exe','.zip') | ForEach-Object { "$((Get-FileHash $_.FullName -Algorithm SHA256).Hash.ToLower())  $($_.Name)" } | Set-Content packages/SHA256SUMS.txt -Encoding ascii
+          "BETA_TAG=$tag" >> $env:GITHUB_ENV
+      - name: Publish Windows prerelease without changing the stable release
+        shell: pwsh
+        run: |
+          $version=(Get-Content ../VERSION -Raw).Trim()
+          $notes=@"
+          Beta exclusiva de Windows: ajustes nativos WinUI 3 siguiendo la organización e iconos de macOS, correcciones de pausa en monitores secundarios y de superposiciones transparentes, menos transferencias de vídeo y mejoras de captura WASAPI y liberación de recursos GPU.
+
+          Probada localmente con una RTX 3050 y dos pantallas (1920×1080 y 1440×900). Los resultados detallados están en desktop/WINDOWS-3.2.0.md. macOS y Linux no se publican en esta beta. Mantiene el formato de escenas y ajustes existente.
+
+          Descargas: Setup.exe para instalar o ZIP portable; conserva toda la carpeta WindowsSettings. Esta beta no se marca como última versión estable.
+          Código: ${{ github.sha }}
+          "@
+          $notes | Set-Content windows-beta-notes.md -Encoding utf8
+          gh release create $env:BETA_TAG packages/*.exe packages/*.zip packages/SHA256SUMS.txt --repo $env:GITHUB_REPOSITORY --target $env:GITHUB_SHA --title "WirePulse $version · Windows beta ${{ github.run_number }}" --prerelease --latest=false --notes-file windows-beta-notes.md
+          if($LASTEXITCODE -ne 0){throw 'Windows beta publication failed'}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-beta-validation
+          path: |
+            desktop/test-results/
+            desktop/packages/
+          if-no-files-found: warn

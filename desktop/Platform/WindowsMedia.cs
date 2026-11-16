@@ -7,6 +7,7 @@ public static class WindowsMedia {
  sealed record Artwork(byte[]? Bytes,DateTimeOffset ReadAt);
  static readonly Dictionary<string,Artwork> art=[];
  public static async Task<Track?> Read(string selected){
+  if(selected=="Ninguno")return null;
   manager??=await GlobalSystemMediaTransportControlsSessionManager.RequestAsync();Track? paused=null;
   foreach(var session in manager.GetSessions()){
    var data=await session.TryGetMediaPropertiesAsync();if(string.IsNullOrWhiteSpace(data.Title))continue;var provider=MediaService.Provider(session.SourceAppUserModelId);

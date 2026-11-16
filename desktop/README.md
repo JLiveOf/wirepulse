@@ -14,6 +14,7 @@ Windows and Linux share this source directory. The native Swift / Metal macOS im
 ## Build
 
 Install .NET 10 SDK. Windows: `dotnet publish -c Release -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true -o publish`.
+For the complete Windows build, including native WinUI 3 settings, run `./build-windows.ps1` instead. Add `-Test` for native settings, real display-profile isolation, video frame cadence and GPU teardown tests. Keep the `WindowsSettings` directory and its resource index beside the renderer when distributing the app. Its Windows App SDK runtime is bundled; macOS and Linux retain their existing native/settings implementations.
 Linux: `dotnet publish -c Release -f net10.0 -r linux-x64 --self-contained true -o publish`.
 Run `publish/WirePulse.exe` or `publish/WirePulse`. The self-contained downloads do not need the SDK/runtime installed.
 

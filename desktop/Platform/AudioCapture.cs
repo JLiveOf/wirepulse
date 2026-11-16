@@ -12,8 +12,36 @@ public sealed class AudioCapture(Spectrum spectrum) : IDisposable
     readonly CancellationTokenSource stop = new(); public string Status { get; private set; } = "Conectando audio del sistema"; Task? worker;
     public void Start() => worker = Task.Run(Run);
 #if WINDOWS
- WasapiLoopbackCapture? capture;string endpoint="";float[] converted=[];
- async Task Run(){using var enumerator=new MMDeviceEnumerator();while(!stop.IsCancellationRequested){try{using var device=enumerator.GetDefaultAudioEndpoint(DataFlow.Render,Role.Multimedia);if(endpoint!=device.ID||capture==null){capture?.Dispose();capture=new WasapiLoopbackCapture(device);endpoint=device.ID;capture.DataAvailable+=(_,e)=>{var f=capture?.WaveFormat;if(f==null)return;int bytes=f.BitsPerSample/8,count=e.BytesRecorded/bytes;if(converted.Length<count)converted=new float[count];bool floating=f.Encoding==WaveFormatEncoding.IeeeFloat||(f is WaveFormatExtensible ext&&ext.SubFormat==new Guid("00000003-0000-0010-8000-00aa00389b71"));for(int i=0;i<count;i++){int p=i*bytes;converted[i]=floating?BitConverter.ToSingle(e.Buffer,p):bytes switch{2=>BitConverter.ToInt16(e.Buffer,p)/32768f,3=>((e.Buffer[p]|e.Buffer[p+1]<<8|e.Buffer[p+2]<<16)<<8>>8)/8388608f,4=>BitConverter.ToInt32(e.Buffer,p)/2147483648f,_=>0};}spectrum.Push(converted,count,f.Channels,f.SampleRate);};capture.RecordingStopped+=(_,e)=>{if(e.Exception!=null){Status="Audio desconectado: "+e.Exception.Message;endpoint="";}};capture.StartRecording();Status=$"WASAPI loopback · {capture.WaveFormat.SampleRate} Hz";}}catch(Exception e){Status=e.Message;endpoint="";}try{await Task.Delay(2000,stop.Token);}catch{break;}}capture?.Dispose();capture=null;}
+ WasapiLoopbackCapture? capture;string endpoint="";int windowsDisposed;
+ async Task Run(){
+  using var enumerator=new MMDeviceEnumerator();
+  while(!stop.IsCancellationRequested){
+   try{
+    using var device=enumerator.GetDefaultAudioEndpoint(DataFlow.Render,Role.Multimedia);
+    if(endpoint!=device.ID||capture==null){
+     var previous=capture;capture=null;previous?.Dispose();
+     var next=new WasapiLoopbackCapture(device);capture=next;endpoint=device.ID;
+     var format=next.WaveFormat;float[] converted=[];
+     // Initialize diagnostics even when WASAPI sends no buffers during silence.
+     var silence=new float[Math.Max(1,format.SampleRate/60)*format.Channels];
+     spectrum.Push(silence,silence.Length,format.Channels,format.SampleRate);
+     next.DataAvailable+=(_,e)=>{
+      // A late callback from the previous endpoint must never use the new format.
+      if(!ReferenceEquals(capture,next)||stop.IsCancellationRequested)return;
+      int bytes=format.BitsPerSample/8;if(bytes<1)return;int count=e.BytesRecorded/bytes;
+      if(converted.Length<count)converted=new float[count];
+      bool floating=format.Encoding==WaveFormatEncoding.IeeeFloat||(format is WaveFormatExtensible ext&&ext.SubFormat==new Guid("00000003-0000-0010-8000-00aa00389b71"));
+      for(int i=0;i<count;i++){int p=i*bytes;converted[i]=floating&&bytes==4?BitConverter.ToSingle(e.Buffer,p):bytes switch{1=>(e.Buffer[p]-128)/128f,2=>BitConverter.ToInt16(e.Buffer,p)/32768f,3=>((e.Buffer[p]|e.Buffer[p+1]<<8|e.Buffer[p+2]<<16)<<8>>8)/8388608f,4=>BitConverter.ToInt32(e.Buffer,p)/2147483648f,_=>0};}
+      spectrum.Push(converted,count,format.Channels,format.SampleRate);
+     };
+     next.RecordingStopped+=(_,e)=>{if(ReferenceEquals(capture,next)){Status=e.Exception==null?"Reconectando audio del sistema":"Audio desconectado: "+e.Exception.Message;endpoint="";}};
+     next.StartRecording();Status=$"WASAPI loopback · {format.SampleRate} Hz";
+    }
+   }catch(Exception e){Status=e.Message;endpoint="";}
+   try{await Task.Delay(2000,stop.Token);}catch(OperationCanceledException){break;}
+  }
+  var last=capture;capture=null;last?.Dispose();
+ }
 #else
     Process? process; string sink = ""; CancellationTokenSource? captureStop;
     async Task Run()
@@ -37,6 +65,9 @@ public sealed class AudioCapture(Spectrum spectrum) : IDisposable
 #endif
     public void Dispose()
     {
+#if WINDOWS
+        if(Interlocked.Exchange(ref windowsDisposed,1)!=0)return;
+#endif
         stop.Cancel();
 #if !WINDOWS
         captureStop?.Cancel(); try { process?.Kill(true); } catch { }

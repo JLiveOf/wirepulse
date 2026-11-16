@@ -46,6 +46,11 @@ jobs:
         with:
           dotnet-version: '10.0.x'
       - run: dotnet publish -c Release -f ${{ matrix.framework }} -r ${{ matrix.rid }} --self-contained true -o publish -p:DebugType=None -p:DebugSymbols=false
+        if: runner.os != 'Windows'
+      - name: Windows renderer, native WinUI settings and video cadence
+        if: runner.os == 'Windows'
+        shell: pwsh
+        run: ./build-windows.ps1 -Test
       - name: DSP and Cider protocol
         shell: bash
         run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test
@@ -81,12 +86,19 @@ jobs:
       - name: Native Windows graphics modes and safe fallbacks
         if: runner.os == 'Windows'
         shell: pwsh
-        run: ./tests/windows-renderers.ps1
+        run: |
+          ./tests/windows-renderers.ps1
+          ./tests/windows-displays.ps1
       - uses: actions/upload-artifact@v4
         if: always() && runner.os == 'Windows'
         with:
           name: windows-renderers
-          path: desktop/test-results/renderers/
+          path: |
+            desktop/test-results/renderers/
+            desktop/test-results/winui-native.json
+            desktop/test-results/video-*.json
+            desktop/test-results/audio-loopback.json
+            desktop/test-results/windows-displays.json
       - name: Package application
         shell: bash
         run: |
