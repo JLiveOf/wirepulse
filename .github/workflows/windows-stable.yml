@@ -1,6 +1,5 @@
 name: Publish Windows stable
 on:
-  create:
   push:
     branches: [windows-stable]
   workflow_dispatch:
@@ -8,10 +7,10 @@ permissions:
   contents: write
 concurrency:
   group: windows-stable-publication
-  cancel-in-progress: false
+  cancel-in-progress: true
 jobs:
   windows-stable:
-    if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/windows-stable' || (github.event.ref_type == 'branch' && startsWith(github.event.ref, 'windows-stable'))
+    if: false # Publication held while investigating live Windows regressions
     runs-on: windows-latest
     timeout-minutes: 25
     defaults:
