@@ -23,6 +23,7 @@ final class NowPlaying:ObservableObject {
   activeSource=source
   guard source != "Ninguno" else{bpm=0;title="";artist="";album="";identity="";provider="Audio del sistema";artwork=nil;artworkState="Sin fuente seleccionada";return}
   guard !busy else{return};busy=true
+  DispatchQueue.global(qos:.utility).async{[weak self] in
   let browser=source=="Automático" ? ProviderDetection.browser(from:ProviderDetection.activeOutputBundles()):nil
   let script="""
   JSON.stringify((function(){
@@ -34,7 +35,6 @@ final class NowPlaying:ObservableObject {
    if(playing.length)return playing[0];var web=browser();if(web)return web;return candidates[0]||{};
   })())
   """
-  DispatchQueue.global(qos:.utility).async{[weak self] in
    let (data,error)=source=="Cider" ? (Optional<Data>.none,""):Self.run(arguments:["-l","JavaScript","-e",script]);var info=data.flatMap{try? JSONSerialization.jsonObject(with:$0) as? [String:Any]}
    if source=="Cider" || source=="Automático"{if let cider=CiderReader.read(address:ciderURL,token:ciderToken),source=="Cider" || cider["playing"] as? Bool==true || info?["title"] as? String==nil{info=cider}}
    let result=info

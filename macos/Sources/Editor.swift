@@ -9,9 +9,6 @@ final class SceneEditorModel: ObservableObject {
   @Published var selected: String?
   @Published var snap: Bool
   @Published var inspector = true
-  @Published var dropTarget:String?
-  @Published var dropBefore=true
-  var dragSource:String?
   private var undo = [SceneDocument](), redo = [SceneDocument]()
   var document: SceneDocument {
     get { draft.scene! }
@@ -413,35 +410,7 @@ struct EditorChrome: View {
         VStack(alignment: .leading, spacing: 10) {
           Text("Objetos").font(.title2.bold())
           Text("Arrastra ⠿ para ordenar · arriba queda delante").font(.caption)
-          ScrollView {
-            LazyVStack(alignment: .leading, spacing: 4) {
-              ForEach(model.document.items.reversed()) { item in
-                HStack(spacing: 4) {
-                  Text("⠿").font(.title3).padding(.leading,4).help("Arrastra para cambiar el orden de la capa").onDrag{model.dragSource=item.id;return NSItemProvider(object:item.id as NSString)}
-                  Button {
-                    model.selected = item.id
-                  } label: {
-                    HStack {
-                      Text((item.visible ? "● " : "◌ ") + item.name).lineLimit(1)
-                      Spacer()
-                    }.padding(8).contentShape(Rectangle())
-                  }.buttonStyle(.plain)
-                  Button {
-                    model.selected = item.id
-                    model.change { $0.locked.toggle() }
-                  } label: {
-                    Image(systemName: item.locked ? "lock.fill" : "lock.open")
-                  }.buttonStyle(.borderless).help(
-                    item.locked ? "Desbloquear objeto" : "Bloquear objeto"
-                  ).accessibilityLabel((item.locked ? "Desbloquear " : "Bloquear ") + item.name)
-                    .padding(.trailing, 8)
-                }.frame(height:36).overlay(alignment:model.dropBefore ? .top:.bottom){if model.dropTarget==item.id{Rectangle().fill(Color.accentColor).frame(height:2)}}.onDrop(of:[UTType.text],delegate:LayerDrop(model:model,target:item.id)).background(
-                  model.selected == item.id ? Color.accentColor.opacity(0.55) : Color.clear,
-                  in: RoundedRectangle(cornerRadius: 8)
-                ).accessibilityAddTraits(model.selected == item.id ? .isSelected : [])
-              }
-            }
-          }.frame(height: 180)
+          LayerTable(model:model).frame(height:180)
           ScrollView { properties }
         }.padding().frame(width: 290).frame(maxHeight: max(160, (availableHeight ?? model.size.height) - 120)).background(
           .regularMaterial, in: RoundedRectangle(cornerRadius: 14)
@@ -592,14 +561,8 @@ struct EditorChrome: View {
     }
   }
 }
-struct LayerDrop:DropDelegate {
- let model:SceneEditorModel,target:String
- func validateDrop(info:DropInfo)->Bool{model.dragSource != nil && info.hasItemsConforming(to:[UTType.text])}
- func dropUpdated(info:DropInfo)->DropProposal?{let before=info.location.y<18;if model.dropTarget != target{model.dropTarget=target};if model.dropBefore != before{model.dropBefore=before};return DropProposal(operation:.move)}
- func dropExited(info:DropInfo){if model.dropTarget==target{model.dropTarget=nil}}
- func performDrop(info:DropInfo)->Bool{guard let source=model.dragSource,let provider=info.itemProviders(for:[UTType.text]).first else{return false};let before=info.location.y<18;model.dropTarget=nil;model.dragSource=nil;_ = provider.loadObject(ofClass:NSString.self){value,_ in guard value as? String==source else{return};DispatchQueue.main.async{model.reorder(source,target,before)}};return true}
-}
-final class SceneEditorWindow: NSWindow {
+final class SceneEditorWindow: NSWindow,NSWindowDelegate {
+  private var previewScene:SceneRoot?
   let model: SceneEditorModel
   var subscription: AnyCancellable?
   var onFinish:(()->Void)?
@@ -609,6 +572,7 @@ final class SceneEditorWindow: NSWindow {
     initial = model.document
     super.init(
       contentRect: screen.frame, styleMask: [.borderless], backing: .buffered, defer: false)
+    delegate=self
     model.window = self
     isReleasedWhenClosed = false
     level = .floating
@@ -627,6 +591,7 @@ final class SceneEditorWindow: NSWindow {
     }
     contentView = root
     let scene = SceneRoot(frame: root.bounds, config: model.draft, audio: audio, media: media)
+    previewScene=scene
     root.addSubview(scene)
     let canvas = EditorCanvasView(model)
     root.addSubview(canvas)
@@ -638,6 +603,8 @@ final class SceneEditorWindow: NSWindow {
       DispatchQueue.main.async { canvas?.needsDisplay = true }
     }
   }
+  func windowShouldClose(_ sender:NSWindow)->Bool{finish(false);return false}
+  func windowWillClose(_ notification:Notification){previewScene?.pause(true);if NSColorPanel.sharedColorPanelExists{NSColorPanel.shared.orderOut(nil)};onFinish?();onFinish=nil}
   static func controlsFrame(screen: CGRect, visible: CGRect) -> CGRect {
     let safe = screen.intersection(visible)
     return safe.offsetBy(dx: -screen.minX, dy: -screen.minY)
@@ -653,7 +620,6 @@ final class SceneEditorWindow: NSWindow {
       if alert.runModal() != .alertSecondButtonReturn { return }
     }
     if save { model.save() }
-    onFinish?();onFinish=nil
     orderOut(nil)
     close()
   }
@@ -664,6 +630,6 @@ final class EditorHostingView: NSHostingView<EditorChrome> {
     let p = convert(point, from: superview)
     let right = rootView.model.inspector && p.x > bounds.width - 330
     let bottom = isFlipped ? p.y > bounds.height - 90 : p.y < 90
-    return right || bottom ? super.hitTest(point) : nil
+    return right || bottom ? (super.hitTest(point) ?? self) : nil
   }
 }

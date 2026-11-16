@@ -51,7 +51,7 @@ public sealed class EditorWindow:Window {
    else if(spec.Kind is "bool" or "toggle"){bool on=value is JsonValue v&&(v.TryGetValue<bool>(out var b)?b:v.TryGetValue<double>(out var n)&&n>.5);Toggle(spec.Title,on,x=>item.Style[spec.Key]=JsonValue.Create(x));}
    else if(spec.Kind=="slider"){Label(spec.Title);var number=new NumericUpDown{Minimum=(decimal)spec.Min,Maximum=(decimal)spec.Max,Increment=(decimal)spec.Step,Value=(decimal)(value?.GetValue<double>()??0),FormatString="0.###"};number.ValueChanged+=(_,_)=>{if(number.Value==null)return;Checkpoint();item.Style[spec.Key]=JsonValue.Create((double)number.Value.Value);Changed();};properties.Children.Add(number);}
   }
-  Label("Opacidad");var opacity=new Slider{Minimum=.05,Maximum=1,Value=item.Opacity};opacity.PropertyChanged+=(_,e)=>{if(e.Property==Slider.ValueProperty){Checkpoint();item.Opacity=opacity.Value;Changed();}};properties.Children.Add(opacity);
+  Label("Opacidad");var opacity=new Slider{Minimum=0,Maximum=1,Value=item.Opacity};opacity.PropertyChanged+=(_,e)=>{if(e.Property==Slider.ValueProperty){Checkpoint();item.Opacity=opacity.Value;Changed();}};properties.Children.Add(opacity);
  }
  public static readonly HashSet<string> LayoutKeys=["sphereX","sphereY","spectrumX","spectrumY","cardX","cardY","clockX","clockY","radius","spectrumWidth","spectrumHeight","cardscale","clocksize"];
  void Duplicate(){if(Selected is not{} item)return;Checkpoint();var copy=item.Clone();copy.Id=Guid.NewGuid().ToString("N");copy.Name+=" · copia";copy.X+=.02;copy.Y+=.02;copy.Locked=false;Document.Items.Add(copy);canvas.SelectedId=copy.Id;Changed(true);Inspector();}

@@ -24,7 +24,7 @@ struct SettingsView:View {
       TimelineView(.periodic(from:.now,by:1)){_ in let s=audio.analyzer.snapshot();Text("64 bandas · FFT \(s.fftSize) · \(String(format:"%.2f",s.binWidthHz)) Hz/bin").font(.caption).foregroundStyle(.secondary)}
       Text("El límite superior es la mitad del muestreo capturado (Nyquist). No cambia la calidad de reproducción ni aumenta la resolución del archivo lossless.").font(.caption).foregroundStyle(.secondary)
       Text("Analiza el sonido que reproducen las aplicaciones, en memoria. No usa el micrófono ni guarda grabaciones.").font(.caption).foregroundStyle(.secondary)
-      HStack{Button(audio.running ? "Detener captura":"Activar audio del sistema"){if audio.running{audio.stop()}else{audio.start()}};Button("Permisos de audio"){NSWorkspace.shared.open(URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture")!)}}
+      HStack{Button(audio.running ? "Detener captura":audio.starting ? "Cancelar inicio":"Activar audio del sistema"){if audio.running || audio.starting{audio.stop()}else{audio.start()}};Button("Permisos de audio"){NSWorkspace.shared.open(URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_AudioCapture")!)}}
       TimelineView(.periodic(from:.now,by:0.1)){_ in let s=audio.analyzer.snapshot();HStack(alignment:.bottom,spacing:2){ForEach(0..<64,id:\.self){i in RoundedRectangle(cornerRadius:2).fill(Color.accentColor.opacity(s.age<0.4 ? 0.85:0.2)).frame(height:max(2,CGFloat(s.age<0.4 ? s.bands[i]:0)*52))}}.frame(height:54).accessibilityLabel("Nivel del audio capturado")}
      }
     }

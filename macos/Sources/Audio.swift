@@ -75,12 +75,21 @@ final class SpectrumAnalyzer {
 final class SystemAudio: ObservableObject {
  @Published var status="Audio sin activar"
  @Published var running=false
+ @Published var starting=false
  let analyzer=SpectrumAnalyzer()
  private var tap:AudioObjectID=0,aggregate:AudioObjectID=0,proc:AudioDeviceIOProcID?
  private var formatListener:AudioObjectPropertyListenerBlock?
  private let queue=DispatchQueue(label:"dev.wirepulse.audio",qos:.userInitiated)
- func start(){
-  stop()
+ private let control=DispatchQueue(label:"dev.wirepulse.audio-control",qos:.userInitiated)
+ private let stateLock=NSLock();private var generation=0,desired=false
+ private func request(_ enabled:Bool)->Int{stateLock.lock();defer{stateLock.unlock()};generation+=1;desired=enabled;return generation}
+ private func current(_ token:Int)->Bool{stateLock.lock();defer{stateLock.unlock()};return generation==token && desired}
+ var requested:Bool{stateLock.lock();defer{stateLock.unlock()};return desired}
+ private func matches(_ token:Int)->Bool{stateLock.lock();defer{stateLock.unlock()};return generation==token}
+ private func publish(_ token:Int,_ active:Bool,_ message:String,pending:Bool=false){DispatchQueue.main.async{[weak self] in guard let self=self,self.current(token) else{return};self.running=active;self.starting=pending;self.status=message}}
+ func start(){let token=request(true);publish(token,false,"Iniciando captura · permite el audio del sistema si macOS lo solicita…",pending:true);control.async{[weak self] in guard let self=self,self.current(token) else{return};self.startDevice(token)}}
+ private func startDevice(_ token:Int){
+  stopDevice()
   do{
    let description=CATapDescription(stereoGlobalTapButExcludeProcesses:[]);description.name="WirePulse · audio del sistema";description.uuid=UUID();description.isPrivate=true;description.muteBehavior = .unmuted
    try check(AudioHardwareCreateProcessTap(description,&tap),"Crear captura de audio")
@@ -95,15 +104,17 @@ final class SystemAudio: ObservableObject {
     self?.analyzer.ingestPlanar(UnsafeMutableAudioBufferListPointer(UnsafeMutablePointer(mutating:input)),rate:rate)
    },"Conectar analizador")
    try check(AudioDeviceStart(aggregate,proc),"Iniciar captura")
-   running=true;status="PCM Float32 · \(Int(rate)) Hz · análisis 0–\(Int(rate/2)) Hz"
+   guard current(token) else{stopDevice();return}
+   publish(token,true,"PCM Float32 · \(Int(rate)) Hz · análisis 0–\(Int(rate/2)) Hz")
    let observedTap=tap
    let listener:AudioObjectPropertyListenerBlock={ [weak self] _,_ in
-    DispatchQueue.main.async{guard let self=self,self.running,self.tap==observedTap else{return};self.start()}
+    self?.control.async{[weak self] in guard let self=self,self.current(token),self.tap==observedTap else{return};self.start()}
    }
    formatListener=listener
    AudioObjectAddPropertyListenerBlock(tap,&address,.main,listener)
-  }catch{stop();status=error.localizedDescription+". Revisa Privacidad y seguridad → Grabación de audio del sistema."}
+  }catch{stopDevice();publish(token,false,error.localizedDescription+". Revisa Privacidad y seguridad → Grabación de audio del sistema.")}
  }
- func stop(){if let listener=formatListener,tap != 0{var address=AudioObjectPropertyAddress(mSelector:kAudioTapPropertyFormat,mScope:kAudioObjectPropertyScopeGlobal,mElement:kAudioObjectPropertyElementMain);AudioObjectRemovePropertyListenerBlock(tap,&address,.main,listener)};formatListener=nil;if let proc=proc,aggregate != 0{AudioDeviceStop(aggregate,proc);AudioDeviceDestroyIOProcID(aggregate,proc)};proc=nil;if aggregate != 0{AudioHardwareDestroyAggregateDevice(aggregate);aggregate=0};if tap != 0{AudioHardwareDestroyProcessTap(tap);tap=0};running=false}
+ func stop(){let token=request(false);DispatchQueue.main.async{[weak self] in guard let self=self,self.matches(token) else{return};self.running=false;self.starting=false;self.status="Audio detenido"};control.async{[weak self] in self?.stopDevice()}}
+ private func stopDevice(){if let listener=formatListener,tap != 0{var address=AudioObjectPropertyAddress(mSelector:kAudioTapPropertyFormat,mScope:kAudioObjectPropertyScopeGlobal,mElement:kAudioObjectPropertyElementMain);AudioObjectRemovePropertyListenerBlock(tap,&address,.main,listener)};formatListener=nil;if let proc=proc,aggregate != 0{AudioDeviceStop(aggregate,proc);AudioDeviceDestroyIOProcID(aggregate,proc)};proc=nil;if aggregate != 0{AudioHardwareDestroyAggregateDevice(aggregate);aggregate=0};if tap != 0{AudioHardwareDestroyProcessTap(tap);tap=0}}
  private func check(_ code:OSStatus,_ action:String)throws{if code != noErr{throw NSError(domain:"WirePulse",code:Int(code),userInfo:[NSLocalizedDescriptionKey:"\(action): error \(code)"])}}
 }

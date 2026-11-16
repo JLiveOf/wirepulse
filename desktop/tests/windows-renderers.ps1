@@ -88,3 +88,14 @@ $result = Get-Content $report -Raw | ConvertFrom-Json
 if ($process.ExitCode -ne 1 -or $result.visible -or !$result.presentation.classHasOwnDc) { throw 'Direct presentation is visible; inspect regression expectations' }
 Write-Output 'PASS direct CPU presentation is invisible on the raised desktop; compatible presentation shows desktop pixels'
 
+
+foreach ($engine in @('Skia','Direct3D 11 · lotes GPU','Direct2D · vectorial')) {
+    $name = 'live-' + $(if ($engine -eq 'Skia') {'skia'} elseif ($engine.StartsWith('Direct3D')) {'d3d11'} else {'d2d'})
+    $report=Join-Path $PWD "test-results/renderers/$name.json"
+    $process=Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--explorer-desktop','--live-edit-fixture','--engine',('"'+$engine+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
+    if (!$process.WaitForExit(30000)) {$process.Kill($true);throw "Live-edit test timed out: $engine"}
+    if ($process.ExitCode -ne 0 -or !(Test-Path $report)) {Get-Content "test-results/renderers/$name.err";throw "Live edits failed: $engine"}
+    $result=Get-Content $report -Raw | ConvertFrom-Json
+    if (!$result.valid -or !$result.retainedValid -or $result.liveEdits -lt 10) {throw "Live edits recreated scene objects: $engine"}
+    Write-Output "PASS $engine: $($result.liveEdits) live edits retain $($result.retainedObjects) objects with animated GIF and visible wallpaper"
+}
