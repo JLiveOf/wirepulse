@@ -62,7 +62,7 @@ final class AppDelegate:NSObject,NSApplicationDelegate{
   NSApp.activate(ignoringOtherApps:true);settingsWindow?.makeKeyAndOrderFront(nil)
  }
  @objc func editDesktop(){openEditor(config.independentDisplays ? profileFor(NSScreen.main ?? NSScreen.screens[0]):config)}
- func openEditor(_ target:Configuration){if let editor=editorWindow,editor.isVisible{editor.makeKeyAndOrderFront(nil);return};let screen=NSScreen.screens.first{config.independentDisplays && displayProfiles[displayKey($0)] === target} ?? NSScreen.main ?? NSScreen.screens[0];let editor=SceneEditorWindow(screen:screen,config:target,audio:audio,media:media);editorWindow=editor;NSApp.activate(ignoringOtherApps:true);editor.makeKeyAndOrderFront(nil)}
+ func openEditor(_ target:Configuration){if let editor=editorWindow,editor.isVisible{editor.makeKeyAndOrderFront(nil);return};let screen=NSScreen.screens.first{config.independentDisplays && displayProfiles[displayKey($0)] === target} ?? NSScreen.main ?? NSScreen.screens[0];let editor=SceneEditorWindow(screen:screen,config:target,audio:audio,media:media);editorWindow=editor;for surface in surfaces{surface.suspend(true)};editor.onFinish={[weak self] in guard let self=self else{return};for surface in self.surfaces{surface.suspend(false)}};NSApp.activate(ignoringOtherApps:true);editor.makeKeyAndOrderFront(nil)}
  @objc func toggleAnimation(){config.paused.toggle();for profile in displayProfiles.values{profile.paused=config.paused}}
  @objc func restartAudio(){audio.start()}
  @objc func quit(){NSApp.terminate(nil)}

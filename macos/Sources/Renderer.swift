@@ -46,15 +46,16 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   let desired=config.on("unlimitedfps") ? (view.window?.screen?.maximumFramesPerSecond ?? 60):Int(config.n("fps"));if view.preferredFramesPerSecond != desired{view.preferredFramesPerSecond=desired}
   let scale=(view.window?.backingScaleFactor ?? 2)*config.n("quality"),size=CGSize(width:view.bounds.width*scale,height:view.bounds.height*scale)
   if view.drawableSize != size{view.drawableSize=size}
-  guard let descriptor=view.currentRenderPassDescriptor,let drawable=view.currentDrawable else{return}
+  guard inFlight.wait(timeout:.now()) == .success else{return}
+  guard let descriptor=view.currentRenderPassDescriptor,let drawable=view.currentDrawable else{inFlight.signal();return}
   let now=ProcessInfo.processInfo.systemUptime;let dt=min(0.1,max(0,now-last));last=now
   build(width:Float(view.bounds.width),height:Float(view.bounds.height),time:Float(now),dt:Float(dt))
   let bg=config.color("backgroundcolor").rgba
   descriptor.colorAttachments[0].clearColor = !transparent && config.backgroundPath.isEmpty ? MTLClearColor(red:Double(bg.x),green:Double(bg.y),blue:Double(bg.z),alpha:1):MTLClearColorMake(0,0,0,0)
-  guard let command=encode(descriptor) else{return};command.present(drawable);command.commit();frameCount+=1
+  guard let command=encode(descriptor,reserved:true) else{return};command.present(drawable);command.commit();frameCount+=1
  }
- private func encode(_ descriptor:MTLRenderPassDescriptor)->MTLCommandBuffer?{
-  inFlight.wait();guard let command=commandQueue.makeCommandBuffer(),let encoder=command.makeRenderCommandEncoder(descriptor:descriptor) else{inFlight.signal();return nil}
+ private func encode(_ descriptor:MTLRenderPassDescriptor,reserved:Bool=false)->MTLCommandBuffer?{
+  if !reserved && inFlight.wait(timeout:.now()) != .success{return nil};guard let command=commandQueue.makeCommandBuffer(),let encoder=command.makeRenderCommandEncoder(descriptor:descriptor) else{inFlight.signal();return nil}
   let byteCount=vertices.count*MemoryLayout<WireVertex>.stride
   if byteCount>0{
    let slot=bufferIndex;bufferIndex=(bufferIndex+1)%3

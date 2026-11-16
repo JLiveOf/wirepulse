@@ -17,9 +17,9 @@ public sealed class BackdropMedia:Panel,IDisposable {
 #else
  status="La reproducción de vídeo de fondo está disponible en Windows.";
 #endif
- }else{image=new ImageFrames(next);imageLayer=new ImageLayer(image);Children.Add(imageLayer);status=image.Animated?"GIF animado":"Imagen";}}catch(Exception e){status="No se pudo cargar el fondo: "+e.Message;}InvalidateVisual();}
- public void Advance(double seconds,bool paused){Refresh();double dt=previous==0?0:Math.Clamp(seconds-previous,0,.2);previous=seconds;image?.Update(dt,paused);if(image?.Animated==true)imageLayer?.InvalidateVisual();advanceVideo?.Invoke(seconds,paused);}
+ }else{image=new ImageFrames(next,asynchronous:true);imageLayer=new ImageLayer(image);Children.Add(imageLayer);status=image.Animated?"GIF animado":"Imagen";}}catch(Exception e){status="No se pudo cargar el fondo: "+e.Message;}InvalidateVisual();}
+ public void Advance(double seconds,bool paused){Refresh();double dt=previous==0?0:Math.Clamp(seconds-previous,0,.2);previous=seconds;image?.Update(dt,paused);advanceVideo?.Invoke(seconds,paused);}
  public void Dispose(){image?.Dispose();video?.Dispose();image=null;video=null;}
- sealed class ImageLayer(ImageFrames image):Control{public override void Render(DrawingContext c){c.Custom(new DrawImage(image,new Rect(Bounds.Size)));}}
+ sealed class ImageLayer:Control{readonly ImageFrames image;public ImageLayer(ImageFrames image){this.image=image;image.FrameReady+=Ready;}void Ready()=>Avalonia.Threading.Dispatcher.UIThread.Post(InvalidateVisual);protected override void OnDetachedFromVisualTree(VisualTreeAttachmentEventArgs e){image.FrameReady-=Ready;base.OnDetachedFromVisualTree(e);}public override void Render(DrawingContext c){c.Custom(new DrawImage(image,new Rect(Bounds.Size)));}}
  sealed class DrawImage(ImageFrames image,Rect bounds):ICustomDrawOperation{public Rect Bounds=>bounds;public bool HitTest(Point p)=>false;public bool Equals(ICustomDrawOperation? o)=>false;public void Dispose(){}public void Render(ImmediateDrawingContext c){using var lease=c.TryGetFeature<ISkiaSharpApiLeaseFeature>()?.Lease();if(lease!=null)image.Draw(lease.SkCanvas,new(0,0,(float)bounds.Width,(float)bounds.Height),cover:true);}}
 }

@@ -1,11 +1,11 @@
-WirePulse 3.1 adds native Windows visualization engines and more control over desktop objects.
+WirePulse 3.2 focuses on live-edit stability, animation decoding and desktop-editor responsiveness.
 
-- **Windows → Settings → Performance → Visualization engine**: choose Skia, Direct3D 11 GPU batches, or Direct2D vector drawing. Native engines share GPU textures with the interface; Skia remains available and is the fallback when sharing is unsupported. The existing Vulkan, DirectX 11, OpenGL and CPU interface choices remain under Skia. Performance varies with hardware and drivers.
-- Windows pauses animation independently on each display when a maximized window covers it; minimizing/restoring resumes rendering. A separate setting controls this behavior alongside the existing fullscreen setting.
-- **Orb properties → Render optimizado** skips mesh patches that cannot contribute to the screen, while retaining visible rear wires, deformation, glow and draw order. Disable it to use the previous projection. Tests compare old/new pixels on Windows/Linux and visible triangles on Metal.
-- Every object has a visible padlock in the layer list. The default mesh is no longer automatically locked when migrating a layout; saved user locks remain respected. A toolbar **Eliminar objeto** button makes deletion discoverable.
-- macOS editor controls stay inside the visible screen area, above the Dock and below the menu bar, while the canvas keeps full-desktop coordinates.
-- Rotate any object by a custom angle, ±90°, or reset. Selection outlines, hit testing and resize handles follow the rotation.
-- The Windows background setting now opens a file picker. Static images and animated GIFs use a retained media layer. Videos loop silently using native Media Foundation/Direct3D decoding, with a readback compatibility path for software composition. MP4/H.264 is recommended; other video formats depend on Windows codecs. Imported media is copied into app storage asynchronously.
+- **Drag layers to any position** using the grip in the object list. A drop indicator shows insertion before/after a row; the top row is the front layer. Selection, undo/redo and explicit Save/Cancel preserve the order. Available on Windows, Linux and macOS.
+- Live color, opacity, density, font and other property edits retain existing objects and visualizers instead of destroying/recreating them. This preserves animation phase and avoids blank frames, repeated image loads and GPU-device recreation.
+- Windows/Linux GIF playback uses sequential delta-frame decoding, immutable reusable frame images and a bounded cache (64 MiB per animation, 128 MiB total). Animated decoding runs off the UI thread with at most two workers. Rendering keeps the last complete frame when decoding is late; frames are invalidated only when they change.
+- Hidden/offscreen images stop advancing. Unchanged layer transforms and native view order no longer get reset on every property edit.
+- macOS no longer blocks the editor waiting for an available Metal command buffer. The underlying wallpapers pause while the desktop editor is open and resume after Save/Cancel. Text font changes update the retained text view; font inventories are cached.
 
-Downloads below include the Windows x64 installer/portable ZIP, Linux Mint/Cinnamon X11 DEB/portable tar.gz, and macOS Apple silicon app ZIP. This update does not require changing existing layouts.
+Validation includes delta GIFs across multiple loops, transparency/disposal regressions, retained-renderer identity during repeated live edits, arbitrary layer order and undo, native Windows desktop presentation and package installation, and macOS editor checks. Performance measurements are workload-specific, not a guarantee of a particular refresh rate on untested hardware.
+
+Downloads: Windows x64 installer/portable ZIP, Linux Mint/Cinnamon X11 DEB/portable tar.gz, macOS Apple silicon ZIP.

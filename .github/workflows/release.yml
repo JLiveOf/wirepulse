@@ -53,6 +53,8 @@ jobs:
         run: dotnet run --project tests/UiTests -c Release
       - name: Optimized orb pixel equivalence
         run: dotnet run --project tests/OrbRendering -c Release
+      - name: GIF delta-frame equivalence and decode performance
+        run: dotnet run --project tests/GifPerformance -c Release
       - name: Direct3D and Direct2D native render targets
         if: runner.os == 'Windows'
         run: ./publish/WirePulse.exe --native-draw-self-test

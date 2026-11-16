@@ -152,6 +152,7 @@ final class SceneRoot: NSView {
   override var isFlipped: Bool { true }
   let config: Configuration, audio: SystemAudio, media: NowPlaying
   private var nodes = [String: SceneNode](), subscription: AnyCancellable?
+  private var orderedIDs=[String](),suspended=false
   init(frame: NSRect, config: Configuration, audio: SystemAudio, media: NowPlaying) {
     self.config = config
     self.audio = audio
@@ -175,6 +176,7 @@ final class SceneRoot: NSView {
       node.removeFromSuperview()
       nodes.removeValue(forKey: id)
     }
+    let orderChanged=orderedIDs != doc.items.map(\.id);orderedIDs=doc.items.map(\.id)
     var previous: NSView?
     for item in doc.items {
       let node: SceneNode
@@ -184,22 +186,25 @@ final class SceneRoot: NSView {
         node = SceneNode(config: config, audio: audio, media: media)
         nodes[item.id] = node
       }
-      node.frameCenterRotation = 0
-      node.frame = item.rect(bounds.size)
-      if node.superview !== self
-        || subviews.firstIndex(of: node) != doc.items.firstIndex(where: { $0.id == item.id })
+      let geometry=item.rect(bounds.size)
+      if node.sceneRect != geometry || node.sceneAngle != item.rotation {node.frameCenterRotation=0;node.frame=geometry;node.sceneRect=geometry;node.sceneAngle=item.rotation}
+      if node.superview !== self || orderChanged
       {
         addSubview(node, positioned: .above, relativeTo: previous)
       }
       node.apply(item)
-      node.frameCenterRotation = CGFloat(item.rotation)
+      if node.frameCenterRotation != CGFloat(item.rotation){node.frameCenterRotation=CGFloat(item.rotation)}
+      node.suspend(suspended)
       previous = node
     }
   }
-  func pause(_ paused: Bool) { for node in nodes.values { node.metal?.isPaused = paused } }
+  func pause(_ paused: Bool) { suspended=paused;for node in nodes.values { node.suspend(paused) } }
 }
 final class SceneNode: NSView {
   override var isFlipped: Bool { true }
+  private var suspended=false
+  func suspend(_ value:Bool){suspended=value;let offscreen=superview.map{parent in let area=metal.map{$0.convert($0.bounds,to:parent)} ?? convert(bounds,to:parent);return !area.intersects(parent.bounds)} ?? false;let paused=value || root.paused || isHidden || alphaValue<=0 || offscreen;if metal?.isPaused != paused{metal?.isPaused=paused};if let image=child as? NSImageView,image.animates == paused{image.animates = !paused}}
+  var sceneRect=CGRect.null,sceneAngle=Double.nan
   let root: Configuration, proxy: Configuration, audio: SystemAudio, media: NowPlaying
   var metal: MTKView?, renderer: WallpaperRenderer?, widget: NativeWidget?
   private var item: SceneItem?, signature = "", child: NSView?, previousSize = CGSize.zero,
@@ -218,36 +223,26 @@ final class SceneNode: NSView {
   func apply(_ next: SceneItem) {
     clipsToBounds = next.kind != "orb"
     layer?.masksToBounds = next.kind != "orb"
-    isHidden = !next.visible
-    alphaValue = next.opacity
-    let encoder = JSONEncoder()
-    encoder.outputFormatting = .sortedKeys
-    let signature =
-      String(data: (try? encoder.encode(next.style)) ?? Data(), encoding: .utf8)! + next.kind
-      + next.asset + next.text + next.font + next.color
-    if self.signature != signature {
-      self.signature = signature
-      previousSize = .zero
-      previousFrame = .null
-      child?.removeFromSuperview()
-      metal?.isPaused = true
-      metal = nil
-      renderer = nil
-      widget = nil
-      child = nil
-      proxy.copyLayout(from: root)
-      proxy.scene = nil
-      proxy.backgroundPath = ""
-      proxy.colors["backgroundcolor"] = "#000000"
-      for (key, value) in next.style {
-        switch value {
-        case .number(let n): proxy.values[key] = n
-        case .bool(let b): proxy.values[key] = b ? 1 : 0
-        case .string(let s): proxy.colors[key] = s
-        }
-      }
-      for key in ["sphere", "spectrum", "card", "clockshow", "bgshow"] { proxy.values[key] = 0 }
-      proxy.clockFont = next.font
+    if isHidden == next.visible{isHidden = !next.visible}
+    if alphaValue != next.opacity{alphaValue = next.opacity}
+    let signature = next.kind + "|" + (["image","widget"].contains(next.kind) ? next.asset : "")
+    let rebuild = self.signature != signature
+    var values=root.values,colors=root.colors
+    for (key,value) in next.style where !SceneDocument.layoutKeys.contains(key){switch value{case .number(let n):values[key]=n;case .bool(let b):values[key]=b ? 1:0;case .string(let s):colors[key]=s}}
+    if !rebuild {for key in SceneDocument.layoutKeys{values[key]=proxy.n(key)}}
+    for key in ["sphere","spectrum","card","clockshow","bgshow"]{values[key]=0}
+    values[next.kind == "orb" ? "sphere":next.kind == "spectrum" ? "spectrum":next.kind == "card" ? "card":next.kind == "clock" ? "clockshow":"bgshow"]=1
+    values["bgstyle"]=next.kind == "mesh" ? 1:0
+    for key in ["sensitivity","bass","gate","smoothing","fps","unlimitedfps","quality"]{values[key]=root.n(key)}
+    if ["pulse","deformation","glow"].contains(where:{proxy.n($0) != (values[$0] ?? 0)}){previousFrame = .null}
+    colors["backgroundcolor"]="#000000"
+    if proxy.values != values{proxy.values=values};if proxy.colors != colors{proxy.colors=colors}
+    if proxy.clockFont != next.font{proxy.clockFont=next.font}
+    if proxy.paused != root.paused{proxy.paused=root.paused}
+    if rebuild {
+      self.signature = signature;previousSize = .zero;previousFrame = .null
+      child?.removeFromSuperview();metal?.isPaused=true;metal=nil;renderer=nil;widget=nil;child=nil
+      proxy.scene=nil;proxy.backgroundPath=""
       if ["orb", "spectrum", "stars", "mesh"].contains(next.kind),
         let device = MTLCreateSystemDefaultDevice(),
         let renderer = try? WallpaperRenderer(
@@ -295,12 +290,13 @@ final class SceneNode: NSView {
         addSubview(child)
       }
     }
+    if item?.font != next.font{previousSize = .zero}
     item = next
-    metal?.isPaused = !next.visible
-    for key in ["sensitivity", "bass", "gate", "smoothing", "fps", "unlimitedfps", "quality"] {
-      proxy.values[key] = root.n(key)
+    suspend(suspended)
+    if let text=child as? NSTextField {
+      if text.stringValue != next.text{text.stringValue=next.text;previousSize = .zero}
+      if text.textColor?.hex != NSColor(hex:next.color).hex{text.textColor=NSColor(hex:next.color)}
     }
-    proxy.paused = root.paused
     configureGeometry()
   }
   override func layout() {
