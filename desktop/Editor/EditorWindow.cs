@@ -15,7 +15,7 @@ public sealed partial class EditorWindow:Window {
  SceneDocument Document=>draft.Scene!;SceneItem? Selected=>Document.Items.FirstOrDefault(x=>x.Id==canvas.SelectedId);
  public EditorWindow(Settings settings,Spectrum spectrum,MediaService media,PixelRect screen,double scaling,string display,string? selected=null){original=settings;draft=settings.Preview();var viewport=new Size(screen.Width/scaling,screen.Height/scaling);draft.Scene??=SceneDocument.Migrate(settings,viewport);initial=Snapshot();Title="WirePulse · Editar escritorio · "+display;WindowDecorations=WindowDecorations.None;ShowInTaskbar=false;Topmost=true;CanResize=false;Position=screen.Position;Width=viewport.Width;Height=viewport.Height;Background=Brushes.Black;
 #if WINDOWS
-  windowsScreen=screen;windowsScaling=scaling;windowsOriginalSnapshot=JsonSerializer.Serialize(original.Scene);useWindowsEditor=File.Exists(Path.Combine(AppContext.BaseDirectory,"WindowsSettings","WirePulse.Settings.exe"));
+  windowsScreen=screen;windowsScaling=scaling;windowsOriginalSnapshot=JsonSerializer.Serialize(original.Scene);useWindowsEditor=File.Exists(Path.Combine(AppContext.BaseDirectory,"WindowsSettings","WirePulse.Settings.exe"));Topmost=!useWindowsEditor;
 #endif
   preview=new WallpaperView(draft,spectrum,media);canvas=new EditorCanvas(()=>Document){Snapping=settings.EditorSnap,SelectedId=selected??draft.Scene.Items.FirstOrDefault(i=>i.Kind=="card"&&i.Visible)?.Id};var root=new Grid();root.Children.Add(preview);root.Children.Add(canvas);
   var panel=new DockPanel{Margin=new Thickness(16)};var heading=new StackPanel{Spacing=8};heading.Children.Add(new TextBlock{Text="Objetos",FontSize=20,FontWeight=FontWeight.Bold});heading.Children.Add(new TextBlock{Text="Arrastra ⠿ para ordenar capas · arriba queda delante",TextWrapping=TextWrapping.Wrap,Foreground=Brushes.LightGray});heading.Children.Add(objects);DockPanel.SetDock(heading,Dock.Top);panel.Children.Add(heading);panel.Children.Add(new ScrollViewer{Content=properties});inspector=new Border{Width=300,MaxHeight=Math.Max(200,viewport.Height-120),HorizontalAlignment=HorizontalAlignment.Right,VerticalAlignment=VerticalAlignment.Top,Margin=new Thickness(16),Background=new SolidColorBrush(Color.Parse("#f21a202b")),BorderBrush=new SolidColorBrush(Color.Parse("#55667788")),BorderThickness=new Thickness(1),CornerRadius=new CornerRadius(14),Child=panel};root.Children.Add(inspector);
@@ -28,7 +28,17 @@ inspector.IsVisible=!useWindowsEditor;
 dock.IsVisible=!useWindowsEditor;
 #endif
 Content=root;
-  objects.SelectionChanged+=(_,_)=>{if(updating)return;canvas.SelectedId=(objects.SelectedItem as SceneItem)?.Id;canvas.InvalidateVisual();Inspector();};canvas.SelectionChanged+=()=>{RefreshList();Inspector();};canvas.DragStarted+=()=>dragBefore=Snapshot();canvas.Changed+=()=>draft.Save();canvas.DragEnded+=()=>{if(dragBefore!=null&&dragBefore!=Snapshot()){undo.Push(dragBefore);redo.Clear();}dragBefore=null;Inspector();};KeyDown+=Keys;Closed+=(_,_)=>{timer?.Stop();preview.Dispose();};timer=new DispatcherTimer(TimeSpan.FromMilliseconds(16),DispatcherPriority.Background,(_,_)=>preview.Advance(Environment.TickCount64/1000d));timer.Start();RefreshList();Inspector();
+  objects.SelectionChanged+=(_,_)=>{if(updating)return;canvas.SelectedId=(objects.SelectedItem as SceneItem)?.Id;canvas.InvalidateVisual();Inspector();};canvas.SelectionChanged+=()=>{RefreshList();Inspector();};canvas.DragStarted+=()=>dragBefore=Snapshot();canvas.Changed+=()=>draft.Save();canvas.DragEnded+=()=>{if(dragBefore!=null&&dragBefore!=Snapshot()){undo.Push(dragBefore);redo.Clear();}dragBefore=null;Inspector();};KeyDown+=Keys;Closed+=(_,_)=>{timer?.Stop();
+#if WINDOWS
+windowsPreviewActive=false;
+#endif
+preview.Dispose();};timer=new DispatcherTimer(TimeSpan.FromMilliseconds(16),DispatcherPriority.Background,(_,_)=>preview.Advance(Environment.TickCount64/1000d));
+#if WINDOWS
+ScheduleWindowsPreview();
+#else
+timer.Start();
+#endif
+RefreshList();Inspector();
  }
  public void Select(string id){canvas.SelectedId=id;RefreshList();Inspector();}
  static Button Button(Panel target,string label,Action action){var button=new Button{Content=label};button.Click+=(_,_)=>action();target.Children.Add(button);return button;}

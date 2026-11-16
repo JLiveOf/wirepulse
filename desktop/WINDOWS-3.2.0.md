@@ -40,3 +40,15 @@ En Windows, el modo de render optimizado descarta aristas traseras y recorta las
 
 Pruebas añadidas: editor WinUI guardar/descartar, identidad retenida del renderizador, sliders sin NumberBox, historial por gesto, orden de capas, límite en las pantallas físicas y presupuesto móvil de un segundo. Los informes y la imagen del panel se conservan en los artefactos de validación.
 Local validation note: the audible 1 kHz WASAPI self-test could not isolate its quiet tone while music was already playing (dominant peak 46.875 Hz). Capture delivered 181 frames at 48 kHz. No audio-capture implementation changed in this release; CI repeats this check on a clean endpoint.
+
+### Correcciones tras la prueba interactiva
+
+La primera candidata estable se retiró antes de publicar: el usuario detectó pérdida de fluidez y el inspector detrás del lienzo. Los dos workflows anteriores se cancelaron y no llegaron a crear una release.
+
+La presentación nativa utiliza las dos texturas sin esperar la importación de cada una antes de preparar la siguiente. Cada textura conserva su tarea LastPresent: Begin comprueba la finalización y propaga errores; resize y Dispose esperan ambas tareas antes de liberar recursos. El presupuesto de envíos por monitor sigue activo.
+
+El editor usa la frecuencia de su pantalla, sin temporizador fijo de 16 ms, y suspende el fondo que oculta para evitar doble render. El lienzo deja de ser topmost cuando tiene controles WinUI; el inspector se muestra explícitamente y mantiene su orden superior. La prueba nativa activa el lienzo y comprueba con hit testing de HWND que el panel sigue encima, además de recuperar un panel oculto.
+
+El usuario confirmó que la limitación de FPS funciona bien con esta corrección de presentación. La prueba WASAPI aislada y las pruebas de editor anteriores también pasaron en GitHub antes de detener aquella publicación.
+
+La prueba interactiva final del usuario confirmó tanto los límites por monitor como el panel de propiedades visible de forma estable. El workflow windows-stable sólo se dispara por push o manualmente, evitando la duplicación push/create.

@@ -12,6 +12,10 @@ namespace WirePulse.WindowsSettings;
 
 sealed partial class NativeEditorShell {
  [DllImport("user32.dll",EntryPoint="GetWindowLongPtrW")]static extern IntPtr GetOwner(IntPtr hwnd,int index);
+
+ [StructLayout(LayoutKind.Sequential)]struct ScreenPoint{public int X,Y;}
+ [DllImport("user32.dll")]static extern IntPtr WindowFromPoint(ScreenPoint point);
+ [DllImport("user32.dll")]static extern IntPtr GetAncestor(IntPtr window,uint flags);
  static IEnumerable<T> Controls<T>(DependencyObject parent)where T:DependencyObject{for(int i=0;i<VisualTreeHelper.GetChildrenCount(parent);i++){var child=VisualTreeHelper.GetChild(parent,i);if(child is T item)yield return item;foreach(var descendant in Controls<T>(child))yield return descendant;}}
  async Task SnapshotPanel(string path){
   var bitmap=new Microsoft.UI.Xaml.Media.Imaging.RenderTargetBitmap();await bitmap.RenderAsync(panelRoot);var pixels=await bitmap.GetPixelsAsync();using var reader=DataReader.FromBuffer(pixels);var bytes=new byte[pixels.Length];reader.ReadBytes(bytes);
@@ -21,6 +25,8 @@ sealed partial class NativeEditorShell {
   poll.Stop();var checks=new List<string>();string? failure=null;
   try{
    await Task.Delay(200);if(GetOwner(WindowNative.GetWindowHandle(panel),-8).ToInt64()!=state["owner"]!.GetValue<long>())throw new Exception("El panel WinUI no pertenece a la ventana de previsualización");
+   panel.AppWindow.Hide();ShowProperties();await Task.Delay(80);if(!IsWindowVisible(WindowNative.GetWindowHandle(panel)))throw new Exception("Propiedades no recupera el panel oculto");checks.Add("Properties reopens a hidden WinUI inspector");
+   await Request(Command("editor-test-focus"));await Task.Delay(150);var position=panel.AppWindow.Position;if(GetAncestor(WindowFromPoint(new ScreenPoint{X=position.X+40,Y=position.Y+40}),2)!=WindowNative.GetWindowHandle(panel))throw new Exception("El lienzo cubre el panel de propiedades después de activarse");checks.Add("Inspector remains above the activated editor canvas");
    if(layers.Items.Count!=2)throw new Exception("Faltan capas nativas");checks.Add("Owned native WinUI inspector and toolbar");
    var sliders=Controls<Slider>(panelRoot).ToArray();var density=sliders.Single(s=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(s)=="Densidad de malla");if(sliders.Length<6||Controls<NumberBox>(panelRoot).Any())throw new Exception("El inspector sigue usando campos numéricos en vez de deslizadores");
    int renderer=state["rendererIdentity"]!.GetValue<int>();density.Value=27;await Task.Delay(200);await Drain();Apply(await Request(Command("editor-get")));

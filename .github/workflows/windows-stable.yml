@@ -10,7 +10,7 @@ concurrency:
   cancel-in-progress: true
 jobs:
   windows-stable:
-    if: false # Publication held while investigating live Windows regressions
+    if: github.ref == 'refs/heads/windows-stable'
     runs-on: windows-latest
     timeout-minutes: 25
     defaults:

@@ -10,6 +10,8 @@ namespace WirePulse;
 
 public sealed partial class EditorWindow {
  bool useWindowsEditor,windowsCloseRequested;int windowsInspectorRevision;PixelRect windowsScreen;double windowsScaling;string? windowsGesture;string windowsOriginalSnapshot="";
+ readonly FramePacer windowsPreviewPacer=new();bool windowsPreviewActive=true;double windowsPreviewHz;
+ void ScheduleWindowsPreview(){if(windowsPreviewHz==0)windowsPreviewHz=DisplayTiming.RefreshRate(windowsScreen);RequestAnimationFrame(_=>{if(!windowsPreviewActive)return;double target=draft.On("unlimitedfps")?windowsPreviewHz:Math.Min(windowsPreviewHz,Math.Clamp(draft.N("fps"),15,360));if(draft.RenderProfile=="Ligero")target=Math.Min(target,60);preview.SetFrameLimit(target);double now=Stopwatch.GetTimestamp()/(double)Stopwatch.Frequency;if(windowsPreviewPacer.Due(now,target))preview.Advance(now);ScheduleWindowsPreview();});}
  internal bool WindowsEditorEnabled=>useWindowsEditor;
  internal PixelRect WindowsScreen=>windowsScreen;
  internal Settings WindowsOriginal=>original;
@@ -28,6 +30,7 @@ public sealed partial class EditorWindow {
   string? id=request["id"]?.GetValue<string>();var item=id==null?Selected:Document.Items.FirstOrDefault(x=>x.Id==id);
   switch(op){
    case "editor-get":break;
+   case "editor-test-focus":if(Program.Option("--winui-editor-test-output")==null)throw new InvalidOperationException("Solo para pruebas");Activate();break;
    case "editor-select":canvas.SelectedId=id;RefreshList();Inspector();canvas.InvalidateVisual();windowsGesture=null;break;
    case "editor-style":{
     if(item==null)throw new InvalidOperationException("Selecciona un objeto");string key=request["key"]!.GetValue<string>();

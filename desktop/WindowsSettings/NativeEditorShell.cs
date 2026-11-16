@@ -23,8 +23,10 @@ sealed partial class NativeEditorShell {
  readonly InfoBar error=new(){IsOpen=false,IsClosable=true};readonly CommandBar commands=new(){IsDynamicOverflowEnabled=true,DefaultLabelPosition=CommandBarDefaultLabelPosition.Right};
  readonly DispatcherTimer poll=new(){Interval=TimeSpan.FromMilliseconds(150)},flush=new(){Interval=TimeSpan.FromMilliseconds(60)};
  readonly SemaphoreSlim transport=new(1);readonly Dictionary<string,JsonObject> pending=[];readonly string pipe;readonly string[] args;
- JsonObject state=new();Task writes=Task.CompletedTask;bool updating,closing,busy,confirming,panelShown=true;string selected="",layerKey="";int revision=-1,hostProcess;AppBarButton? undoButton,redoButton;AppBarToggleButton? snapButton;
+ JsonObject state=new();Task writes=Task.CompletedTask;bool updating,closing,busy,confirming;string selected="",layerKey="";int revision=-1,hostProcess;AppBarButton? undoButton,redoButton;AppBarToggleButton? snapButton;
  [DllImport("user32.dll",EntryPoint="SetWindowLongPtrW",SetLastError=true)]static extern IntPtr SetOwner(IntPtr hwnd,int index,IntPtr value);
+ [DllImport("user32.dll")]static extern bool SetWindowPos(IntPtr window,IntPtr after,int x,int y,int width,int height,uint flags);
+ [DllImport("user32.dll")]static extern bool IsWindowVisible(IntPtr hwnd);
  [DllImport("user32.dll")]static extern bool ReleaseCapture();
  [DllImport("user32.dll")]static extern IntPtr SendMessage(IntPtr hwnd,uint message,IntPtr w,IntPtr l);
  public NativeEditorShell(string[] args){
@@ -49,9 +51,9 @@ sealed partial class NativeEditorShell {
   var screen=state["screen"]!;double scaling=screen["scaling"]!.GetValue<double>();int x=screen["x"]!.GetValue<int>(),y=screen["y"]!.GetValue<int>(),w=screen["width"]!.GetValue<int>(),h=screen["height"]!.GetValue<int>();int margin=(int)Math.Round(16*scaling),width=Math.Min(w-margin*2,(int)Math.Round(340*scaling)),height=Math.Max(240,h-(int)Math.Round(120*scaling));
   panel.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(x+w-width-margin,y+margin,width,height));int barWidth=Math.Min(w-margin*2,(int)Math.Round(1080*scaling)),barHeight=(int)Math.Round(76*scaling);toolbar.AppWindow.MoveAndResize(new Windows.Graphics.RectInt32(x+(w-barWidth)/2,y+h-barHeight-margin,barWidth,barHeight));
   var owner=new IntPtr(state["owner"]!.GetValue<long>());foreach(var window in new[]{panel,toolbar})SetOwner(WindowNative.GetWindowHandle(window),-8,owner);
-  BuildToolbar();Apply(state);panel.Activate();toolbar.Activate();poll.Start();flush.Start();
+  BuildToolbar();Apply(state);ShowProperties();toolbar.AppWindow.Show();toolbar.Activate();poll.Start();flush.Start();
   int test=Array.IndexOf(args,"--editor-smoke-output");if(test>=0&&test+1<args.Length)await Smoke(args[test+1]);
- }catch(Exception ex){Error(ex.Message);panel.Activate();}}
+ }catch(Exception ex){File.WriteAllText(IOPath.Combine(IOPath.GetTempPath(),"WirePulse-editor-error.txt"),ex.ToString());Error(ex.Message);ShowProperties();}}
  bool HostAlive(){try{return hostProcess==0||!Process.GetProcessById(hostProcess).HasExited;}catch{return false;}}
  static SolidColorBrush Brush(string color)=>new(ParseColor(color));
  static Color ParseColor(string color){
@@ -94,7 +96,7 @@ sealed partial class NativeEditorShell {
   commands.PrimaryCommands.Clear();var add=new AppBarButton{Label="Añadir",Icon=new SymbolIcon(Symbol.Add)};var menu=new MenuFlyout();foreach(var pair in state["kinds"]!.AsObject()){string kind=pair.Key;var item=new MenuFlyoutItem{Text=pair.Value!.GetValue<string>()};item.Click+=async(_,_)=>await Add(kind);menu.Items.Add(item);}var folder=new MenuFlyoutItem{Text="Widget desde carpeta…"};folder.Click+=async(_,_)=>await Add("widget",true);menu.Items.Add(folder);add.Flyout=menu;commands.PrimaryCommands.Add(add);
   undoButton=Action("Deshacer","\uE7A7",()=>Send(Command("editor-undo")));redoButton=Action("Rehacer","\uE7A6",()=>Send(Command("editor-redo")));
   snapButton=new AppBarToggleButton{Label="Ajustar a guías",Icon=new FontIcon{Glyph="\uE8A9"},IsChecked=state["snap"]!.GetValue<bool>()};snapButton.Click+=async(_,_)=>{if(!updating)await Send(Command("editor-snap",value:JsonValue.Create(snapButton.IsChecked==true)));};commands.PrimaryCommands.Add(snapButton);
-  Action("Eliminar objeto","\uE74D",()=>Send(Command("editor-delete")));Action("Propiedades","\uE713",()=>{panelShown=!panelShown;if(panelShown)panel.Activate();else panel.AppWindow.Hide();return Task.CompletedTask;});Action("Cancelar","\uE711",Cancel);
+  Action("Eliminar objeto","\uE74D",()=>Send(Command("editor-delete")));Action("Propiedades","\uE713",()=>{ShowProperties();return Task.CompletedTask;});Action("Cancelar","\uE711",Cancel);
   var save=Action("Guardar diseño","\uE74E",async()=>{await Send(Command("editor-save"));});save.Background=Brush("#007AFF");save.Foreground=Brush("#FFFFFF");
  }
  async Task Add(string kind,bool folder=false){try{
@@ -141,5 +143,7 @@ sealed partial class NativeEditorShell {
   if(e.Key==Windows.System.VirtualKey.S){e.Handled=true;await Drain();await Send(Command("editor-save"));}
   else if(e.OriginalSource is not TextBox&&e.Key is Windows.System.VirtualKey.Z or Windows.System.VirtualKey.Y){e.Handled=true;await Drain();await Send(Command(e.Key==Windows.System.VirtualKey.Z?"editor-undo":"editor-redo"));}
  }
+ void ShowProperties(){panel.AppWindow.Show();SetWindowPos(WindowNative.GetWindowHandle(panel),new IntPtr(-1),0,0,0,0,0x0013);panel.Activate();WritePanelStatus();}
+ void WritePanelStatus(){try{File.WriteAllText(IOPath.Combine(IOPath.GetTempPath(),"WirePulse-editor-state.json"),new JsonObject{["visible"]=IsWindowVisible(WindowNative.GetWindowHandle(panel)),["x"]=panel.AppWindow.Position.X,["y"]=panel.AppWindow.Position.Y,["width"]=panel.AppWindow.Size.Width,["height"]=panel.AppWindow.Size.Height,["selected"]=selected,["controls"]=properties.Children.Count,["error"]=error.IsOpen?error.Message:null}.ToJsonString());}catch{}}
  void CloseAll(){if(closing)return;closing=true;poll.Stop();flush.Stop();panel.Close();toolbar.Close();}
 }
