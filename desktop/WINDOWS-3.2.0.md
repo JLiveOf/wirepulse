@@ -1,3 +1,11 @@
+# Tulipan · Windows beta 2
+
+La segunda beta se centra en la orientación del motor nativo. Las texturas Direct3D 11 usan origen superior izquierdo, pero su importación omitía TopLeftOrigin y las presentaba invertidas. Ahora se declara explícitamente para los motores nativos y el vídeo. Una prueba asimétrica exige rojo arriba a la izquierda y verde abajo a la derecha en la imagen final compuesta; se ha comprobado que falla con el código anterior y pasa con la corrección.
+
+Direct3D 11 por lotes es el valor predeterminado de Windows para ajustes nuevos o antiguos que no declaren motor. Las elecciones de motor que ya estuvieran guardadas se respetan. Skia sigue siendo la alternativa de compatibilidad si no se pueden compartir texturas.
+
+Las pruebas del usuario con su pantalla a 165 Hz señalan una mejora importante al pasar de Skia a Direct3D por lotes. Las mediciones iniciales de 60/75 Hz que aparecen abajo corresponden a una sesión anterior y no deben confundirse con la configuración actual. La migración completa del inspector del editor a WinUI y la ocultación de geometría posterior quedan pendientes para la siguiente iteración; no forman parte de esta corrección enfocada.
+
 # Windows 3.2.0: native settings and reliability
 
 Windows now has a native WinUI 3 settings window with the same nine categories, corresponding vector symbols, grouped controls and per-display selection as macOS. Existing scenes, object editing and configuration formats remain compatible. macOS and Linux source behavior is preserved; the Windows settings executable and runtime are included only in Windows packages.

@@ -47,7 +47,7 @@ internal sealed class NativeVisualizationControl(Func<VisualizerOptions> options
  public void Adapt(double target)=>frame.Adapt(target,Statistics);
  protected override string ContentName=>RenderEngines.Requested;
  protected override void InitializeContent(){drawer=RenderEngines.Requested==RenderEngines.Direct2D?new D2DLineDrawer(Device):new D3DLineDrawer(Device);}
- protected override void RenderContent(NativeTexture target,PixelSize size,Size logical,double scale){frame.Build(logical.Width,logical.Height,System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency,options(),audio(),Paused);drawer!.Draw(target,size,logical,scale,frame);}
+ protected override void RenderContent(NativeTexture target,PixelSize size,Size logical,double scale){frame.Build(logical.Width,logical.Height,System.Diagnostics.Stopwatch.GetTimestamp()/(double)System.Diagnostics.Stopwatch.Frequency,options(),audio(),Paused);if(Program.Args.Contains("--orientation-fixture"))frame.Orientation(logical.Width,logical.Height);drawer!.Draw(target,size,logical,scale,frame);}
  protected override void FreeContent(){drawer?.Dispose();drawer=null;}
 }
 #endif

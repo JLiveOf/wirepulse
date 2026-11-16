@@ -18,7 +18,7 @@ foreach ($mediaFile in @('background.mp4','disposal.gif')) {
     $name = 'background-' + [IO.Path]::GetExtension($mediaFile).TrimStart('.')
     $report=Join-Path $PWD "test-results/renderers/$name.json"
     $file=Join-Path $PWD "tests/fixtures/$mediaFile"
-    $process=Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--explorer-desktop','--background-fixture',('"'+$file+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
+    $process=Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--explorer-desktop','--engine','Skia','--background-fixture',('"'+$file+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
     if (!$process.WaitForExit(25000)) {$process.Kill($true);throw "Background timed out: $mediaFile"}
     if ($process.ExitCode -ne 0 -or !(Test-Path $report)) {Get-Content "test-results/renderers/$name.err";throw "Background failed: $mediaFile"}
     $result=Get-Content $report -Raw | ConvertFrom-Json
@@ -33,17 +33,19 @@ try {
     $form.Text='WirePulse suspension fixture';$form.StartPosition='Manual';$form.Location=New-Object System.Drawing.Point(50,50);$form.Size=New-Object System.Drawing.Size(500,250);$form.TopMost=$true;$form.Show();[System.Windows.Forms.Application]::DoEvents()
     $screen=[System.Windows.Forms.Screen]::FromHandle($form.Handle).Bounds
     $rect="[$($screen.X),$($screen.Y),$($screen.Width),$($screen.Height)]"
+    $baseline=(& ./publish/WirePulse.exe --coverage-probe $rect | ConvertFrom-Json).reason
+    $baselineIgnoreMaximized=(& ./publish/WirePulse.exe --coverage-probe $rect --ignore-maximized | ConvertFrom-Json).reason
     $form.WindowState='Maximized';[System.Windows.Forms.Application]::DoEvents()
     $state=(& ./publish/WirePulse.exe --coverage-probe $rect | ConvertFrom-Json)
     if ($state.reason -ne 'ventana maximizada') {throw "Maximized HWND was not detected: $($state.reason)"}
     $state=(& ./publish/WirePulse.exe --coverage-probe $rect --ignore-maximized | ConvertFrom-Json)
-    if ($state.reason) {throw 'Maximized suspension preference ignored'}
+    if ($state.reason -ne $baselineIgnoreMaximized) {throw 'Maximized suspension preference ignored'}
     $form.WindowState='Minimized';[System.Windows.Forms.Application]::DoEvents()
     $state=(& ./publish/WirePulse.exe --coverage-probe $rect | ConvertFrom-Json)
-    if ($state.reason) {throw 'Minimized HWND still suspends wallpaper'}
+    if ($state.reason -ne $baseline) {throw 'Minimized HWND still suspends wallpaper'}
     $form.WindowState='Normal';[System.Windows.Forms.Application]::DoEvents()
     $state=(& ./publish/WirePulse.exe --coverage-probe $rect | ConvertFrom-Json)
-    if ($state.reason) {throw 'Restored HWND still suspends wallpaper'}
+    if ($state.reason -ne $baseline) {throw 'Restored HWND still suspends wallpaper'}
     Write-Output 'PASS real maximized HWND pauses its display; restored/minimized HWND resumes; preference can disable it'
 } finally {$form.Close();$form.Dispose()}
 
@@ -51,7 +53,7 @@ if (!$Quick) {
 foreach ($mode in @('Automático','DirectX 11','Vulkan','OpenGL','CPU (compatibilidad)')) {
     $name = @{'Automático'='auto';'DirectX 11'='dx11';'Vulkan'='vulkan';'OpenGL'='opengl';'CPU (compatibilidad)'='cpu'}[$mode]
     $report = Join-Path $PWD "test-results/renderers/$name.json"
-    $process = Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--renderer',('"'+$mode+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
+    $process = Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--engine','Skia','--renderer',('"'+$mode+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
     if (!$process.WaitForExit(25000)) { $process.Kill($true); throw "Renderer timed out: $mode" }
     if ($process.ExitCode -ne 0 -or !(Test-Path $report)) { Get-Content "test-results/renderers/$name.err"; throw "Renderer failed: $mode" }
     $result = Get-Content $report -Raw | ConvertFrom-Json
@@ -68,7 +70,7 @@ foreach ($layout in $layouts) {
     foreach ($mode in $desktopModes) {
         $name = $layout + '-' + $(if ($mode -eq 'OpenGL') {'opengl'} else {'cpu'})
         $report = Join-Path $PWD "test-results/renderers/$name.json"
-        $arguments = @('--renderer-smoke-test','--desktop-fixture','--renderer',('"'+$mode+'"'),'--probe-output',('"'+$report+'"'))
+        $arguments = @('--renderer-smoke-test','--desktop-fixture','--engine','Skia','--renderer',('"'+$mode+'"'),'--probe-output',('"'+$report+'"'))
         if ($layout -eq 'explorer') { $arguments += '--explorer-desktop' }
         $process = Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList $arguments -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
         if (!$process.WaitForExit(25000)) { $process.Kill($true); throw "Desktop fixture timed out: $name" }
@@ -81,7 +83,7 @@ foreach ($layout in $layouts) {
 }
 # Regression control: the old class flag must reproduce the invisible raised CPU wallpaper.
 $report = Join-Path $PWD 'test-results/renderers/legacy-explorer-cpu.json'
-$process = Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--explorer-desktop','--legacy-class-style','--renderer','"CPU (compatibilidad)"','--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput 'test-results/renderers/legacy-explorer-cpu.log' -RedirectStandardError 'test-results/renderers/legacy-explorer-cpu.err'
+$process = Start-Process -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--explorer-desktop','--legacy-class-style','--engine','Skia','--renderer','"CPU (compatibilidad)"','--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput 'test-results/renderers/legacy-explorer-cpu.log' -RedirectStandardError 'test-results/renderers/legacy-explorer-cpu.err'
 if (!$process.WaitForExit(25000)) { $process.Kill($true); throw 'Explorer regression control timed out' }
 if (!(Test-Path $report)) { throw 'Regression control did not produce a report' }
 $result = Get-Content $report -Raw | ConvertFrom-Json
@@ -98,4 +100,15 @@ foreach ($engine in @('Skia','Direct3D 11 · lotes GPU','Direct2D · vectorial')
     $result=Get-Content $report -Raw | ConvertFrom-Json
     if (!$result.valid -or !$result.retainedValid -or $result.liveEdits -lt 10) {throw "Live edits recreated scene objects: $engine"}
     Write-Output "PASS ${engine}: $($result.liveEdits) live edits retain $($result.retainedObjects) objects with animated GIF and visible wallpaper"
+}
+
+# Asymmetric markers detect a flipped imported texture, not merely nonempty pixels.
+foreach ($engine in @('Direct3D 11 · lotes GPU','Direct2D · vectorial')) {
+    $name=if($engine.StartsWith('Direct3D')){'orientation-d3d11'}else{'orientation-d2d'}
+    $report=Join-Path $PWD "test-results/renderers/$name.json"
+    $process=Start-Process -WindowStyle Hidden -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--orientation-fixture','--engine',('"'+$engine+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
+    if(!$process.WaitForExit(25000)){$process.Kill($true);throw "Orientation test timed out: $engine"}
+    $result=Get-Content $report -Raw | ConvertFrom-Json
+    if($process.ExitCode -ne 0 -or !$result.valid -or !$result.orientationValid){throw "Imported GPU texture is flipped: $engine"}
+    Write-Output "PASS ${engine}: top-left red and bottom-right green markers retain their positions"
 }
