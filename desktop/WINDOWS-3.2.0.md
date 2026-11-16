@@ -52,3 +52,5 @@ El editor usa la frecuencia de su pantalla, sin temporizador fijo de 16 ms, y su
 El usuario confirmó que la limitación de FPS funciona bien con esta corrección de presentación. La prueba WASAPI aislada y las pruebas de editor anteriores también pasaron en GitHub antes de detener aquella publicación.
 
 La prueba interactiva final del usuario confirmó tanto los límites por monitor como el panel de propiedades visible de forma estable. El workflow windows-stable sólo se dispara por push o manualmente, evitando la duplicación push/create.
+
+La primera ejecución final de CI encontró una condición incorrecta del smoke test: la orientación era correcta (orientationValid=true, 101 frames y 3072 píxeles rojos), pero exigía que el compositor Skia hubiera observado su contexto incluso en una escena completamente nativa. La prueba ahora exige observación de Skia para motores Skia; para motores nativos conserva la validación de motor real, textura compartida/copia, píxeles y marcadores asimétricos. No cambia el comportamiento instalado.

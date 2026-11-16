@@ -109,6 +109,6 @@ foreach ($engine in @('Direct3D 11 · lotes GPU','Direct2D · vectorial')) {
     $process=Start-Process -WindowStyle Hidden -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList @('--renderer-smoke-test','--desktop-fixture','--orientation-fixture','--engine',('"'+$engine+'"'),'--probe-output',('"'+$report+'"')) -PassThru -RedirectStandardOutput "test-results/renderers/$name.log" -RedirectStandardError "test-results/renderers/$name.err"
     if(!$process.WaitForExit(25000)){$process.Kill($true);throw "Orientation test timed out: $engine"}
     $result=Get-Content $report -Raw | ConvertFrom-Json
-    if($process.ExitCode -ne 0 -or !$result.valid -or !$result.orientationValid){throw "Imported GPU texture is flipped: $engine"}
+    if($process.ExitCode -ne 0 -or !$result.valid -or !$result.orientationValid){throw "Native orientation validation failed: $engine; upright=$($result.orientationValid), valid=$($result.valid), active=$($result.active)"}
     Write-Output "PASS ${engine}: top-left red and bottom-right green markers retain their positions"
 }
