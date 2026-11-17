@@ -77,3 +77,9 @@ En Windows 11 con el escritorio elevado, CPU/OpenGL usan una capa de presentaci�
 ### Manual desktop editor
 
 WirePulse 3 adds drag/resize composition editing, optional snapping, independent object copies, custom text, images, animated GIFs, and HTML widgets on all three systems. Open **Editar escritorio…** from Settings or the tray/menu bar. See [Editor guide and widget format](docs/EDITOR.md).
+
+## Compartir layouts entre sistemas
+
+En Ajustes, usa **Exportar layout…** para crear un archivo `.wirepulse` y **Importar layout…** en el equipo de destino. Se transfiere el diseño de la pantalla seleccionada (o el compartido): objetos, posiciones relativas, orden de capas, estilos, guías y recursos incluidos. Guarda o cancela el editor antes de transferir. Las fuentes no instaladas usan la alternativa del sistema y los códecs dependen del equipo.
+
+El paquete no incluye tokens de Cider, ajustes de arranque, permisos ni motores gráficos. El límite es 2 GB y 2048 entradas. Los widgets conservan sus archivos, por lo que debes importar únicamente los layouts cuyos widgets quieras ejecutar.

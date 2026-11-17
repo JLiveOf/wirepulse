@@ -5,6 +5,8 @@ Yamato integrates the validated Windows Tulipan history with the native macOS ap
 - Nine equivalent settings pages, 52 shared controls with checked ranges and defaults, and five music-provider choices including None and Cider. Windows uses WinUI 3; macOS keeps SwiftUI/AppKit; Linux uses Avalonia.
 - Drawing resolution from 0.5× to 1.5× is functional on Metal, native Direct3D/Direct2D and Skia. Only the visualization surface is scaled; music cards and text keep native resolution.
 - Per-monitor cadence, independent coverage suspension and editor previews. Linux refresh discovery runs asynchronously. macOS no longer pauses the other monitor when editing a display.
+- Portable import/export on every platform: relative object positions, layers, styles, locks and embedded image/GIF/video/widget resources in one `.wirepulse` ZIP. Tokens, login settings and graphics API selections stay local.
+- GIF timing in the desktop editor uses one monotonic frame source, with 60/75/165/240 FPS regression comparisons.
 - Sliders in all desktop editors, one undo action per continuous slider gesture, draggable layers, locks, rotation, duplicate/delete, optional guides and explicit Save/Cancel.
 - Optimized front-hemisphere rendering on all platforms, with edges clipped at the silhouette and offscreen patch culling. The original full transparent mesh remains available by disabling optimized rendering.
 - Image/GIF/video backgrounds on all platforms: AVFoundation on macOS, Media Foundation on Windows and FFmpeg on Linux. Videos loop silently and stop decoding while suspended.

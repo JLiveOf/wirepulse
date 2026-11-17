@@ -9,7 +9,7 @@ namespace WirePulse;
 
 public sealed class AudioCapture(Spectrum spectrum) : IDisposable
 {
-    readonly CancellationTokenSource stop = new(); public string Status { get; private set; } = "Conectando audio del sistema"; Task? worker;
+    int disposedCapture;readonly CancellationTokenSource stop = new(); public string Status { get; private set; } = "Conectando audio del sistema"; Task? worker;
     public void Start() => worker = Task.Run(Run);
 #if WINDOWS
  WasapiLoopbackCapture? capture;string endpoint="";int windowsDisposed;
@@ -52,7 +52,7 @@ public sealed class AudioCapture(Spectrum spectrum) : IDisposable
             {
                 var info = await Commands.Run("pactl", "--format=json", "info"); if (info.Code != 0) throw new Exception("Instala pulseaudio-utils y comprueba PulseAudio/PipeWire."); var name = JsonNode.Parse(info.Text)?["default_sink_name"]?.GetValue<string>(); if (string.IsNullOrWhiteSpace(name)) throw new Exception("No se encuentra la salida de audio predeterminada."); if (sink != name || process == null || process.HasExited)
                 {
-                    captureStop?.Cancel(); try { process?.Kill(true); } catch { }
+                    try { process?.Kill(true); } catch { }
                     if(readTask!=null)try{await readTask;}catch{}process?.Dispose();captureStop?.Dispose();if(stop.IsCancellationRequested)break;
                     sink = name; int rate = 48000; var list = await Commands.Run("pactl", "--format=json", "list", "sinks"); if (list.Code == 0 && JsonNode.Parse(list.Text) is JsonArray entries) { foreach (var entry in entries) { if (entry?["name"]?.GetValue<string>() != name) continue; var spec = entry["sample_specification"]?.GetValue<string>() ?? ""; var match = System.Text.RegularExpressions.Regex.Match(spec, @"(\d+)Hz"); if (match.Success) rate = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture); } }
                     captureStop = CancellationTokenSource.CreateLinkedTokenSource(stop.Token); process = new Process { StartInfo = new() { FileName = "parec", RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false } }; foreach (var a in new[] { "--device=" + name + ".monitor", "--format=float32le", "--rate=" + rate, "--channels=2", "--raw", "--latency-msec=25", "--process-time-msec=10", "--client-name=WirePulse" }) process.StartInfo.ArgumentList.Add(a); process.Start(); _ = process.StandardError.ReadToEndAsync(); readTask = Read(process, rate, captureStop.Token); Status = $"Monitor {name} · {rate} Hz";
@@ -67,12 +67,13 @@ public sealed class AudioCapture(Spectrum spectrum) : IDisposable
 #endif
     public void Dispose()
     {
+        if(Interlocked.Exchange(ref disposedCapture,1)!=0)return;
 #if WINDOWS
         if(Interlocked.Exchange(ref windowsDisposed,1)!=0)return;
 #endif
         stop.Cancel();
 #if !WINDOWS
-        captureStop?.Cancel(); try { process?.Kill(true); } catch { }
+        try { process?.Kill(true); } catch { }
 #endif
         try { worker?.Wait(TimeSpan.FromSeconds(3)); } catch { }
         stop.Dispose();

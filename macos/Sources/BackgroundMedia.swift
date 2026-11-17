@@ -7,7 +7,7 @@ final class BackgroundMedia:NSView {
  private var queue:AVQueuePlayer?,looper:AVPlayerLooper?,path="",paused=false
  override init(frame:NSRect){super.init(frame:frame);wantsLayer=true;layer?.masksToBounds=true;image.imageScaling = .scaleProportionallyUpOrDown;image.animates=true;image.autoresizingMask=[.width,.height];image.frame=bounds;addSubview(image);video.videoGravity = .resizeAspectFill;layer?.addSublayer(video)}
  required init?(coder:NSCoder){fatalError()}
- var playbackSeconds:Double{queue?.currentTime().seconds ?? 0}
+ var playbackSeconds:Double{let time=queue?.currentTime().seconds ?? 0;return time.isFinite ? time:0}
  var hasVideo:Bool{queue != nil}
  var animatesImage:Bool{image.animates}
  override func layout(){super.layout();video.frame=bounds;image.frame=bounds}

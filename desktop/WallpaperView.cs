@@ -11,7 +11,7 @@ public sealed class WallpaperView : Panel, IDisposable
     readonly bool transparent,cardFillsBounds;SceneLayer? sceneLayer;readonly Settings settings; readonly Spectrum spectrum; readonly MediaService media; readonly VisualizerPainter painter = new(); readonly BackdropMedia mediaBackdrop;readonly Layer dimmer;readonly Layer backdrop, animation, card,clock,presentation;
     public WindowsLayeredPresenter? Presenter{get;private set;}
     public void UsePresenter(WindowsLayeredPresenter? presenter){if(presenter==null||Presenter!=null)return;Presenter=presenter;presentation.InvalidateVisual();}
-    VisualizerOptions options; Bitmap? cover; string artKey = ""; bool loading, disposed; byte[]? artBytes; DateTime retryAt; readonly CancellationTokenSource artworkStop = new(); string measuredProvider = ""; double measuredTagSize, measuredTagWidth; double clockAt;string lastClock="",lastFont="",lastClockColor="";double lastClockSize;FormattedText? clockText;double cardAt; Track? previousTrack;
+    VisualizerOptions options; Bitmap? cover; string artKey = ""; bool loading, disposed,suspended; byte[]? artBytes; DateTime retryAt; readonly CancellationTokenSource artworkStop = new(); string measuredProvider = ""; double measuredTagSize, measuredTagWidth; double clockAt;string lastClock="",lastFont="",lastClockColor="";double lastClockSize;FormattedText? clockText;double cardAt; Track? previousTrack;
     readonly Dictionary<string, IBrush> brushes = []; readonly Dictionary<(string, double, bool, IBrush), FormattedText> textCache = [];
     static readonly HttpClient Http = new() { Timeout = TimeSpan.FromSeconds(8) };
     public bool HasAnimatedMedia=>!transparent&&mediaBackdrop.Animated;public string MediaBackdropStatus=>mediaBackdrop.Status;public long VideoFrames=>mediaBackdrop.VideoFrames;
@@ -53,7 +53,7 @@ public sealed class WallpaperView : Panel, IDisposable
         native?.Advance(seconds,settings.Paused);
 #endif
         animation.InvalidateVisual();if(Presenter!=null)presentation.InvalidateVisual();if(seconds-clockAt>=1){clockAt=seconds;clock.InvalidateVisual();} if (seconds - cardAt >= .25 || !ReferenceEquals(previousTrack, media.Current)) { cardAt = seconds; previousTrack = media.Current; card.InvalidateVisual(); } }
-    public void Suspend(bool value){mediaBackdrop.Suspend(value);}
+    public void Suspend(bool value){if(suspended!=value){suspended=value;sceneLayer?.ResetClock();}mediaBackdrop.Suspend(value);}
     public void SetFrameLimit(double target){sceneLayer?.SetFrameLimit(target);
 #if WINDOWS
         native?.SetFrameLimit(target);

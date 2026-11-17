@@ -24,7 +24,7 @@ internal sealed partial class WindowsSettingsHost(Func<JsonObject,JsonNode> hand
   await server.WaitForConnectionAsync(stop.Token);using var reader=new StreamReader(server,Encoding.UTF8,leaveOpen:true);using var writer=new StreamWriter(server,new UTF8Encoding(false),leaveOpen:true){AutoFlush=true};
   string? line=await reader.ReadLineAsync(stop.Token);if(line==null||line.Length>65536)continue;
   var request=JsonNode.Parse(line)?.AsObject()??throw new InvalidDataException("Solicitud inválida");JsonNode reply;
-  try{if(request["op"]?.GetValue<string>()=="import"){string asset=await AssetStore.ImportMediaAsync(request["value"]!.GetValue<string>());request["op"]="set";request["key"]="backgroundimage";request["value"]=asset;}if(request["op"]?.GetValue<string>()=="editor-add"&&request["path"] is JsonValue pathValue){request["asset"]=await Task.Run(()=>AssetStore.Import(pathValue.GetValue<string>(),request["kind"]?.GetValue<string>()=="widget"));}reply=await Dispatcher.UIThread.InvokeAsync(()=>handle(request));}catch(Exception ex){reply=new JsonObject{["error"]=ex.Message};}
+  try{if(request["op"]?.GetValue<string>()=="layout-export"){var get=new JsonObject{["op"]="layout-snapshot",["profile"]=request["profile"]?.DeepClone()};var snapshot=await Dispatcher.UIThread.InvokeAsync(()=>handle(get));var package=snapshot.Deserialize<LayoutPackage>(LayoutPackage.Json)!;await Task.Run(()=>LayoutPackage.Export(request["value"]!.GetValue<string>(),package));request["op"]="get";}if(request["op"]?.GetValue<string>()=="layout-import"){var package=await Task.Run(()=>LayoutPackage.Import(request["value"]!.GetValue<string>()));request["layout"]=JsonSerializer.SerializeToNode(package,LayoutPackage.Json);request["op"]="layout-apply";}if(request["op"]?.GetValue<string>()=="import"){string asset=await AssetStore.ImportMediaAsync(request["value"]!.GetValue<string>());request["op"]="set";request["key"]="backgroundimage";request["value"]=asset;}if(request["op"]?.GetValue<string>()=="editor-add"&&request["path"] is JsonValue pathValue){request["asset"]=await Task.Run(()=>AssetStore.Import(pathValue.GetValue<string>(),request["kind"]?.GetValue<string>()=="widget"));}reply=await Dispatcher.UIThread.InvokeAsync(()=>handle(request));}catch(Exception ex){reply=new JsonObject{["error"]=ex.Message};}
   await writer.WriteLineAsync(reply.ToJsonString());
  }catch(OperationCanceledException){break;}catch(Exception ex){Trace.WriteLine(ex);}}}
  public void Dispose(){stop.Cancel();if(process is{HasExited:false})process.CloseMainWindow();if(editorProcess is{HasExited:false})editorProcess.CloseMainWindow();}
@@ -43,6 +43,7 @@ public sealed partial class App {
   string op=request["op"]?.GetValue<string>()??"get",profile=request["profile"]?.GetValue<string>()??"";
   var target=settings.IndependentDisplays&&available.TryGetValue(profile,out var selected)?selected:settings;
   if(request["global"]?.GetValue<bool>()==true)target=settings;
+  Avalonia.Size wallSize()=>walls.FirstOrDefault(w=>ReferenceEquals(w.View.Configuration,target))?.View.Bounds.Size??walls.FirstOrDefault()?.View.Bounds.Size??new Avalonia.Size(1920,1080);
   switch(op){
    case "set":{
     string key=request["key"]!.GetValue<string>();var spec=target.Specs.FirstOrDefault(s=>s.Key==key)??throw new ArgumentException("Control desconocido");var value=request["value"];
@@ -59,6 +60,8 @@ public sealed partial class App {
     if(key=="WindowsEngine")value=RenderEngines.Normalize((string?)value);if(key=="WindowsRenderer")value=GraphicsBackend.Normalize((string?)value);
     property.SetValue(target,value);target.Save();break;
    }
+   case "layout-snapshot":if(editor!=null)throw new InvalidOperationException("Guarda o cancela el editor antes de exportar.");return JsonSerializer.SerializeToNode(LayoutPackage.Create(target,wallSize()),LayoutPackage.Json)!;
+   case "layout-apply":if(editor!=null)throw new InvalidOperationException("Guarda o cancela el editor antes de importar.");request["layout"]!.Deserialize<LayoutPackage>(LayoutPackage.Json)!.Apply(target);break;
    case "edit":ShowEditor(target,null);break;
    case "reset":target.Reset();break;
    case "startup":new StartupRegistration().SetEnabled(request["value"]!.GetValue<bool>());settings.StartupAsked=true;settings.Save();break;

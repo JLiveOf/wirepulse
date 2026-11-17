@@ -55,6 +55,13 @@ jobs:
       - name: DSP and Cider protocol
         shell: bash
         run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test
+      - name: Portable cross-platform layout package
+        shell: bash
+        run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --layout-self-test tests/fixtures/portable-layout.wirepulse --layout-output layout-roundtrip.wirepulse
+      - uses: actions/upload-artifact@v4
+        with:
+          name: layout-roundtrip-${{ matrix.rid }}
+          path: desktop/layout-roundtrip.wirepulse
       - name: Settings and independent display editing
         run: dotnet run --project tests/UiTests -c Release
       - name: Optimized orb pixel equivalence
@@ -130,6 +137,7 @@ jobs:
           ./macos/build.sh
       - name: FFT, Cider, display profiles and relocation
         run: |
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --layout-self-test desktop/tests/fixtures/portable-layout.wirepulse --layout-output layout-roundtrip-macos.wirepulse
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --media-self-test desktop/tests/fixtures/background.mp4
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --widget-self-test desktop/tests/fixtures/widget.html
@@ -150,8 +158,32 @@ jobs:
           name: release-macOS-arm64
           path: packages/*
           if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        with:
+          name: layout-roundtrip-macos
+          path: layout-roundtrip-macos.wirepulse
+  layout-compatibility:
+    needs: [desktop, macos]
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: layout-roundtrip-*
+          path: layouts
+      - uses: actions/download-artifact@v4
+        with:
+          name: release-linux-x64
+          path: linux-package
+      - name: Import Windows, Linux and Swift exports with the common Linux reader
+        run: |
+          mkdir -p layout-player checked
+          tar -xzf linux-package/*.tar.gz -C layout-player
+          for layout in layouts/*/*.wirepulse; do
+            layout-player/*/WirePulse --layout-self-test "$layout" --layout-output "checked/$(basename "$(dirname "$layout")").wirepulse"
+          done
   release:
-    needs: [version, desktop, macos]
+    needs: [version, desktop, macos, layout-compatibility]
     if: startsWith(github.ref, 'refs/tags/')
     runs-on: ubuntu-24.04
     permissions:

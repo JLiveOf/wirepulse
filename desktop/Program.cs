@@ -19,6 +19,7 @@ internal static class Program
             if (args.Contains("--native-draw-self-test"))return NativeDrawSelfTest.Run();
             if (args.Contains("--windows-audio-test"))return WindowsAudioTest.Run();
 #endif
+            if(Option("--layout-self-test") is string layout)return LayoutPackageTest.Run(layout,Option("--layout-output")??"layout-roundtrip.wirepulse");
             if (args.Contains("--self-test")) return SelfTest.Run();
             int result;
             using(var instance = new SingleInstance(

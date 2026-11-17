@@ -17,3 +17,7 @@ void ExpectFrame(int frame){codec.GetPixels(legacy.Info,legacy.GetPixels(),new S
 foreach(var dt in new[]{double.NaN,double.PositiveInfinity,double.NegativeInfinity,-1d}){timing.Update(dt,false);ExpectFrame(0);}
 timing.Update(.040001,false);ExpectFrame(1);timing.Update(double.MaxValue,true);ExpectFrame(1);timing.Update(double.MaxValue,false);timing.Update(.04,false);
 Console.WriteLine("PASS nonfinite/negative timestamps, paused clock and finite clock overflow");
+
+using var baseline=new SKBitmap(640,360);using var referenceCanvas=new SKCanvas(baseline);using(var reference=new ImageFrames(fixture)){reference.Update(1.731,false);reference.Draw(referenceCanvas,new(0,0,640,360));}
+foreach(int fps in new[]{60,75,165,240}){using var animation=new ImageFrames(fixture);for(int i=0;i<fps;i++)animation.Update(1.731/fps,false);using var image=new SKBitmap(640,360);using var c=new SKCanvas(image);animation.Draw(c,new(0,0,640,360));if(!baseline.Bytes.AsSpan().SequenceEqual(image.Bytes))throw new Exception("GIF speed depends on refresh rate: "+fps);}
+Console.WriteLine("PASS GIF wall-clock equivalence at 60/75/165/240 FPS");

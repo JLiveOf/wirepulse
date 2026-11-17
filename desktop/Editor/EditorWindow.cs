@@ -12,7 +12,7 @@ using System.Text.Json.Nodes;
 namespace WirePulse;
 
 public sealed partial class EditorWindow:Window {
- readonly Settings original,draft;readonly WallpaperView preview;readonly EditorCanvas canvas;readonly ListBox objects=new(){MinHeight=120,MaxHeight=230};readonly StackPanel properties=new(){Spacing=10};readonly Border inspector;readonly Stack<string> undo=[],redo=[];readonly DispatcherTimer timer;readonly string initial;string? dragBefore;bool updating,finished;string? layerDrag;Border? dropIndicator;bool previewActive=true;readonly FramePacer previewPacer=new();double previewHz,lastHzRead;PixelRect previewScreen;
+ readonly Settings original,draft;readonly WallpaperView preview;readonly EditorCanvas canvas;readonly ListBox objects=new(){MinHeight=120,MaxHeight=230};readonly StackPanel properties=new(){Spacing=10};readonly Border inspector;readonly Stack<string> undo=[],redo=[];readonly string initial;string? dragBefore;bool updating,finished;string? layerDrag;Border? dropIndicator;bool previewActive=true;readonly FramePacer previewPacer=new();double previewHz,lastHzRead;PixelRect previewScreen;
  SceneDocument Document=>draft.Scene!;SceneItem? Selected=>Document.Items.FirstOrDefault(x=>x.Id==canvas.SelectedId);
  public EditorWindow(Settings settings,Spectrum spectrum,MediaService media,PixelRect screen,double scaling,string display,string? selected=null){original=settings;previewScreen=screen;draft=settings.Preview();var viewport=new Size(screen.Width/scaling,screen.Height/scaling);draft.Scene??=SceneDocument.Migrate(settings,viewport);initial=Snapshot();Title="WirePulse · Editar escritorio · "+display;WindowDecorations=WindowDecorations.None;ShowInTaskbar=false;Topmost=true;CanResize=false;Position=screen.Position;Width=viewport.Width;Height=viewport.Height;Background=Brushes.Black;
 #if WINDOWS
@@ -29,11 +29,11 @@ inspector.IsVisible=!useWindowsEditor;
 dock.IsVisible=!useWindowsEditor;
 #endif
 Content=root;
-  objects.SelectionChanged+=(_,_)=>{if(updating)return;canvas.SelectedId=(objects.SelectedItem as SceneItem)?.Id;canvas.InvalidateVisual();Inspector();};canvas.SelectionChanged+=()=>{RefreshList();Inspector();};canvas.DragStarted+=()=>dragBefore=Snapshot();canvas.Changed+=()=>draft.Save();canvas.DragEnded+=()=>{if(dragBefore!=null&&dragBefore!=Snapshot()){undo.Push(dragBefore);redo.Clear();}dragBefore=null;Inspector();};KeyDown+=Keys;Closed+=(_,_)=>{timer?.Stop();previewActive=false;
+  objects.SelectionChanged+=(_,_)=>{if(updating)return;canvas.SelectedId=(objects.SelectedItem as SceneItem)?.Id;canvas.InvalidateVisual();Inspector();};canvas.SelectionChanged+=()=>{RefreshList();Inspector();};canvas.DragStarted+=()=>dragBefore=Snapshot();canvas.Changed+=()=>draft.Save();canvas.DragEnded+=()=>{if(dragBefore!=null&&dragBefore!=Snapshot()){undo.Push(dragBefore);redo.Clear();}dragBefore=null;Inspector();};KeyDown+=Keys;Closed+=(_,_)=>{previewActive=false;
 #if WINDOWS
 windowsPreviewActive=false;
 #endif
-preview.Dispose();};timer=new DispatcherTimer(TimeSpan.FromMilliseconds(16),DispatcherPriority.Background,(_,_)=>preview.Advance(Environment.TickCount64/1000d));
+preview.Dispose();};
 #if WINDOWS
 ScheduleWindowsPreview();
 #else

@@ -166,9 +166,9 @@ enum SceneAssets {
       throw error
     }
   }
-  static func validateZip(_ source: URL) throws {
+  static func validateZip(_ source: URL,limit:Int=128*1024*1024) throws {
     let data = try Data(contentsOf: source, options: .mappedIfSafe)
-    guard data.count <= 128 * 1024 * 1024, data.count >= 22 else {
+    guard data.count <= limit, data.count >= 22 else {
       throw failure("ZIP demasiado grande o incompleto.")
     }
     func u16(_ i: Int) -> Int { Int(data[i]) | Int(data[i + 1]) << 8 }
@@ -179,7 +179,7 @@ enum SceneAssets {
     else { throw failure("ZIP no compatible.") }
     let count = u16(end + 10)
     var cursor = u32(end + 16)
-    var total = 0
+    var total = 0;var names=Set<String>()
     guard count > 0, count <= 2048 else { throw failure("Demasiados archivos.") }
     for _ in 0..<count {
       guard cursor >= 0, cursor + 46 <= data.count, u32(cursor) == 0x0201_4b50 else {
@@ -192,11 +192,11 @@ enum SceneAssets {
       guard cursor + 46 + length + extra + comment <= data.count,
         let name = String(
           data: data.subdata(in: (cursor + 46)..<(cursor + 46 + length)), encoding: .utf8),
-        !name.hasPrefix("/"), !name.contains("\\"), !name.contains("\0"),
+        !name.hasPrefix("/"), !name.contains("\\"), !name.contains("\0"), !name.contains(":"),names.insert(name.lowercased()).inserted,
         !name.split(separator: "/").contains(".."), (attributes >> 16) & 0xf000 != 0xa000
       else { throw failure("El ZIP contiene enlaces o rutas no válidas.") }
       total += u32(cursor + 24)
-      guard total <= 128 * 1024 * 1024 else {
+      guard total <= limit else {
         throw failure("El contenido del ZIP es demasiado grande.")
       }
       cursor += 46 + length + extra + comment
@@ -205,7 +205,7 @@ enum SceneAssets {
   static func failure(_ text: String) -> NSError {
     NSError(domain: "WirePulse", code: 1, userInfo: [NSLocalizedDescriptionKey: text])
   }
-  static func validate(_ folder: URL) throws {
+  static func validate(_ folder: URL,limit:Int=128*1024*1024) throws {
     let fm = FileManager.default
     guard
       let files = fm.enumerator(
@@ -217,7 +217,7 @@ enum SceneAssets {
       let values = try url.resourceValues(forKeys: [.isSymbolicLinkKey, .fileSizeKey])
       count += 1
       total += values.fileSize ?? 0
-      if values.isSymbolicLink == true || count > 2048 || total > 128 * 1024 * 1024 {
+      if values.isSymbolicLink == true || count > 2048 || total > limit {
         throw failure("Paquete demasiado grande o con enlaces no compatibles.")
       }
     }

@@ -76,6 +76,7 @@ final class Configuration: ObservableObject {
  @Published var ciderToken:String { didSet{if persistent{CiderReader.saveToken(ciderToken)}} }
  @Published var clockFont:String {didSet{if persistent{UserDefaults.standard.set(clockFont,forKey:storagePrefix+"clockFont")}}}
  @Published var renderProfile:String {didSet{if persistent{UserDefaults.standard.set(renderProfile,forKey:storagePrefix+"renderProfile")}}}
+ @Published var layoutTransferRunning=false
  @Published var paused = false
  @Published var scene:SceneDocument? {didSet{if persistent{if let scene=scene,let data=try? JSONEncoder().encode(scene){UserDefaults.standard.set(data,forKey:storagePrefix+"scene")}else{UserDefaults.standard.removeObject(forKey:storagePrefix+"scene")}}}}
  @Published var editorSnap:Bool {didSet{if persistent{UserDefaults.standard.set(editorSnap,forKey:storagePrefix+"editorSnap")}}}

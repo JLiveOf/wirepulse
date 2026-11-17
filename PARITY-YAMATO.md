@@ -20,6 +20,7 @@ The Windows stable history through `e61e19f` is included, rather than replaced. 
 | Style sliders; one undo step per pointer gesture | Yes | Yes | Yes |
 | Font/color selection and object opacity | Yes | Yes | Yes |
 | Optimized front clipping + offscreen patch culling; original mesh toggle | Yes | Yes | Yes |
+| Portable layout import/export with embedded resources | Yes | Yes | Yes |
 | Per-user launch consent and startup toggle | Registry Run | ServiceManagement | XDG autostart |
 
 `scripts/check-parity.py` checks shared controls against the native Swift descriptors, slider limits/steps, numeric defaults, categories and provider choices. Headless editor tests and native platform tests cover behavior separately; source-level parity checks alone do not prove a button works.
