@@ -1,0 +1,27 @@
+using System.Runtime.InteropServices;
+using Avalonia;
+namespace WirePulse;
+
+/// Read-only EWMH snapshots on a private X11 connection, off the UI thread.
+internal static class LinuxCoverage {
+ internal readonly record struct Window(PixelRect Bounds,bool Fullscreen,bool Maximized,PixelRect? Work=null);
+ static Window[] snapshot=[];static long last;static int reading;static IntPtr display;
+ [UnmanagedFunctionPointer(CallingConvention.Cdecl)]delegate int ErrorHandler(IntPtr d,IntPtr error);
+ static readonly ErrorHandler errors=HandleError;static ErrorHandler? previous;static bool installed;
+ static int HandleError(IntPtr d,IntPtr error)=>d==Volatile.Read(ref display)?0:previous?.Invoke(d,error)??0;
+ [StructLayout(LayoutKind.Sequential)]struct Attributes{public int X,Y,Width,Height,Border,Depth;public IntPtr Visual,Root;public int Class,BitGravity,WinGravity,BackingStore;public nuint BackingPlanes,BackingPixel;public int SaveUnder;public nuint Colormap;public int MapInstalled,MapState;public nint AllEvents,YourEvents,DoNotPropagate;public int OverrideRedirect;public IntPtr Screen;}
+ [DllImport("libX11.so.6")]static extern IntPtr XOpenDisplay(IntPtr name);
+ [DllImport("libX11.so.6")]static extern int XCloseDisplay(IntPtr d);
+ [DllImport("libX11.so.6")]static extern IntPtr XDefaultRootWindow(IntPtr d);
+ [DllImport("libX11.so.6")]static extern IntPtr XInternAtom(IntPtr d,string name,bool only);
+ [DllImport("libX11.so.6")]static extern int XGetWindowProperty(IntPtr d,IntPtr w,IntPtr p,nint offset,nint length,bool delete,IntPtr requested,out IntPtr actual,out int format,out nuint count,out nuint remaining,out IntPtr data);
+ [DllImport("libX11.so.6")]static extern int XFree(IntPtr p);
+ [DllImport("libX11.so.6")]static extern int XGetWindowAttributes(IntPtr d,IntPtr w,out Attributes a);
+ [DllImport("libX11.so.6")]static extern int XTranslateCoordinates(IntPtr d,IntPtr source,IntPtr dest,int x,int y,out int rx,out int ry,out IntPtr child);
+ [DllImport("libX11.so.6")]static extern IntPtr XSetErrorHandler(ErrorHandler handler);
+ static nint[] Property(IntPtr d,IntPtr w,IntPtr key){IntPtr data=IntPtr.Zero;try{if(XGetWindowProperty(d,w,key,0,4096,false,IntPtr.Zero,out _,out int format,out var count,out _,out data)!=0||format!=32||data==IntPtr.Zero)return [];var result=new nint[(int)Math.Min(count,4096)];Marshal.Copy(data,result,0,result.Length);return result;}finally{if(data!=IntPtr.Zero)XFree(data);}}
+ public static string Reason(PixelRect bounds,bool fullscreen,bool maximized){if(!fullscreen&&!maximized)return "";long now=System.Diagnostics.Stopwatch.GetTimestamp();if((last==0||(now-Interlocked.Read(ref last))/(double)System.Diagnostics.Stopwatch.Frequency>=1)&&Interlocked.CompareExchange(ref reading,1,0)==0){Interlocked.Exchange(ref last,now);_=Task.Run(()=>{try{Volatile.Write(ref snapshot,Read());}catch{}finally{Interlocked.Exchange(ref reading,0);}});}return Reason(bounds,fullscreen,maximized,Volatile.Read(ref snapshot));}
+ internal static string Reason(PixelRect bounds,bool fullscreen,bool maximized,IEnumerable<Window> windows){foreach(var w in windows){var target=w.Fullscreen?bounds:w.Work?.Intersect(bounds)??bounds;if((w.Fullscreen&&fullscreen||w.Maximized&&maximized)&&target.Width>0&&target.Height>0&&w.Bounds.X<=target.X+2&&w.Bounds.Y<=target.Y+2&&w.Bounds.Right>=target.Right-2&&w.Bounds.Bottom>=target.Bottom-2)return w.Fullscreen?"pantalla completa":"ventana maximizada";}return "";}
+ public static string Probe(PixelRect bounds,bool full,bool max)=>Reason(bounds,full,max,Read());
+ static Window[] Read(){var d=XOpenDisplay(IntPtr.Zero);if(d==IntPtr.Zero)return [];Volatile.Write(ref display,d);if(!installed){var old=XSetErrorHandler(errors);if(old!=IntPtr.Zero)previous=Marshal.GetDelegateForFunctionPointer<ErrorHandler>(old);installed=true;}try{var root=XDefaultRootWindow(d);IntPtr Atom(string key)=>XInternAtom(d,key,true);IntPtr state=Atom("_NET_WM_STATE"),full=Atom("_NET_WM_STATE_FULLSCREEN"),h=Atom("_NET_WM_STATE_MAXIMIZED_HORZ"),v=Atom("_NET_WM_STATE_MAXIMIZED_VERT"),hidden=Atom("_NET_WM_STATE_HIDDEN"),desk=Atom("_NET_WM_DESKTOP"),pid=Atom("_NET_WM_PID");long current=Property(d,root,Atom("_NET_CURRENT_DESKTOP")).FirstOrDefault();var work=Property(d,root,Atom("_NET_WORKAREA"));int offset=(int)current*4;PixelRect? area=offset>=0&&offset+3<work.Length?new PixelRect((int)work[offset],(int)work[offset+1],(int)work[offset+2],(int)work[offset+3]):null;var result=new List<Window>();foreach(var id in Property(d,root,Atom("_NET_CLIENT_LIST_STACKING"))){if(Property(d,id,pid).FirstOrDefault()==Environment.ProcessId)continue;var desktop=Property(d,id,desk);if(desktop.Length>0&&desktop[0]!=current&&unchecked((uint)(long)desktop[0])!=uint.MaxValue)continue;var states=Property(d,id,state);bool isFull=full!=IntPtr.Zero&&states.Contains(full),isMax=h!=IntPtr.Zero&&v!=IntPtr.Zero&&states.Contains(h)&&states.Contains(v);if(!isFull&&!isMax||states.Contains(hidden))continue;if(XGetWindowAttributes(d,id,out var a)==0||a.MapState!=2||a.OverrideRedirect!=0)continue;if(XTranslateCoordinates(d,id,root,0,0,out int x,out int y,out _)==0)continue;var extents=Property(d,id,Atom("_NET_FRAME_EXTENTS"));int left=extents.Length==4?(int)extents[0]:0,right=extents.Length==4?(int)extents[1]:0,top=extents.Length==4?(int)extents[2]:0,bottom=extents.Length==4?(int)extents[3]:0;result.Add(new(new PixelRect(x-left,y-top,a.Width+left+right,a.Height+top+bottom),isFull,isMax,area));}return result.ToArray();}finally{XCloseDisplay(d);Volatile.Write(ref display,IntPtr.Zero);}}
+}

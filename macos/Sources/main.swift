@@ -3,6 +3,9 @@ import MetalKit
 import ServiceManagement
 import ImageIO
 
+if let i=CommandLine.arguments.firstIndex(of:"--media-self-test"),CommandLine.arguments.count>i+1{
+ _=NSApplication.shared;let media=BackgroundMedia(frame:CGRect(x:0,y:0,width:640,height:360));media.load(CommandLine.arguments[i+1]);let deadline=Date().addingTimeInterval(8);while media.playbackSeconds<0.2 && Date()<deadline{RunLoop.current.run(until:Date().addingTimeInterval(0.05))};precondition(media.hasVideo && media.playbackSeconds>=0.2,"Native video did not start");media.suspend(true);let before=media.playbackSeconds;RunLoop.current.run(until:Date().addingTimeInterval(0.25));precondition(abs(media.playbackSeconds-before)<0.1,"Native video did not pause");media.suspend(false);RunLoop.current.run(until:Date().addingTimeInterval(0.15));media.load("");precondition(!media.hasVideo,"Video resources retained after replacement");print("PASS AVFoundation background playback, pause, resume and replacement");exit(0)
+}
 if CommandLine.arguments.contains("--orb-render-self-test"){
  let config=Configuration(profile:UUID().uuidString,persistent:false)
  guard let device=MTLCreateSystemDefaultDevice() else{fatalError("Metal unavailable")}
@@ -20,6 +23,7 @@ if CommandLine.arguments.contains("--editor-self-test"){
  let source=Configuration(profile:"editor-test-"+UUID().uuidString,persistent:false),size=CGSize(width:1000,height:600)
  source.scene=SceneDocument(items:[SceneItem(id:"text-fixture",kind:"text",name:"Texto",x:0.1,y:0.1,width:0.2,height:0.2)])
  let model=SceneEditorModel(source,size);model.selected="text-fixture";model.duplicate();precondition(model.document.items.count==2 && source.scene!.items.count==1);model.history(true);precondition(model.document.items.count==1);model.history(false);precondition(model.document.items.count==2);model.save();precondition(source.scene!.items.count==2)
+ model.selected="text-fixture";let beforeGesture=model.document;model.beginGesture();for i in 1...30{model.change{$0.opacity=Double(i)/100}};model.endGesture();let afterGesture=model.document;model.history(true);precondition(model.document==beforeGesture,"Slider gesture generated multiple undo steps");model.history(false);precondition(model.document==afterGesture);model.history(true)
  model.document.items[1].visible=false;model.selected="text-fixture";model.snap=false;let canvas=EditorCanvasView(model),window=NSWindow(contentRect:CGRect(origin:.zero,size:size),styleMask:.borderless,backing:.buffered,defer:false);window.contentView=canvas
  func pointer(_ type:NSEvent.EventType,_ p:CGPoint)->NSEvent{NSEvent.mouseEvent(with:type,location:canvas.convert(p,to:nil),modifierFlags:[],timestamp:0,windowNumber:window.windowNumber,context:nil,eventNumber:0,clickCount:1,pressure:1)!}
  canvas.mouseDown(with:pointer(.leftMouseDown,CGPoint(x:160,y:110)));canvas.mouseDragged(with:pointer(.leftMouseDragged,CGPoint(x:235,y:150)));canvas.mouseUp(with:pointer(.leftMouseUp,CGPoint(x:235,y:150)));precondition(abs(model.item!.x-0.175)<0.001 && abs(model.item!.y-1.0/6)<0.001,"Native pointer did not move original text");let r=model.item!.rect(size);canvas.mouseDown(with:pointer(.leftMouseDown,CGPoint(x:r.maxX,y:r.maxY)));canvas.mouseDragged(with:pointer(.leftMouseDragged,CGPoint(x:r.maxX+40,y:r.maxY+24)));canvas.mouseUp(with:pointer(.leftMouseUp,CGPoint(x:r.maxX+40,y:r.maxY+24)));precondition(abs(model.item!.width-0.24)<0.001)
@@ -28,6 +32,7 @@ if CommandLine.arguments.contains("--editor-self-test"){
  model.update{$0.rotation=90};root.refresh();let rotatedNode=root.subviews.first!,r0=model.item!.rect(size),tip=rotatedNode.convert(CGPoint(x:rotatedNode.bounds.maxX,y:rotatedNode.bounds.midY),to:root)
  precondition(abs(tip.x-r0.midX)<0.01 && abs(tip.y-(r0.midY+r0.width/2))<0.01,"Native object rotation disagrees with editor handles")
  let legacy=try! JSONDecoder().decode(SceneDocument.self,from:Data("{\"version\":1,\"items\":[{\"kind\":\"orb\"}]}".utf8));precondition(legacy.items[0].rotation==0,"Legacy scene failed without rotation field")
+ precondition(DisplayPolicy.covers(CGRect(x:0,y:24,width:1000,height:550),CGRect(x:0,y:24,width:1000,height:550)));precondition(!DisplayPolicy.covers(CGRect(x:1000,y:0,width:1000,height:600),CGRect(x:0,y:0,width:1000,height:600)),"Coverage from another monitor pauses this display")
  let displayFrame=CGRect(x:-1920,y:100,width:1920,height:1080)
  for visible in [CGRect(x:-1920,y:180,width:1920,height:976),CGRect(x:-1800,y:100,width:1800,height:1056),CGRect(x:-1920,y:100,width:1800,height:1056)]{let controls=SceneEditorWindow.controlsFrame(screen:displayFrame,visible:visible);precondition(controls.offsetBy(dx:displayFrame.minX,dy:displayFrame.minY)==visible,"Editor controls overlap Dock/menu bar or ignore monitor origin")}
  let actualEditor=SceneEditorWindow(screen:NSScreen.main ?? NSScreen.screens[0],config:source,audio:SystemAudio(),media:NowPlaying());precondition(actualEditor.contentView!.subviews.count==3);var editorFinished=false;actualEditor.onFinish={editorFinished=true};actualEditor.finish(true);precondition(editorFinished,"Closing editor failed to resume wallpapers")

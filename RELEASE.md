@@ -1,12 +1,15 @@
-WirePulse 3.2 focuses on live-edit stability, animation decoding and desktop-editor responsiveness.
+# WirePulse 4.0.0 · Yamato
 
-- **Drag layers to any position** using the grip in the object list. A drop indicator shows insertion before/after a row; the top row is the front layer. Selection, undo/redo and explicit Save/Cancel preserve the order. Available on Windows, Linux and macOS.
-- Live color, opacity, density, font and other property edits retain existing objects and visualizers instead of destroying/recreating them. This preserves animation phase and avoids blank frames, repeated image loads and GPU-device recreation.
-- Windows/Linux GIF playback uses sequential delta-frame decoding, immutable reusable frame images and a bounded cache (64 MiB per animation, 128 MiB total). Animated decoding runs off the UI thread with at most two workers. Rendering keeps the last complete frame when decoding is late; frames are invalidated only when they change.
-- Hidden/offscreen images stop advancing. Unchanged layer transforms and native view order no longer get reset on every property edit.
-- Core Audio startup/teardown and provider detection run off the macOS UI thread, so an audio permission prompt or slow device cannot freeze the editor.
-- macOS no longer blocks the editor waiting for an available Metal command buffer. The underlying wallpapers pause while the desktop editor is open and resume after Save/Cancel. Text font changes update the retained text view; font inventories are cached.
+Yamato integrates the validated Windows Tulipan history with the native macOS app and Linux Mint/Cinnamon X11 in one common release.
 
-Validation includes delta GIFs across multiple loops, transparency/disposal regressions, retained-renderer identity during repeated live edits, arbitrary layer order and undo, native Windows desktop presentation and package installation, and macOS editor checks. Performance measurements are workload-specific, not a guarantee of a particular refresh rate on untested hardware.
+- Nine equivalent settings pages, 52 shared controls with checked ranges and defaults, and five music-provider choices including None and Cider. Windows uses WinUI 3; macOS keeps SwiftUI/AppKit; Linux uses Avalonia.
+- Drawing resolution from 0.5× to 1.5× is functional on Metal, native Direct3D/Direct2D and Skia. Only the visualization surface is scaled; music cards and text keep native resolution.
+- Per-monitor cadence, independent coverage suspension and editor previews. Linux refresh discovery runs asynchronously. macOS no longer pauses the other monitor when editing a display.
+- Sliders in all desktop editors, one undo action per continuous slider gesture, draggable layers, locks, rotation, duplicate/delete, optional guides and explicit Save/Cancel.
+- Optimized front-hemisphere rendering on all platforms, with edges clipped at the silhouette and offscreen patch culling. The original full transparent mesh remains available by disabling optimized rendering.
+- Image/GIF/video backgrounds on all platforms: AVFoundation on macOS, Media Foundation on Windows and FFmpeg on Linux. Videos loop silently and stop decoding while suspended.
+- Preserves existing scenes, preferences, renderer choices and independent display profiles. Windows still defaults to Direct3D 11 batches for new configurations.
 
-Downloads: Windows x64 installer/portable ZIP, Linux Mint/Cinnamon X11 DEB/portable tar.gz, macOS Apple silicon ZIP.
+Validation gates include shared-control parity, Windows WinUI editor visibility and resource lifecycle, drawing-resolution changes, GIF delta frames, per-monitor scheduling/coverage, macOS Metal geometry and AVFoundation playback, and real Cinnamon/X11 audio, media metadata, coverage and video tests in CI. Physical dual-monitor 165/75 Hz Windows results come from the earlier user-validated Tulipan build; CI/software drivers do not guarantee a particular physical GPU frame rate.
+
+Native APIs differ by platform: Metal and Windows Direct3D are not interchangeable choices; codec availability depends on the operating system. Linux support targets Cinnamon/X11, not Wayland. macOS packages target Apple silicon and use an ad hoc signature.

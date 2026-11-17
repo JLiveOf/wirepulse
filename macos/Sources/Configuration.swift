@@ -29,8 +29,8 @@ let controls: [ControlSpec] = [
  .init(id:"opacity",title:"Opacidad de malla",group:"Orbe",kind:.slider(0.1,1,0.05)),
  .init(id:"spectrum",title:"Mostrar espectro",group:"Espectro",kind:.toggle),
  .init(id:"spectrumX",title:"Posición horizontal",group:"Espectro",kind:.slider(0,90,1)),
- .init(id:"spectrumY",title:"Posición vertical",group:"Espectro",kind:.slider(0,90,1)),
- .init(id:"spectrumHeight",title:"Altura",group:"Espectro",kind:.slider(10,100,1)),
+ .init(id:"spectrumY",title:"Posición vertical",group:"Espectro",kind:.slider(0,80,1)),
+ .init(id:"spectrumHeight",title:"Altura",group:"Espectro",kind:.slider(10,90,1)),
  .init(id:"spectrumWidth",title:"Anchura máxima",group:"Espectro",kind:.slider(3,40,1)),
  .init(id:"segmented",title:"LED segmentados",group:"Espectro",kind:.toggle),
  .init(id:"card",title:"Mostrar tarjeta musical",group:"Tarjeta",kind:.toggle),
@@ -40,7 +40,9 @@ let controls: [ControlSpec] = [
  .init(id:"cardscale",title:"Escala",group:"Tarjeta",kind:.slider(0.5,1.5,0.05)),
  .init(id:"accent",title:"Color del progreso",group:"Tarjeta",kind:.color),
  .init(id:"unlimitedfps",title:"Usar frecuencia de la pantalla",group:"Rendimiento",kind:.toggle),
- .init(id:"fps",title:"Límite de FPS",group:"Rendimiento",kind:.slider(15,120,1)),
+ .init(id:"fps",title:"Límite de FPS",group:"Rendimiento",kind:.slider(15,360,1)),
+ .init(id:"pausefullscreen",title:"Pausar con una app a pantalla completa",group:"Rendimiento",kind:.toggle),
+ .init(id:"pausemaximized",title:"Pausar con una ventana maximizada",group:"Rendimiento",kind:.toggle),
  .init(id:"quality",title:"Resolución de dibujo",group:"Rendimiento",kind:.slider(0.5,1.5,0.25)),
  .init(id:"bgshow",title:"Mostrar fondo animado",group:"Fondo animado",kind:.toggle),
  .init(id:"bgreact",title:"Acelerar con los beats",group:"Fondo animado",kind:.toggle),
@@ -63,7 +65,7 @@ final class Configuration: ObservableObject {
  let persistent:Bool
  let storagePrefix:String
  @Published var independentDisplays:Bool { didSet{if persistent{UserDefaults.standard.set(independentDisplays,forKey:"independentDisplays")} }}
- static let defaults: [String:Double] = ["dim":0,"sensitivity":0.7,"bass":1.2,"gate":0.015,"smoothing":0.5,"sphere":1,"orboptimized":1,"fullmesh":1,"radius":55,"sphereX":97,"sphereY":123,"deformation":1,"pulse":0.2,"rotation":0.5,"density":42,"linewidth":0.65,"glow":6,"opacity":1,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":0.75,"unlimitedfps":0,"fps":60,"quality":1,"bgshow":1,"bgreact":1,"bgstyle":0,"bgopacity":0.3,"bgdensity":120,"bgspacing":100,"bgline":0.65,"bgspeed":20,"bgdirection":135,"bgboost":3,"clockshow":1,"clock24":1,"clocksize":48,"clockX":50,"clockY":82]
+ static let defaults: [String:Double] = ["dim":0,"sensitivity":0.7,"bass":1.2,"gate":0.015,"smoothing":0.5,"sphere":1,"orboptimized":1,"fullmesh":1,"radius":55,"sphereX":97,"sphereY":123,"deformation":1,"pulse":0.2,"rotation":0.5,"density":42,"linewidth":0.65,"glow":6,"opacity":1,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":0.75,"unlimitedfps":0,"fps":60,"pausefullscreen":1,"pausemaximized":1,"quality":1,"bgshow":1,"bgreact":1,"bgstyle":0,"bgopacity":0.3,"bgdensity":120,"bgspacing":100,"bgline":0.65,"bgspeed":20,"bgdirection":135,"bgboost":3,"clockshow":1,"clock24":1,"clocksize":48,"clockX":50,"clockY":82]
  @Published var values: [String:Double] { didSet { if persistent{UserDefaults.standard.set(values,forKey:storagePrefix+"values") } }}
  @Published var colors: [String:String] { didSet { if persistent{UserDefaults.standard.set(colors,forKey:storagePrefix+"colors") } }}
  @Published var backgroundPath: String { didSet { if persistent{UserDefaults.standard.set(backgroundPath,forKey:storagePrefix+"backgroundPath") } }}
@@ -73,11 +75,13 @@ final class Configuration: ObservableObject {
  @Published var ciderURL:String { didSet{if persistent{UserDefaults.standard.set(ciderURL,forKey:"ciderURL")} }}
  @Published var ciderToken:String { didSet{if persistent{CiderReader.saveToken(ciderToken)}} }
  @Published var clockFont:String {didSet{if persistent{UserDefaults.standard.set(clockFont,forKey:storagePrefix+"clockFont")}}}
+ @Published var renderProfile:String {didSet{if persistent{UserDefaults.standard.set(renderProfile,forKey:storagePrefix+"renderProfile")}}}
  @Published var paused = false
  @Published var scene:SceneDocument? {didSet{if persistent{if let scene=scene,let data=try? JSONEncoder().encode(scene){UserDefaults.standard.set(data,forKey:storagePrefix+"scene")}else{UserDefaults.standard.removeObject(forKey:storagePrefix+"scene")}}}}
  @Published var editorSnap:Bool {didSet{if persistent{UserDefaults.standard.set(editorSnap,forKey:storagePrefix+"editorSnap")}}}
  init(profile:String="",template:Configuration?=nil,persistent:Bool=true) {
   self.persistent=persistent
+  renderProfile=UserDefaults.standard.string(forKey:(profile.isEmpty ? "":"display-"+profile+"-")+"renderProfile") ?? template?.renderProfile ?? "Automático"
   storagePrefix=profile.isEmpty ? "":"display-"+profile+"-"
   scene=UserDefaults.standard.data(forKey:storagePrefix+"scene").flatMap{try? JSONDecoder().decode(SceneDocument.self,from:$0)} ?? template?.scene
   editorSnap=UserDefaults.standard.object(forKey:storagePrefix+"editorSnap") as? Bool ?? template?.editorSnap ?? true
@@ -98,13 +102,13 @@ final class Configuration: ObservableObject {
  }
  func preview()->Configuration{let copy=Configuration(profile:UUID().uuidString,template:self,persistent:false);copy.copyLayout(from:self);return copy}
  var hasSaved:Bool{UserDefaults.standard.object(forKey:storagePrefix+"values") != nil}
- func copyLayout(from other:Configuration){scene=other.scene;editorSnap=other.editorSnap;values=other.values;colors=other.colors;backgroundPath=other.backgroundPath;topCentered=other.topCentered;topMargin=other.topMargin;clockFont=other.clockFont}
+ func copyLayout(from other:Configuration){renderProfile=other.renderProfile;scene=other.scene;editorSnap=other.editorSnap;values=other.values;colors=other.colors;backgroundPath=other.backgroundPath;topCentered=other.topCentered;topMargin=other.topMargin;clockFont=other.clockFont}
  func n(_ key:String)->Double { values[key] ?? Self.defaults[key] ?? 0 }
  func on(_ key:String)->Bool { n(key)>0.5 }
  func color(_ key:String)->NSColor { NSColor(hex:colors[key] ?? "#ffffff") }
  func reset() { scene=nil; values=Self.defaults; colors=["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf","bgcolor":"#ff143c","clockcolor":"#ffffff"];backgroundPath="";clockFont="System";topCentered=true;topMargin=4.8 }
  func chooseImage() {
-  let panel=NSOpenPanel();panel.allowedContentTypes=[.image];panel.canChooseDirectories=false
+  let panel=NSOpenPanel();panel.allowedContentTypes=[.image,.movie];panel.canChooseDirectories=false
   guard panel.runModal() == .OK,let url=panel.url else{return}
   do {let folder=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("WirePulse",isDirectory:true);try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
    let target=folder.appendingPathComponent("background-"+UUID().uuidString+"."+url.pathExtension);if FileManager.default.fileExists(atPath:target.path){try FileManager.default.removeItem(at:target)};try FileManager.default.copyItem(at:url,to:target);backgroundPath=target.path
@@ -112,7 +116,7 @@ final class Configuration: ObservableObject {
  }
 }
 extension NSColor {
- convenience init(hex:String) { let v=UInt32(hex.trimmingCharacters(in:CharacterSet(charactersIn:"#")),radix:16) ?? 0;self.init(srgbRed:Double((v>>16)&255)/255,green:Double((v>>8)&255)/255,blue:Double(v&255)/255,alpha:1) }
+ convenience init(hex:String) { let text=hex.trimmingCharacters(in:CharacterSet(charactersIn:"#")),v=UInt32(text,radix:16) ?? 0;self.init(srgbRed:Double((v>>16)&255)/255,green:Double((v>>8)&255)/255,blue:Double(v&255)/255,alpha:text.count==8 ? Double((v>>24)&255)/255:1) }
  var rgba: SIMD4<Float> {let c=usingColorSpace(.deviceRGB) ?? self;return SIMD4(Float(c.redComponent),Float(c.greenComponent),Float(c.blueComponent),Float(c.alphaComponent))}
- var hex: String {let c=usingColorSpace(.deviceRGB) ?? self;return String(format:"#%02x%02x%02x",Int(c.redComponent*255),Int(c.greenComponent*255),Int(c.blueComponent*255))}
+ var hex: String {let c=usingColorSpace(.deviceRGB) ?? self;return c.alphaComponent<0.999 ? String(format:"#%02x%02x%02x%02x",Int(c.alphaComponent*255),Int(c.redComponent*255),Int(c.greenComponent*255),Int(c.blueComponent*255)):String(format:"#%02x%02x%02x",Int(c.redComponent*255),Int(c.greenComponent*255),Int(c.blueComponent*255))}
 }

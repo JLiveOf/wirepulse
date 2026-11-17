@@ -13,7 +13,10 @@ for name in sorted(expected):
   with zipfile.ZipFile(path) as z:
    assert z.testzip() is None,f'Corrupt ZIP: {name}'
    if 'macOS' in name:assert 'WirePulse.app/Contents/MacOS/WirePulse' in z.namelist()
-   else:assert any(n.endswith('/WirePulse.exe') for n in z.namelist())
+   else:
+    assert any(n.endswith('/WirePulse.exe') for n in z.namelist())
+    for required in ['WindowsSettings/WirePulse.Settings.exe','WindowsSettings/WirePulse.Settings.pri']:
+     assert any(n.endswith('/'+required) for n in z.namelist()),f'Missing WinUI companion resource: {required}'
  elif name.endswith('.tar.gz'):
   with tarfile.open(path) as t:
    exe=next(x for x in t.getmembers() if x.name.endswith('/WirePulse'));assert exe.mode&0o111,'Linux executable permission missing'

@@ -10,6 +10,9 @@ final class SceneEditorModel: ObservableObject {
   @Published var snap: Bool
   @Published var inspector = true
   private var undo = [SceneDocument](), redo = [SceneDocument]()
+  private var gestureBefore:SceneDocument?
+  func beginGesture(){if gestureBefore==nil{gestureBefore=document}}
+  func endGesture(){guard let before=gestureBefore else{return};gestureBefore=nil;if before != document{undo.append(before);if undo.count>80{undo.removeFirst()};redo=[]}}
   var document: SceneDocument {
     get { draft.scene! }
     set {
@@ -27,6 +30,7 @@ final class SceneEditorModel: ObservableObject {
     selected = draft.scene?.items.first { $0.kind == "card" && $0.visible }?.id
   }
   func checkpoint() {
+    endGesture()
     undo.append(document)
     if undo.count > 80 { undo.removeFirst() }
     redo = []
@@ -38,10 +42,11 @@ final class SceneEditorModel: ObservableObject {
     document = doc
   }
   func change(_ action: (inout SceneItem) -> Void) {
-    checkpoint()
+    if gestureBefore==nil{checkpoint()}
     update(action)
   }
   func history(_ backwards: Bool) {
+    endGesture()
     if backwards {
       guard let doc = undo.popLast() else { return }
       redo.append(document)
@@ -53,6 +58,7 @@ final class SceneEditorModel: ObservableObject {
     }
   }
   func save() {
+    endGesture()
     original.editorSnap = snap
     original.scene = document
   }
@@ -437,13 +443,14 @@ struct EditorChrome: View {
   @ViewBuilder var properties: some View {
     if let item = model.item {
       VStack(alignment: .leading) {
+        DisclosureGroup("Propiedades generales"){
         TextField("Nombre", text: binding(item.name) { $0.name = $1 })
         Toggle("Visible", isOn: binding(item.visible) { $0.visible = $1 })
         Toggle("Bloquear posición", isOn: binding(item.locked) { $0.locked = $1 })
         Toggle("Mantener proporciones", isOn: binding(item.keepAspect) { $0.keepAspect = $1 })
         Text("Ángulo (°)")
-        TextField(
-          "Ángulo (grados)", value: binding(item.rotation) { $0.rotation = $1 }, format: .number)
+        Slider(value:binding(item.rotation){$0.rotation=$1},in: -180...180,step:1,onEditingChanged:gesture)
+        Text(String(format:"%.0f°",item.rotation)).monospacedDigit()
         HStack {
           Button("↶ 90°") { model.change { $0.rotation -= 90 } }
           Button("↷ 90°") { model.change { $0.rotation += 90 } }
@@ -492,7 +499,7 @@ struct EditorChrome: View {
             selection: Binding(
               get: { Color(nsColor: NSColor(hex: model.item?.color ?? "#ffffff")) },
               set: { color in model.change { $0.color = NSColor(color).hex } }),
-            supportsOpacity: false)
+            supportsOpacity: true)
         }
         if item.kind == "text" || item.kind == "clock" {
           Picker("Fuente", selection: binding(item.font) { $0.font = $1 }) {
@@ -501,6 +508,7 @@ struct EditorChrome: View {
               Text($0).tag($0)
             }
           }
+        }
         }
         let group =
           item.kind == "orb"
@@ -517,12 +525,13 @@ struct EditorChrome: View {
           ) { spec in style(spec) }
         }
         Text("Opacidad")
-        Slider(value: binding(item.opacity) { $0.opacity = $1 }, in: 0...1)
+        Slider(value: binding(item.opacity) { $0.opacity = $1 }, in: 0...1,onEditingChanged:gesture)
       }
     } else {
       Text("Selecciona un objeto para editarlo.")
     }
   }
+  func gesture(_ active:Bool){if active{model.beginGesture()}else{model.endGesture()}}
   func binding<T>(_ fallback: T, _ change: @escaping (inout SceneItem, T) -> Void) -> Binding<T> {
     Binding(get: { fallback }, set: { value in model.change { change(&$0, value) } })
   }
@@ -536,9 +545,9 @@ struct EditorChrome: View {
             if case .string(let s) = model.item?.style[spec.id] {
               return Color(nsColor: NSColor(hex: s))
             }
-            return .white
+            return Color(nsColor:model.draft.color(spec.id))
           }, set: { value in model.change { $0.style[spec.id] = .string(NSColor(value).hex) } }),
-        supportsOpacity: false)
+        supportsOpacity: true)
     case .toggle:
       Toggle(
         spec.title,
@@ -546,7 +555,7 @@ struct EditorChrome: View {
           get: {
             if case .number(let n) = model.item?.style[spec.id] { return n > 0.5 }
             if case .bool(let b) = model.item?.style[spec.id] { return b }
-            return false
+            return model.draft.on(spec.id)
           }, set: { value in model.change { $0.style[spec.id] = .number(value ? 1 : 0) } }))
     case .slider(let lo, let hi, let step):
       Text(spec.title)
@@ -554,15 +563,15 @@ struct EditorChrome: View {
         value: Binding(
           get: {
             if case .number(let n) = model.item?.style[spec.id] { return min(hi, max(lo, n)) }
-            return lo
+            return min(hi,max(lo,model.draft.n(spec.id)))
           }, set: { value in model.change { $0.style[spec.id] = .number(value) } }), in: lo...hi,
-        step: step)
+        step: step,onEditingChanged:gesture)
     case .image: EmptyView()
     }
   }
 }
 final class SceneEditorWindow: NSWindow,NSWindowDelegate {
-  private var previewScene:SceneRoot?
+  private var previewScene:SceneRoot?,previewBackground:BackgroundMedia?
   let model: SceneEditorModel
   var subscription: AnyCancellable?
   var onFinish:(()->Void)?
@@ -580,10 +589,8 @@ final class SceneEditorWindow: NSWindow,NSWindowDelegate {
     let root = NSView(frame: CGRect(origin: .zero, size: screen.frame.size))
     root.wantsLayer = true
     root.layer?.backgroundColor = config.color("backgroundcolor").cgColor
-    root.layer?.contents = NSImage(contentsOfFile: config.backgroundPath)?.cgImage(
-      forProposedRect: nil, context: nil, hints: nil)
-    root.layer?.contentsGravity = .resizeAspectFill
     if !config.backgroundPath.isEmpty {
+      let media=BackgroundMedia(frame:root.bounds);media.load(config.backgroundPath);root.addSubview(media);previewBackground=media
       let dim = NSView(frame: root.bounds)
       dim.wantsLayer = true
       dim.layer?.backgroundColor = NSColor.black.withAlphaComponent(config.n("dim") / 100).cgColor
@@ -604,7 +611,7 @@ final class SceneEditorWindow: NSWindow,NSWindowDelegate {
     }
   }
   func windowShouldClose(_ sender:NSWindow)->Bool{finish(false);return false}
-  func windowWillClose(_ notification:Notification){previewScene?.pause(true);if NSColorPanel.sharedColorPanelExists{NSColorPanel.shared.orderOut(nil)};onFinish?();onFinish=nil}
+  func windowWillClose(_ notification:Notification){previewScene?.pause(true);previewBackground?.suspend(true);if NSColorPanel.sharedColorPanelExists{NSColorPanel.shared.orderOut(nil)};onFinish?();onFinish=nil}
   static func controlsFrame(screen: CGRect, visible: CGRect) -> CGRect {
     let safe = screen.intersection(visible)
     return safe.offsetBy(dx: -screen.minX, dy: -screen.minY)

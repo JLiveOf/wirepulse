@@ -21,7 +21,7 @@ final class NowPlaying:ObservableObject {
  func poll(source:String,ciderURL:String="http://127.0.0.1:10767",ciderToken:String=""){
   guard ["Ninguno","Apple Music","Spotify","Cider","Automático"].contains(source) else{return}
   activeSource=source
-  guard source != "Ninguno" else{bpm=0;title="";artist="";album="";identity="";provider="Audio del sistema";artwork=nil;artworkState="Sin fuente seleccionada";return}
+  guard source != "Ninguno" else{playing=false;position=0;duration=0;updated=ProcessInfo.processInfo.systemUptime;bpm=0;title="";artist="";album="";identity="";provider="Audio del sistema";artwork=nil;artworkState="Sin fuente seleccionada";return}
   guard !busy else{return};busy=true
   DispatchQueue.global(qos:.utility).async{[weak self] in
   let browser=source=="Automático" ? ProviderDetection.browser(from:ProviderDetection.activeOutputBundles()):nil

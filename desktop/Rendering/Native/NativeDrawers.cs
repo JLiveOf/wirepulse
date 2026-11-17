@@ -43,6 +43,7 @@ internal sealed class D2DLineDrawer:INativeDrawer {
  public void Dispose(){foreach(var t in targets.Values)t.Dispose();brush.Dispose();context.Dispose();device.Dispose();factory.Dispose();}
 }
 internal sealed class NativeVisualizationControl(Func<VisualizerOptions> options,Func<SpectrumFrame> audio):GpuContentControl {
+ protected override double ResolutionScale=>options().Quality;
  readonly VectorFrame frame=new();INativeDrawer? drawer;
  public void Adapt(double target)=>frame.Adapt(target,Statistics);
  protected override string ContentName=>RenderEngines.Requested;

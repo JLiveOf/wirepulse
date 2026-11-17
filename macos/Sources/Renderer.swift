@@ -21,6 +21,10 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
  private var buffers=[MTLBuffer?](repeating:nil,count:3),bufferIndex=0
  private let inFlight=DispatchSemaphore(value:3)
  var frameCount:UInt64=0
+ private var sampleTime=ProcessInfo.processInfo.systemUptime,sampleFrames:UInt64=0,lastFrame=0.0,lastFps=0.0
+ var fps:Double{ProcessInfo.processInfo.systemUptime-lastFrame>1.5 ? 0:lastFps}
+ private var testDisablePatchCulling=false,detail=1.0,drawMs=0.0
+ private var adaptTime=0.0
  init(config:Configuration,analyzer:SpectrumAnalyzer,device:MTLDevice,media:NowPlaying?=nil)throws{
   self.config=config;self.analyzer=analyzer;self.device=device;self.media=media
   guard let q=device.makeCommandQueue() else{throw NSError(domain:"WirePulse",code:2,userInfo:[NSLocalizedDescriptionKey:"Metal no pudo crear una cola de dibujo"])};commandQueue=q
@@ -43,16 +47,20 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
  }
  func mtkView(_ view:MTKView,drawableSizeWillChange size:CGSize){}
  func draw(in view:MTKView){
-  let desired=config.on("unlimitedfps") ? (view.window?.screen?.maximumFramesPerSecond ?? 60):Int(config.n("fps"));if view.preferredFramesPerSecond != desired{view.preferredFramesPerSecond=desired}
+  let light=config.renderProfile=="Ligero"
+  let desired=min(light ? 60:1000,config.on("unlimitedfps") ? (view.window?.screen?.maximumFramesPerSecond ?? 60):min(view.window?.screen?.maximumFramesPerSecond ?? 60,Int(config.n("fps"))));if view.preferredFramesPerSecond != desired{view.preferredFramesPerSecond=desired}
   let scale=(view.window?.backingScaleFactor ?? 2)*config.n("quality"),size=CGSize(width:view.bounds.width*scale,height:view.bounds.height*scale)
   if view.drawableSize != size{view.drawableSize=size}
   guard inFlight.wait(timeout:.now()) == .success else{return}
   guard let descriptor=view.currentRenderPassDescriptor,let drawable=view.currentDrawable else{inFlight.signal();return}
   let now=ProcessInfo.processInfo.systemUptime;let dt=min(0.1,max(0,now-last));last=now
+  let started=ProcessInfo.processInfo.systemUptime
   build(width:Float(view.bounds.width),height:Float(view.bounds.height),time:Float(now),dt:Float(dt))
+  let elapsed=(ProcessInfo.processInfo.systemUptime-started)*1000;drawMs=drawMs*0.95+elapsed*0.05
+  if now-adaptTime>1{adaptTime=now;let budget=1000/Double(max(1,desired));if drawMs>budget*0.65{detail=max(0.5,detail-0.05)}else if drawMs<budget*0.25{detail=min(1,detail+0.025)}}
   let bg=config.color("backgroundcolor").rgba
   descriptor.colorAttachments[0].clearColor = !transparent && config.backgroundPath.isEmpty ? MTLClearColor(red:Double(bg.x),green:Double(bg.y),blue:Double(bg.z),alpha:1):MTLClearColorMake(0,0,0,0)
-  guard let command=encode(descriptor,reserved:true) else{return};command.present(drawable);command.commit();frameCount+=1
+  guard let command=encode(descriptor,reserved:true) else{return};command.present(drawable);command.commit();frameCount+=1;lastFrame=now;if now-sampleTime>=1{lastFps=Double(frameCount-sampleFrames)/(now-sampleTime);sampleTime=now;sampleFrames=frameCount}
  }
  private func encode(_ descriptor:MTLRenderPassDescriptor,reserved:Bool=false)->MTLCommandBuffer?{
   if !reserved && inFlight.wait(timeout:.now()) != .success{return nil};guard let command=commandQueue.makeCommandBuffer(),let encoder=command.makeRenderCommandEncoder(descriptor:descriptor) else{inFlight.signal();return nil}
@@ -95,20 +103,20 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   let bassIndices=snapshot.ranges.indices.filter{snapshot.ranges[$0].upperBound>20 && snapshot.ranges[$0].lowerBound<160};let low=bassIndices.reduce(Float(0)){$0+smooth[$1]}/Float(max(1,bassIndices.count))
   if !config.paused{angle += dt*Float(config.n("rotation"))}
   if config.on("sphere"){
-   let n=Int(config.n("density"));if n != density{makeMesh(n)}
+   let wanted=Int(config.n("density")),n=config.renderProfile=="Ligero" ? min(24,wanted):config.renderProfile=="Automático" ? max(min(12,wanted),Int(Double(wanted)*detail)):wanted;if n != density{makeMesh(n)}
    let radius=height*Float(config.n("radius")/100)*(1+low*Float(config.n("pulse"))),cx=width*Float(config.n("sphereX")/100),cy=height*Float(config.n("sphereY")/100),full=config.on("fullmesh"),deformation=Float(config.n("deformation"))
    let ca=cos(angle),sa=sin(angle),ct=cos(Float(0.23)),st=sin(Float(0.23))
-   visibility.prepare(bands:smooth,angle:angle,radius:radius,center:SIMD2(cx,cy),deformation:deformation,full:full,width:width,height:height,margin:Float(config.n("glow")+config.n("linewidth")+2),enabled:config.on("orboptimized"))
+   visibility.prepare(bands:smooth,angle:angle,radius:radius,center:SIMD2(cx,cy),deformation:deformation,full:full,width:width,height:height,margin:Float(config.n("glow")+config.n("linewidth")+2),enabled:config.on("orboptimized") && !testDisablePatchCulling)
    for i in mesh.indices where visibility.vertex(i){let p=mesh[i];let e=smooth[p.bin],ripple=sin(p.phase+time*1.7)*e,d:Float=1+deformation*(e*(full ? 0.22:0.045)+ripple*(full ? 0.16:0.025));let x=(p.x*ca-p.z*sa)*d,y=p.y*d,z=(p.x*sa+p.z*ca)*d;projected[i]=SIMD3(cx+x*radius,cy+(y*ct-z*st)*radius,z*ct+y*st)}
-   let base=config.color("wirecolor").rgba,opacity=Float(config.n("opacity")),thickness=Float(config.n("linewidth")),glow=Float(config.n("glow"))
-   for pass in 0...1{
-    var c=base;c.w=opacity*(pass==1 ? 0.85:0.24)
-    for (index,edge) in edges.enumerated(){if !visibility.edge(index){continue};let (a,b)=edge;let p=projected[a],q=projected[b],z=(p.z+q.z)*0.5;if !full && abs(z)>0.25{continue};if (z>0) != (pass==1){continue};let aa=SIMD2(p.x,p.y),bb=SIMD2(q.x,q.y)
+   let base=config.color("wirecolor").rgba,opacity=Float(config.n("opacity")),thickness=Float(config.n("linewidth")),glow=config.renderProfile=="Ligero" ? 0:Float(config.n("glow")) * (config.renderProfile=="Automático" ? Float(detail*detail):1)
+   for pass in (config.on("orboptimized") ? 1:0)...1{
+    var c=base;c.w=base.w*opacity*(pass==1 ? 0.85:0.24)
+    for (index,edge) in edges.enumerated(){if !visibility.edge(index){continue};let (a,b)=edge;var p=projected[a],q=projected[b];if config.on("orboptimized") && !OrbVisibility.clipFront(&p,&q){continue};let z=(p.z+q.z)*0.5;if !full && abs(z)>0.25{continue};if (z>0) != (pass==1){continue};let aa=SIMD2(p.x,p.y),bb=SIMD2(q.x,q.y)
      if glow>0{var halo=c;halo.w *= 0.06;line(aa,bb,thickness+glow,halo);halo.w *= 1.5;line(aa,bb,thickness+glow*0.4,halo)}
      line(aa,bb,thickness,c)
     }
    }
-   if !full{var c=base;c.w=opacity*0.48;for j in 0..<14{var previous:SIMD2<Float>?;for i in 0...48{let a=Float(i)/48*Float.pi*2,radial=radius*(0.48+Float(j)*0.007+smooth[i%48]*deformation*0.42),twist=a+sin(a*3+time*0.3+Float(j)*0.13)*0.09,p=SIMD2(cx+cos(twist)*radial,cy+sin(twist)*radial*0.94);if let prev=previous{line(prev,p,thickness,c)};previous=p}}}
+   if !full{var c=base;c.w=base.w*opacity*0.48;for j in 0..<14{var previous:SIMD2<Float>?;for i in 0...48{let a=Float(i)/48*Float.pi*2,radial=radius*(0.48+Float(j)*0.007+smooth[i%48]*deformation*0.42),twist=a+sin(a*3+time*0.3+Float(j)*0.13)*0.09,p=SIMD2(cx+cos(twist)*radial,cy+sin(twist)*radial*0.94);if let prev=previous{line(prev,p,thickness,c)};previous=p}}}
   }
   if config.on("spectrum"){
    let x=width*Float(config.n("spectrumX")/100),y=height*Float(config.n("spectrumY")/100),h=height*Float(config.n("spectrumHeight")/100),maximum=width*Float(config.n("spectrumWidth")/100),row=h/64,step=max(4,width/240),barHeight=max(1,row*0.68)
@@ -125,12 +133,14 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   var cases=0
   for detail in [12.0,42.0,72.0]{for full in [0.0,1.0]{for glow in [0.0,15.0]{for center in [(50.0,50.0),(97.0,123.0),(-40.0,120.0),(60.0,-35.0),(300.0,300.0)]{
    config.values["density"]=detail;config.values["fullmesh"]=full;config.values["glow"]=glow;config.values["sphereX"]=center.0;config.values["sphereY"]=center.1;config.values["deformation"]=2
-   smooth=(0..<64).map{Float($0%13)/13};angle=Float(cases)*0.371;config.values["orboptimized"]=0;build(width:320,height:180,time:Float(cases)*1.713,dt:0);let before=vertices
-   config.values["orboptimized"]=1;build(width:320,height:180,time:Float(cases)*1.713,dt:0)
+   smooth=(0..<64).map{Float($0%13)/13};angle=Float(cases)*0.371;config.values["orboptimized"]=1;testDisablePatchCulling=true;build(width:320,height:180,time:Float(cases)*1.713,dt:0);let before=vertices
+   config.values["orboptimized"]=1;testDisablePatchCulling=false;build(width:320,height:180,time:Float(cases)*1.713,dt:0)
    precondition(before.count==vertices.count,"Optimized orb changed primitive count")
    for i in before.indices{precondition(before[i].position==vertices[i].position && before[i].color==vertices[i].color,"Optimized orb changed geometry or order")};cases+=1
   }}}}
-  print("PASS \(cases) Metal orb frames retain identical visible triangles, colors and order with Render optimizado on/off")
+  var a=SIMD3<Float>(0,0,-1),b=SIMD3<Float>(2,0,1);precondition(OrbVisibility.clipFront(&a,&b) && a.z==0 && a.x==1);a=SIMD3(0,0,-2);b=SIMD3(0,0,-1);precondition(!OrbVisibility.clipFront(&a,&b))
+  testDisablePatchCulling=false
+  print("PASS \(cases) front-clipped Metal orb frames preserve triangles with offscreen culling; silhouette crossings clip at Z=0")
  }
  func renderPreview(to url:URL)throws{
   width=1920;height=1080;build(width:width,height:height,time:1,dt:1/60)

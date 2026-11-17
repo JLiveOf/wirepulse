@@ -1,8 +1,9 @@
 import simd
 
-/// Conservative bounds of complete wire edges. Rear wires remain visible through the mesh.
+/// Conservative offscreen bounds; front-hemisphere clipping is applied after projection.
 /// Disabling this helper preserves the original projection and draw order.
 struct OrbVisibility {
+ static func clipFront(_ a:inout SIMD3<Float>,_ b:inout SIMD3<Float>)->Bool{if a.z<0 && b.z<0{return false};if a.z<0{a += (b-a)*(-a.z/(b.z-a.z))}else if b.z<0{b += (a-b)*(-b.z/(a.z-b.z))};return true}
  private struct Patch {var edges:[Int];var vertices:[Int];var center:SIMD3<Float>;var radius:Float;var bins:[Int]}
  private var patches=[Patch](),vertices=[Bool](),edges=[Bool]()
  private var all=true

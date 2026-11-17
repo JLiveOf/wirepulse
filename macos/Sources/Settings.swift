@@ -11,13 +11,13 @@ struct SettingsView:View {
  let groups=["Audio","Fondo","Fondo animado","Orbe","Espectro","Tarjeta","Reloj","Rendimiento","Inicio"]
  var body:some View{
   NavigationSplitView{
-   List(groups,id:\.self,selection:$selected){group in Label(group,systemImage:["Audio":"waveform","Fondo":"photo","Fondo animado":"sparkles","Reloj":"clock","Orbe":"globe","Espectro":"chart.bar","Tarjeta":"music.note","Rendimiento":"speedometer","Inicio":"power"][group]!).tag(group)}.navigationTitle("WirePulse").navigationSplitViewColumnWidth(170)
+   List(groups,id:\.self,selection:$selected){group in Label(group,systemImage:["Audio":"waveform","Fondo":"photo","Fondo animado":"sparkles","Reloj":"clock","Orbe":"globe","Espectro":"chart.bar","Tarjeta":"music.note","Rendimiento":"speedometer","Inicio":"power"][group]!).tag(group)}.navigationTitle("WirePulse · Yamato").navigationSplitViewColumnWidth(170)
   } detail: {
    Form{
     Section{Button("Editar escritorio…"){edit(config)};Text("Mueve, redimensiona y añade objetos con el ratón. Las guías se pueden desactivar.").font(.caption).foregroundStyle(.secondary)}
     if selected=="Inicio"{Section("Inicio de sesión"){Toggle("Abrir WirePulse al iniciar sesión",isOn:Binding(get:{startup.enabled},set:{startup.setEnabled($0)}));Text(startup.note).font(.caption).foregroundStyle(.secondary);Button("Gestionar ítems de inicio"){SMAppService.openSystemSettingsLoginItems()}}}
     if selected=="Fondo animado" && config.scene==nil{Section("Material"){Picker("Tipo",selection:Binding(get:{Int(config.n("bgstyle"))},set:{config.values["bgstyle"]=Double($0)})){Text("Estrellas").tag(0);Text("Malla").tag(1)};TimelineView(.periodic(from:.now,by:1)){_ in let snapshot=audio.analyzer.snapshot(),ciderBpm=media.tempoBpm,bpm=ciderBpm>0 ? ciderBpm:(snapshot.age<2 ? snapshot.bpm:0);Text(bpm>0 ? "\(Int(bpm.rounded())) BPM"+(ciderBpm>0 ? " · Cider":" estimados"):"Esperando un ritmo estable").font(.caption).foregroundStyle(.secondary)};Text("Sin sonido mantiene la velocidad base. Los beats aceleran el desplazamiento; los BPM se estiman a partir del audio.").font(.caption).foregroundStyle(.secondary)}}
-    if selected=="Reloj" && config.scene==nil{Section("Fuente"){Picker("Fuente del reloj",selection:$config.clockFont){Text("Sistema").tag("System");ForEach(NSFontManager.shared.availableFontFamilies.sorted(),id:\.self){font in Text(font).tag(font)}}}}
+    if selected=="Reloj" && config.scene==nil{Section("Fuente"){Picker("Fuente del reloj",selection:$config.clockFont){Text("Sistema").tag("System");ForEach(EditorChrome.fonts,id:\.self){font in Text(font).tag(font)}}}}
     if selected=="Audio"{
      Section("Audio del sistema"){
       Text(audio.status).textSelection(.enabled)
@@ -40,6 +40,8 @@ struct SettingsView:View {
     }}
     Section(selected){ForEach(controls.filter{$0.group==selected && !SceneDocument.layoutKeys.contains($0.id) && (config.scene==nil || ["Audio","Fondo","Rendimiento"].contains(selected))}){spec in row(spec)}}
     if selected=="Rendimiento"{Section{
+     Picker("Perfil de rendimiento",selection:$config.renderProfile){Text("Automático").tag("Automático");Text("Calidad").tag("Calidad");Text("Ligero").tag("Ligero")}
+     Text("Ligero limita el detalle, elimina el resplandor y utiliza hasta 60 FPS.").font(.caption).foregroundStyle(.secondary)
      Toggle("Pausar la animación",isOn:$config.paused)
      Text("Se detiene durante el reposo o el bloqueo de sesión. La frecuencia máxima respeta la de cada pantalla.").font(.caption).foregroundStyle(.secondary)
     }}

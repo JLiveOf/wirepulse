@@ -52,3 +52,14 @@ front=Image.open('test-results/foreground.png').convert('RGB').crop((500,90,780,
 assert sum(p[1]>180 and p[0]<80 and p[2]<80 for p in front.getdata())>1000,'Wallpaper covers foreground windows'
 print('PASS: real monitor capture + 1kHz FFT + Cider MPRIS + Cinnamon/Nemo desktop surface')
 PY
+
+# Exercise the real Cinnamon EWMH window states and Linux video path after the main probe exits.
+/usr/bin/python3 tests/linux-policy.py
+ffmpeg -v error -f lavfi -i color=c=red:s=320x180:r=30 -t 1 -pix_fmt yuv420p -y test-results/video.mp4
+./publish/WirePulse --renderer-smoke-test --background-fixture "$PWD/test-results/video.mp4" --probe-output "$PWD/test-results/linux-video.json"
+python3 - <<'PYVIDEO'
+import json
+s=json.load(open('test-results/linux-video.json'))
+assert s['valid'] and s['videoFrames']>15,s
+print('PASS Linux FFmpeg background frames are decoded and drawn in the app')
+PYVIDEO

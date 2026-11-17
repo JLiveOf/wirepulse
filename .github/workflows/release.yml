@@ -18,6 +18,7 @@ jobs:
         shell: bash
         run: |
           python3 scripts/version.py --check
+          python3 scripts/check-parity.py
           version=$(cat VERSION)
           if [[ "$GITHUB_REF_TYPE" == "tag" && "$GITHUB_REF_NAME" != "v$version" ]]; then
             echo "Release tag and VERSION disagree" >&2
@@ -75,7 +76,7 @@ jobs:
           path: desktop/test-results/performance*
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update -qq && sudo apt-get install -y cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
+        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
       - name: Native HTML widget and audio event (Linux)
         timeout-minutes: 2
         if: runner.os == 'Linux'
@@ -129,6 +130,7 @@ jobs:
           ./macos/build.sh
       - name: FFT, Cider, display profiles and relocation
         run: |
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --media-self-test desktop/tests/fixtures/background.mp4
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --widget-self-test desktop/tests/fixtures/widget.html
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --editor-self-test --gif-fixture desktop/tests/fixtures/disposal.gif
@@ -173,6 +175,6 @@ jobs:
             python3 -c 'import json; assert json.load(open("release-state.json"))["isDraft"], "This version is already published; create a new version instead"'
             gh release upload "v$VERSION" packages/* --clobber
           else
-            gh release create "v$VERSION" packages/* --draft --verify-tag --title "WirePulse $VERSION · Windows, Linux y macOS" --notes-file RELEASE.md
+            gh release create "v$VERSION" packages/* --draft --verify-tag --title "WirePulse $VERSION · Yamato" --notes-file RELEASE.md
           fi
           gh release edit "v$VERSION" --draft=false --latest

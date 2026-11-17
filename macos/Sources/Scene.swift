@@ -198,6 +198,8 @@ final class SceneRoot: NSView {
       previous = node
     }
   }
+  var frameCount:UInt64{nodes.values.compactMap{$0.renderer?.frameCount}.max() ?? 0}
+  var fps:Double{nodes.values.compactMap{$0.renderer?.fps}.max() ?? 0}
   func pause(_ paused: Bool) { suspended=paused;for node in nodes.values { node.suspend(paused) } }
 }
 final class SceneNode: NSView {
@@ -237,6 +239,7 @@ final class SceneNode: NSView {
     if ["pulse","deformation","glow"].contains(where:{proxy.n($0) != (values[$0] ?? 0)}){previousFrame = .null}
     colors["backgroundcolor"]="#000000"
     if proxy.values != values{proxy.values=values};if proxy.colors != colors{proxy.colors=colors}
+    if proxy.renderProfile != root.renderProfile{proxy.renderProfile=root.renderProfile}
     if proxy.clockFont != next.font{proxy.clockFont=next.font}
     if proxy.paused != root.paused{proxy.paused=root.paused}
     if rebuild {

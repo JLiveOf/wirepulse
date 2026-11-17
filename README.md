@@ -1,4 +1,4 @@
-# WirePulse
+# WirePulse · Yamato 4.0.0
 
 Fondo de escritorio animado y reactivo al audio para **Windows, Linux y macOS**. Fondo negro, espectro LED a la izquierda, orbe de malla roja y tarjeta musical arriba centrada, con portada y proveedor.
 
@@ -14,7 +14,7 @@ Fondo de escritorio animado y reactivo al audio para **Windows, Linux y macOS**.
 | Linux x64, portátil | `WirePulse-…-linux-x64.tar.gz` | Extrae el archivo y ejecuta `WirePulse`. |
 | macOS, Apple silicon | `WirePulse-…-macOS-arm64.zip` | Cierra WirePulse, extrae la app y llévala a Aplicaciones. |
 
-Cada release reúne **los tres sistemas** y un archivo `SHA256SUMS.txt`. Windows/Linux son autocontenidos y no necesitan instalar .NET. Linux requiere Cinnamon **X11**, no Wayland. macOS requiere 14.2 o posterior; la app lleva firma ad hoc y no está notarizada. Windows no lleva firma comercial.
+Cada release reúne **los tres sistemas** y un archivo `SHA256SUMS.txt`. Windows/Linux son autocontenidos y no necesitan instalar .NET. Linux requiere Cinnamon **X11**, no Wayland, y FFmpeg para los fondos de vídeo (el paquete DEB instala las dependencias). macOS requiere 14.2 o posterior; la app lleva firma ad hoc y no está notarizada. Windows no lleva firma comercial.
 
 ## Funciones
 

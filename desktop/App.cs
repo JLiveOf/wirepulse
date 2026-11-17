@@ -11,7 +11,7 @@ namespace WirePulse;
 public sealed partial class App : Application
 {
     Settings settings = null!; readonly Spectrum spectrum = new(); MediaService media = null!; AudioCapture audio = null!; SettingsWindow? panel; EditorWindow? editor; Window? screenProbe; readonly List<Surface> walls = [];
-    readonly Dictionary<string, Settings> profiles = [], available = []; DispatcherTimer? maintenance; TrayIcon? tray; bool polling, quitting, rebuilding, lastIndependent; DateTime lastStatus = DateTime.MinValue; double lastCpu, lastWall; double cpuPercent;
+    readonly Dictionary<string, Settings> profiles = [], available = []; DispatcherTimer? maintenance; TrayIcon? tray; bool audioPaused,polling, quitting, rebuilding, lastIndependent; DateTime lastStatus = DateTime.MinValue; double lastCpu, lastWall; double cpuPercent;
     sealed class Surface(Window window, WallpaperView view, string name, double hz, PixelRect bounds) { public Window Window = window; public WallpaperView View = view; public string Name = name; public double Hz = hz; public FramePacer Pacer = new();public RenderStatistics Updates=new(); public PixelRect Bounds = bounds; public bool Active = true, Scheduled, Covered; public double Target;public string SuspensionReason=""; }
     public override void Initialize() { Styles.Add(new FluentTheme()); Styles.Add(new Avalonia.Markup.Xaml.Styling.StyleInclude(new Uri("avares://WirePulse/")){Source=new Uri("avares://Avalonia.Controls.ColorPicker/Themes/Fluent/Fluent.xaml")}); RequestedThemeVariant = Avalonia.Styling.ThemeVariant.Dark; }
     public override void OnFrameworkInitializationCompleted()
@@ -42,10 +42,11 @@ public sealed partial class App : Application
 #if WINDOWS
         if(ShowWindowsSettings())return;
 #endif
-        if (panel == null) { panel = new SettingsWindow(settings, spectrum, media, () => audio.Status, available, () => string.Join("\n", walls.Select(w => w.Covered ? $"{w.Name}: pausado por {w.SuspensionReason}" : $"{w.Name}: {w.View.Statistics.Fps:F0} FPS de dibujo / objetivo {w.Target:F0} · {w.View.Statistics.DrawMs:F2} ms · {w.View.Statistics.Backend}")),edit:ShowEditor,restart:()=>{Program.RestartRequested=true;(ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();}); panel.Closed += (_, _) => panel = null; } panel.Show(); panel.Activate(); }
+        if (panel == null) { panel = new SettingsWindow(settings, spectrum, media, () => audio.Status, available, () => string.Join("\n", walls.Select(w => w.Covered ? $"{w.Name}: pausado por {w.SuspensionReason}" : $"{w.Name}: {w.View.Statistics.Fps:F0} FPS de dibujo / objetivo {w.Target:F0} · {w.View.Statistics.DrawMs:F2} ms · {w.View.Statistics.Backend}")),edit:ShowEditor,toggleAudio:()=>{if(!audioPaused){audio.Dispose();audioPaused=true;}else{audio=new AudioCapture(spectrum);audio.Start();audioPaused=false;}},restart:()=>{Program.RestartRequested=true;(ApplicationLifetime as IClassicDesktopStyleApplicationLifetime)?.Shutdown();}); panel.Closed += (_, _) => panel = null; } panel.Show(); panel.Activate(); }
     void ShowEditor(Settings target,string? selected) { if(settings.IndependentDisplays&&ReferenceEquals(target,settings))target=walls.FirstOrDefault()?.View.Configuration??target; if(editor!=null){editor.Activate();return;}var wall=walls.FirstOrDefault(w=>ReferenceEquals(w.View.Configuration,target))??walls.FirstOrDefault();if(wall==null||screenProbe==null)return;var screen=screenProbe.Screens.All.FirstOrDefault(s=>s.Bounds==wall.Bounds);if(screen==null)return;editor=new EditorWindow(target,spectrum,media,wall.Bounds,screen.Scaling,wall.Name,selected);editor.Closed+=(_,_)=>{editor=null;Maintain(null,EventArgs.Empty);};editor.Show();editor.Activate();
+Maintain(null,EventArgs.Empty);
 #if WINDOWS
-Maintain(null,EventArgs.Empty);if(editor.WindowsEditorEnabled)ShowWindowsEditor();
+if(editor.WindowsEditorEnabled)ShowWindowsEditor();
 #endif
 }
     void CreateWalls()
@@ -69,10 +70,8 @@ Maintain(null,EventArgs.Empty);if(editor.WindowsEditorEnabled)ShowWindowsEditor(
     async void Maintain(object? sender, EventArgs e)
     {
         if (quitting) return; foreach (var w in walls) { w.Hz=DisplayTiming.RefreshRate(w.Bounds); try{if(w.View.Presenter==null)w.View.UsePresenter(DesktopHost.EnsurePresentation(w.Window.TryGetPlatformHandle()?.Handle??IntPtr.Zero));}catch(Exception error){Trace.WriteLine(error);}w.SuspensionReason=DisplayTiming.CoverageReason(w.Bounds,w.View.Configuration.SuspendFullscreen,w.View.Configuration.SuspendMaximized);
-#if WINDOWS
-if(editor!=null&&editor.WindowsScreen==w.Bounds)w.SuspensionReason="editor de escritorio";
-#endif
-w.Covered=w.SuspensionReason.Length>0; if (!w.Covered) Schedule(w); if (!w.Covered) w.View.Adapt(w.Target > 0 ? w.Target : 60); }
+if(editor!=null&&editor.EditingScreen==w.Bounds)w.SuspensionReason="editor de escritorio";
+w.Covered=w.SuspensionReason.Length>0;w.View.Suspend(w.Covered); if (!w.Covered) Schedule(w); if (!w.Covered) w.View.Adapt(w.Target > 0 ? w.Target : 60); }
         if (OperatingSystem.IsWindows() && walls.Any(w => !DesktopHost.Alive(w.Window.TryGetPlatformHandle()?.Handle ?? IntPtr.Zero))) CreateWalls();
         if ((DateTime.UtcNow - lastStatus).TotalSeconds >= 2) { lastStatus = DateTime.UtcNow; WriteStatus(); }
         if (polling) return; polling = true; try { await Task.Run(media.Poll); } catch (Exception error) { Trace.WriteLine(error); } finally { polling = false; }

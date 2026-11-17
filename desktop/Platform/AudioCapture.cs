@@ -43,7 +43,7 @@ public sealed class AudioCapture(Spectrum spectrum) : IDisposable
   var last=capture;capture=null;last?.Dispose();
  }
 #else
-    Process? process; string sink = ""; CancellationTokenSource? captureStop;
+    Process? process; string sink = ""; CancellationTokenSource? captureStop;Task? readTask;
     async Task Run()
     {
         while (!stop.IsCancellationRequested)
@@ -53,13 +53,15 @@ public sealed class AudioCapture(Spectrum spectrum) : IDisposable
                 var info = await Commands.Run("pactl", "--format=json", "info"); if (info.Code != 0) throw new Exception("Instala pulseaudio-utils y comprueba PulseAudio/PipeWire."); var name = JsonNode.Parse(info.Text)?["default_sink_name"]?.GetValue<string>(); if (string.IsNullOrWhiteSpace(name)) throw new Exception("No se encuentra la salida de audio predeterminada."); if (sink != name || process == null || process.HasExited)
                 {
                     captureStop?.Cancel(); try { process?.Kill(true); } catch { }
-                    ; sink = name; int rate = 48000; var list = await Commands.Run("pactl", "--format=json", "list", "sinks"); if (list.Code == 0 && JsonNode.Parse(list.Text) is JsonArray entries) { foreach (var entry in entries) { if (entry?["name"]?.GetValue<string>() != name) continue; var spec = entry["sample_specification"]?.GetValue<string>() ?? ""; var match = System.Text.RegularExpressions.Regex.Match(spec, @"(\d+)Hz"); if (match.Success) rate = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture); } }
-                    captureStop = CancellationTokenSource.CreateLinkedTokenSource(stop.Token); process = new Process { StartInfo = new() { FileName = "parec", RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false } }; foreach (var a in new[] { "--device=" + name + ".monitor", "--format=float32le", "--rate=" + rate, "--channels=2", "--raw", "--latency-msec=25", "--process-time-msec=10", "--client-name=WirePulse" }) process.StartInfo.ArgumentList.Add(a); process.Start(); _ = process.StandardError.ReadToEndAsync(); _ = Read(process, rate, captureStop.Token); Status = $"Monitor {name} · {rate} Hz";
+                    if(readTask!=null)try{await readTask;}catch{}process?.Dispose();captureStop?.Dispose();if(stop.IsCancellationRequested)break;
+                    sink = name; int rate = 48000; var list = await Commands.Run("pactl", "--format=json", "list", "sinks"); if (list.Code == 0 && JsonNode.Parse(list.Text) is JsonArray entries) { foreach (var entry in entries) { if (entry?["name"]?.GetValue<string>() != name) continue; var spec = entry["sample_specification"]?.GetValue<string>() ?? ""; var match = System.Text.RegularExpressions.Regex.Match(spec, @"(\d+)Hz"); if (match.Success) rate = int.Parse(match.Groups[1].Value, CultureInfo.InvariantCulture); } }
+                    captureStop = CancellationTokenSource.CreateLinkedTokenSource(stop.Token); process = new Process { StartInfo = new() { FileName = "parec", RedirectStandardOutput = true, RedirectStandardError = true, UseShellExecute = false } }; foreach (var a in new[] { "--device=" + name + ".monitor", "--format=float32le", "--rate=" + rate, "--channels=2", "--raw", "--latency-msec=25", "--process-time-msec=10", "--client-name=WirePulse" }) process.StartInfo.ArgumentList.Add(a); process.Start(); _ = process.StandardError.ReadToEndAsync(); readTask = Read(process, rate, captureStop.Token); Status = $"Monitor {name} · {rate} Hz";
                 }
             }
             catch (Exception e) { Status = e.Message; sink = ""; }
             try { await Task.Delay(2000, stop.Token); } catch { break; }
         }
+        captureStop?.Cancel();try{process?.Kill(true);}catch{}if(readTask!=null)try{await readTask;}catch{}process?.Dispose();process=null;captureStop?.Dispose();
     }
     async Task Read(Process p, int rate, CancellationToken token) { try { var bytes = new byte[8192]; var floats = new float[2048]; int offset = 0; while (!token.IsCancellationRequested) { int n = await p.StandardOutput.BaseStream.ReadAsync(bytes.AsMemory(offset, bytes.Length - offset), token); if (n == 0) break; int total = offset + n, aligned = total - total % 8; Buffer.BlockCopy(bytes, 0, floats, 0, aligned); spectrum.Push(floats, aligned / 4, 2, rate); offset = total - aligned; if (offset > 0) Buffer.BlockCopy(bytes, aligned, bytes, 0, offset); } } catch (OperationCanceledException) { } catch (Exception e) { Status = e.Message; } }
 #endif

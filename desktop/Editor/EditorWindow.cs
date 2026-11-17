@@ -7,13 +7,14 @@ using Avalonia.Media;
 using Avalonia.Platform.Storage;
 using Avalonia.Threading;
 using System.Text.Json;
+using System.Diagnostics;
 using System.Text.Json.Nodes;
 namespace WirePulse;
 
 public sealed partial class EditorWindow:Window {
- readonly Settings original,draft;readonly WallpaperView preview;readonly EditorCanvas canvas;readonly ListBox objects=new(){MinHeight=120,MaxHeight=230};readonly StackPanel properties=new(){Spacing=10};readonly Border inspector;readonly Stack<string> undo=[],redo=[];readonly DispatcherTimer timer;readonly string initial;string? dragBefore;bool updating,finished;string? layerDrag;Border? dropIndicator;
+ readonly Settings original,draft;readonly WallpaperView preview;readonly EditorCanvas canvas;readonly ListBox objects=new(){MinHeight=120,MaxHeight=230};readonly StackPanel properties=new(){Spacing=10};readonly Border inspector;readonly Stack<string> undo=[],redo=[];readonly DispatcherTimer timer;readonly string initial;string? dragBefore;bool updating,finished;string? layerDrag;Border? dropIndicator;bool previewActive=true;readonly FramePacer previewPacer=new();double previewHz,lastHzRead;PixelRect previewScreen;
  SceneDocument Document=>draft.Scene!;SceneItem? Selected=>Document.Items.FirstOrDefault(x=>x.Id==canvas.SelectedId);
- public EditorWindow(Settings settings,Spectrum spectrum,MediaService media,PixelRect screen,double scaling,string display,string? selected=null){original=settings;draft=settings.Preview();var viewport=new Size(screen.Width/scaling,screen.Height/scaling);draft.Scene??=SceneDocument.Migrate(settings,viewport);initial=Snapshot();Title="WirePulse · Editar escritorio · "+display;WindowDecorations=WindowDecorations.None;ShowInTaskbar=false;Topmost=true;CanResize=false;Position=screen.Position;Width=viewport.Width;Height=viewport.Height;Background=Brushes.Black;
+ public EditorWindow(Settings settings,Spectrum spectrum,MediaService media,PixelRect screen,double scaling,string display,string? selected=null){original=settings;previewScreen=screen;draft=settings.Preview();var viewport=new Size(screen.Width/scaling,screen.Height/scaling);draft.Scene??=SceneDocument.Migrate(settings,viewport);initial=Snapshot();Title="WirePulse · Editar escritorio · "+display;WindowDecorations=WindowDecorations.None;ShowInTaskbar=false;Topmost=true;CanResize=false;Position=screen.Position;Width=viewport.Width;Height=viewport.Height;Background=Brushes.Black;
 #if WINDOWS
   windowsScreen=screen;windowsScaling=scaling;windowsOriginalSnapshot=JsonSerializer.Serialize(original.Scene);useWindowsEditor=File.Exists(Path.Combine(AppContext.BaseDirectory,"WindowsSettings","WirePulse.Settings.exe"));Topmost=!useWindowsEditor;
 #endif
@@ -28,7 +29,7 @@ inspector.IsVisible=!useWindowsEditor;
 dock.IsVisible=!useWindowsEditor;
 #endif
 Content=root;
-  objects.SelectionChanged+=(_,_)=>{if(updating)return;canvas.SelectedId=(objects.SelectedItem as SceneItem)?.Id;canvas.InvalidateVisual();Inspector();};canvas.SelectionChanged+=()=>{RefreshList();Inspector();};canvas.DragStarted+=()=>dragBefore=Snapshot();canvas.Changed+=()=>draft.Save();canvas.DragEnded+=()=>{if(dragBefore!=null&&dragBefore!=Snapshot()){undo.Push(dragBefore);redo.Clear();}dragBefore=null;Inspector();};KeyDown+=Keys;Closed+=(_,_)=>{timer?.Stop();
+  objects.SelectionChanged+=(_,_)=>{if(updating)return;canvas.SelectedId=(objects.SelectedItem as SceneItem)?.Id;canvas.InvalidateVisual();Inspector();};canvas.SelectionChanged+=()=>{RefreshList();Inspector();};canvas.DragStarted+=()=>dragBefore=Snapshot();canvas.Changed+=()=>draft.Save();canvas.DragEnded+=()=>{if(dragBefore!=null&&dragBefore!=Snapshot()){undo.Push(dragBefore);redo.Clear();}dragBefore=null;Inspector();};KeyDown+=Keys;Closed+=(_,_)=>{timer?.Stop();previewActive=false;
 #if WINDOWS
 windowsPreviewActive=false;
 #endif
@@ -36,10 +37,13 @@ preview.Dispose();};timer=new DispatcherTimer(TimeSpan.FromMilliseconds(16),Disp
 #if WINDOWS
 ScheduleWindowsPreview();
 #else
-timer.Start();
+SchedulePreview();
 #endif
 RefreshList();Inspector();
  }
+ public PixelRect EditingScreen=>previewScreen;
+ void SchedulePreview(){RequestAnimationFrame(_=>{if(!previewActive)return;double now=Stopwatch.GetTimestamp()/(double)Stopwatch.Frequency;if(previewHz==0||now-lastHzRead>2){previewHz=DisplayTiming.RefreshRate(previewScreen);lastHzRead=now;}double target=draft.On("unlimitedfps")?previewHz:Math.Min(previewHz,Math.Clamp(draft.N("fps"),15,360));if(draft.RenderProfile=="Ligero")target=Math.Min(target,60);preview.SetFrameLimit(target);if(previewPacer.Due(now,target))preview.Advance(now);SchedulePreview();});}
+ Slider Range(string label,double value,double min,double max,double step,Action<double> change){var row=new StackPanel{Spacing=4};var caption=new TextBlock{Text=label+" · "+value.ToString("0.##")};row.Children.Add(caption);var slider=new Slider{Minimum=min,Maximum=max,Value=Math.Clamp(value,min,max),SmallChange=step,TickFrequency=step,IsSnapToTickEnabled=true};bool gesture=false;slider.AddHandler(PointerPressedEvent,(_,_)=>{Checkpoint();gesture=true;},Avalonia.Interactivity.RoutingStrategies.Tunnel);slider.AddHandler(PointerReleasedEvent,(_,_)=>gesture=false,Avalonia.Interactivity.RoutingStrategies.Tunnel);slider.PointerCaptureLost+=(_,_)=>gesture=false;slider.PropertyChanged+=(_,e)=>{if(e.Property!=Slider.ValueProperty)return;if(!gesture)Checkpoint();change(slider.Value);caption.Text=label+" · "+slider.Value.ToString("0.##");Changed();};row.Children.Add(slider);properties.Children.Add(row);return slider;}
  public void Select(string id){canvas.SelectedId=id;RefreshList();Inspector();}
  static Button Button(Panel target,string label,Action action){var button=new Button{Content=label};button.Click+=(_,_)=>action();target.Children.Add(button);return button;}
  string Snapshot()=>JsonSerializer.Serialize(Document);
@@ -65,17 +69,19 @@ properties.Children.Clear();if(Selected is not{} item){properties.Children.Add(n
   void Text(string label,string value,Action<string> change,bool multiline=false){Label(label);var box=new TextBox{Text=value,AcceptsReturn=multiline,MinHeight=multiline?70:0};box.LostFocus+=(_,_)=>{if(box.Text==value)return;Checkpoint();change(box.Text??"");Changed(true);};properties.Children.Add(box);}
   void Toggle(string label,bool value,Action<bool> change){var box=new CheckBox{Content=label,IsChecked=value};box.IsCheckedChanged+=(_,_)=>{Checkpoint();change(box.IsChecked==true);Changed(true);canvas.InvalidateVisual();};properties.Children.Add(box);}
   Text("Nombre",item.Name,x=>item.Name=x);Toggle("Visible",item.Visible,x=>item.Visible=x);Toggle("Bloquear posición",item.Locked,x=>item.Locked=x);Toggle("Mantener proporciones",item.KeepAspect,x=>item.KeepAspect=x);
-  Label("Ángulo (grados)");var rotation=new NumericUpDown{Minimum=-360000,Maximum=360000,Increment=1,Value=(decimal)item.Rotation,FormatString="0.##"};rotation.ValueChanged+=(_,_)=>{if(rotation.Value is{} value){Checkpoint();item.Rotation=(double)value;Changed();}};properties.Children.Add(rotation);var rotateButtons=new StackPanel{Orientation=Orientation.Horizontal,Spacing=6};Button(rotateButtons,"↶ 90°",()=>{Checkpoint();item.Rotation-=90;Changed();Inspector();});Button(rotateButtons,"↷ 90°",()=>{Checkpoint();item.Rotation+=90;Changed();Inspector();});Button(rotateButtons,"Sin giro",()=>{Checkpoint();item.Rotation=0;Changed();Inspector();});properties.Children.Add(rotateButtons);
+  Range("Ángulo (grados)",item.Rotation,-180,180,1,x=>item.Rotation=x);var rotateButtons=new StackPanel{Orientation=Orientation.Horizontal,Spacing=6};Button(rotateButtons,"↶ 90°",()=>{Checkpoint();item.Rotation-=90;Changed();Inspector();});Button(rotateButtons,"↷ 90°",()=>{Checkpoint();item.Rotation+=90;Changed();Inspector();});Button(rotateButtons,"Sin giro",()=>{Checkpoint();item.Rotation=0;Changed();Inspector();});properties.Children.Add(rotateButtons);
   var actions=new WrapPanel{ItemSpacing=6,LineSpacing=6};Button(actions,"Duplicar",Duplicate);Button(actions,"Eliminar",Delete);Button(actions,"Centrar",()=>{Checkpoint();item.X=(1-item.Width)/2;item.Y=(1-item.Height)/2;Changed();});Button(actions,"Encajar",()=>{Checkpoint();var r=item.Bounds(canvas.Bounds.Size);double scale=Math.Min(canvas.Bounds.Width*.85/r.Width,canvas.Bounds.Height*.85/r.Height);r=new Rect((canvas.Bounds.Width-r.Width*scale)/2,(canvas.Bounds.Height-r.Height*scale)/2,r.Width*scale,r.Height*scale);item.SetBounds(r,canvas.Bounds.Size);Changed();});Button(actions,"Al frente",()=>{Checkpoint();Document.Items.Remove(item);Document.Items.Add(item);Changed(true);});Button(actions,"Al fondo",()=>{Checkpoint();Document.Items.Remove(item);Document.Items.Insert(0,item);Changed(true);});properties.Children.Add(actions);
   if(item.Kind=="text"){Text("Texto",item.Text,x=>item.Text=x,true);properties.Children.Add(ColorDialog.Button(this,item.Color,x=>{Checkpoint();item.Color=x;Changed();}));}
   if(item.Kind is "text" or "clock"){Label("Fuente");var fonts=new ComboBox{ItemsSource=new[]{"System"}.Concat(FontManager.Current.SystemFonts.Select(x=>x.Name)).Distinct().OrderBy(x=>x),SelectedItem=item.Font,HorizontalAlignment=HorizontalAlignment.Stretch};fonts.SelectionChanged+=(_,_)=>{Checkpoint();item.Font=fonts.SelectedItem?.ToString()??"System";Changed();};properties.Children.Add(fonts);}
+  int generalCount=properties.Children.Count;
   string group=item.Kind switch{"orb"=>"Orbe","spectrum"=>"Espectro","card"=>"Tarjeta","clock"=>"Reloj","stars" or "mesh"=>"Fondo animado",_=>""};
   foreach(var spec in draft.Specs.Where(s=>s.Group==group&&!LayoutKeys.Contains(s.Key)&&s.Kind!="image"&&s.Key is not("sphere" or "spectrum" or "card" or "clockshow" or "bgshow"))){var value=item.Style.GetValueOrDefault(spec.Key)??spec.Value;
    if(spec.Kind=="color"){Label(spec.Title);properties.Children.Add(ColorDialog.Button(this,value?.GetValue<string>()??"#ffffff",x=>{Checkpoint();item.Style[spec.Key]=JsonValue.Create(x);Changed();}));}
    else if(spec.Kind is "bool" or "toggle"){bool on=value is JsonValue v&&(v.TryGetValue<bool>(out var b)?b:v.TryGetValue<double>(out var n)&&n>.5);Toggle(spec.Title,on,x=>item.Style[spec.Key]=JsonValue.Create(x));}
-   else if(spec.Kind=="slider"){Label(spec.Title);var number=new NumericUpDown{Minimum=(decimal)spec.Min,Maximum=(decimal)spec.Max,Increment=(decimal)spec.Step,Value=(decimal)(value?.GetValue<double>()??0),FormatString="0.###"};number.ValueChanged+=(_,_)=>{if(number.Value==null)return;Checkpoint();item.Style[spec.Key]=JsonValue.Create((double)number.Value.Value);Changed();};properties.Children.Add(number);}
+   else if(spec.Kind=="slider")Range(spec.Title,value?.GetValue<double>()??0,spec.Min,spec.Max,spec.Step,x=>item.Style[spec.Key]=JsonValue.Create(x));
   }
-  Label("Opacidad");var opacity=new Slider{Minimum=0,Maximum=1,Value=item.Opacity};opacity.PropertyChanged+=(_,e)=>{if(e.Property==Slider.ValueProperty){Checkpoint();item.Opacity=opacity.Value;Changed();}};properties.Children.Add(opacity);
+  Range("Opacidad",item.Opacity,0,1,.01,x=>item.Opacity=x);
+  var general=new StackPanel{Spacing=10};for(int i=0;i<generalCount;i++){var child=properties.Children[0];properties.Children.RemoveAt(0);general.Children.Add(child);}properties.Children.Add(new Expander{Header="Propiedades del objeto",Content=general,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch});
  }
  public static readonly HashSet<string> LayoutKeys=["sphereX","sphereY","spectrumX","spectrumY","cardX","cardY","clockX","clockY","radius","spectrumWidth","spectrumHeight","cardscale","clocksize"];
  void Duplicate(){if(Selected is not{} item)return;Checkpoint();var copy=item.Clone();copy.Id=Guid.NewGuid().ToString("N");copy.Name+=" · copia";copy.X+=.02;copy.Y+=.02;copy.Locked=false;Document.Items.Add(copy);canvas.SelectedId=copy.Id;Changed(true);Inspector();}
