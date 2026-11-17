@@ -22,7 +22,8 @@ if let i=CommandLine.arguments.firstIndex(of:"--widget-self-test"),CommandLine.a
 if let i=CommandLine.arguments.firstIndex(of:"--editor-preview"),CommandLine.arguments.count>i+1{
  _=NSApplication.shared;NSApp.setActivationPolicy(.accessory)
  let config=Configuration(profile:"editor-preview-"+UUID().uuidString,persistent:false),window=SceneEditorWindow(screen:NSScreen.main ?? NSScreen.screens[0],config:config,audio:SystemAudio(),media:NowPlaying());window.makeKeyAndOrderFront(nil)
- Timer.scheduledTimer(withTimeInterval:3,repeats:false){_ in let capture=Process();capture.executableURL=URL(fileURLWithPath:"/usr/sbin/screencapture");capture.arguments=["-x","-l",String(window.windowNumber),CommandLine.arguments[i+1]];try? capture.run();capture.waitUntilExit();if capture.terminationStatus != 0,let view=window.contentView,let rep=view.bitmapImageRepForCachingDisplay(in:view.bounds){view.cacheDisplay(in:view.bounds,to:rep);try? rep.representation(using:.png,properties:[:])?.write(to:URL(fileURLWithPath:CommandLine.arguments[i+1]))};window.orderOut(nil);exit(0)};NSApp.run();exit(0)
+ let previewDelay=CommandLine.arguments.firstIndex(of:"--preview-duration").flatMap{$0+1<CommandLine.arguments.count ? Double(CommandLine.arguments[$0+1]):nil} ?? 3
+ Timer.scheduledTimer(withTimeInterval:min(300,max(3,previewDelay)),repeats:false){_ in let capture=Process();capture.executableURL=URL(fileURLWithPath:"/usr/sbin/screencapture");capture.arguments=["-x","-l",String(window.windowNumber),CommandLine.arguments[i+1]];try? capture.run();capture.waitUntilExit();if capture.terminationStatus != 0,let view=window.contentView,let rep=view.bitmapImageRepForCachingDisplay(in:view.bounds){view.cacheDisplay(in:view.bounds,to:rep);try? rep.representation(using:.png,properties:[:])?.write(to:URL(fileURLWithPath:CommandLine.arguments[i+1]))};window.orderOut(nil);exit(0)};NSApp.run();exit(0)
 }
 if CommandLine.arguments.contains("--editor-self-test"){
  _=NSApplication.shared

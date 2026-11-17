@@ -10,6 +10,7 @@ Yamato integrates the validated Windows Tulipan history with the native macOS ap
 - Sliders in all desktop editors, one undo action per continuous slider gesture, draggable layers, locks, rotation, duplicate/delete, optional guides and explicit Save/Cancel.
 - Optimized front-hemisphere rendering on all platforms, with edges clipped at the silhouette and offscreen patch culling. The original full transparent mesh remains available by disabling optimized rendering.
 - Image/GIF/video backgrounds on all platforms: AVFoundation on macOS, Media Foundation on Windows and FFmpeg on Linux. Videos loop silently and stop decoding while suspended.
+- HTML widgets stop live audio updates while suspended; desktop snapshot capture pauses too. Cider tempo is forwarded consistently to widgets.
 - Preserves existing scenes, preferences, renderer choices and independent display profiles. Windows still defaults to Direct3D 11 batches for new configurations.
 
 Validation gates include shared-control parity, Windows WinUI editor visibility and resource lifecycle, drawing-resolution changes, GIF delta frames, per-monitor scheduling/coverage, macOS Metal geometry and AVFoundation playback, and real Cinnamon/X11 audio, media metadata, coverage and video tests in CI. Physical dual-monitor 165/75 Hz Windows results come from the earlier user-validated Tulipan build; CI/software drivers do not guarantee a particular physical GPU frame rate.

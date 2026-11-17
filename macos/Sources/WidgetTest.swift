@@ -74,6 +74,13 @@ func testNativeWidget(path: String) -> Int32 {
   }
   while !done && Date() < deadline { RunLoop.main.run(until: Date().addingTimeInterval(0.05)) }
   timer.invalidate()
+  var pauseChecked=false
+  widget.suspend(true)
+  widget.evaluateJavaScript("window.wirepulseAudio.playing===false && window.wirepulseAudio.beat===0 && window.wirepulseAudio.bands.every(x=>x===0)"){value,error in if value as? Bool != true{code=1;diagnostic="Paused widget still receives active audio"};pauseChecked=true}
+  let pauseDeadline=Date().addingTimeInterval(3)
+  while !pauseChecked && Date()<pauseDeadline{RunLoop.main.run(until:Date().addingTimeInterval(0.05))}
+  if !pauseChecked{code=1}else if code==0{print("PASS native widget suspension publishes silence and stops live audio updates")}
+  widget.suspend(false)
   window.orderOut(nil)
   widget.stopLoading()
   if !done {

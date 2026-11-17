@@ -6,6 +6,7 @@ final class LayerScrollView:NSScrollView {
  override func tile(){super.tile();guard let table=documentView as? NSTableView else{return};let width=contentSize.width;guard width>0 else{return};if abs(table.frame.width-width)>0.5{table.setFrameSize(NSSize(width:width,height:table.frame.height))};if let column=table.tableColumns.first,abs(column.width-width)>0.5{column.width=width}}
 }
 struct LayerTable:NSViewRepresentable {
+ static var dragStatus="idle"
  @ObservedObject var model:SceneEditorModel
  func makeCoordinator()->Coordinator{Coordinator(model)}
  func makeNSView(context:Context)->NSScrollView {
@@ -33,8 +34,8 @@ struct LayerTable:NSViewRepresentable {
   }
   @objc func toggleLock(_ sender:NSButton){guard let id=sender.identifier?.rawValue else{return};model.selected=id;model.change{$0.locked.toggle()}}
   func tableViewSelectionDidChange(_ notification:Notification){guard !updating,let table=table else{return};let index=table.selectedRow;let id=rows.indices.contains(index) ? rows[index].id:nil;if model.selected != id{model.selected=id}}
-  func tableView(_ tableView:NSTableView,pasteboardWriterForRow row:Int)->NSPasteboardWriting?{guard rows.indices.contains(row) else{return nil};let item=NSPasteboardItem();item.setString(rows[row].id,forType:Self.format);return item}
-  func tableView(_ tableView:NSTableView,validateDrop info:NSDraggingInfo,proposedRow row:Int,proposedDropOperation operation:NSTableView.DropOperation)->NSDragOperation{guard info.draggingSource as? NSTableView === tableView,info.draggingPasteboard.string(forType:Self.format) != nil else{return []};tableView.setDropRow(row,dropOperation:.above);return .move}
-  func tableView(_ tableView:NSTableView,acceptDrop info:NSDraggingInfo,row:Int,dropOperation:NSTableView.DropOperation)->Bool{guard let source=info.draggingPasteboard.string(forType:Self.format),!rows.isEmpty else{return false};if row>=rows.count{model.reorder(source,rows.last!.id,false)}else{model.reorder(source,rows[max(0,row)].id,true)};sync();return true}
+  func tableView(_ tableView:NSTableView,pasteboardWriterForRow row:Int)->NSPasteboardWriting?{guard rows.indices.contains(row) else{return nil};LayerTable.dragStatus="started";let item=NSPasteboardItem();item.setString(rows[row].id,forType:Self.format);return item}
+  func tableView(_ tableView:NSTableView,validateDrop info:NSDraggingInfo,proposedRow row:Int,proposedDropOperation operation:NSTableView.DropOperation)->NSDragOperation{guard let id=info.draggingPasteboard.string(forType:Self.format),rows.contains(where:{$0.id==id}) else{LayerTable.dragStatus="invalid-source";return []};LayerTable.dragStatus="over-row-\(row)";tableView.setDropRow(row,dropOperation:.above);return .move}
+  func tableView(_ tableView:NSTableView,acceptDrop info:NSDraggingInfo,row:Int,dropOperation:NSTableView.DropOperation)->Bool{guard let source=info.draggingPasteboard.string(forType:Self.format),!rows.isEmpty else{return false};LayerTable.dragStatus="drop-row-\(row)";if row>=rows.count{model.reorder(source,rows.last!.id,false)}else{model.reorder(source,rows[max(0,row)].id,true)};sync();return true}
  }
 }

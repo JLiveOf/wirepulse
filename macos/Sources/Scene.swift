@@ -205,7 +205,7 @@ final class SceneRoot: NSView {
 final class SceneNode: NSView {
   override var isFlipped: Bool { true }
   private var suspended=false
-  func suspend(_ value:Bool){suspended=value;let offscreen=superview.map{parent in let area=metal.map{$0.convert($0.bounds,to:parent)} ?? convert(bounds,to:parent);return !area.intersects(parent.bounds)} ?? false;let paused=value || root.paused || isHidden || alphaValue<=0 || offscreen;if metal?.isPaused != paused{metal?.isPaused=paused};if let image=child as? NSImageView,image.animates == paused{image.animates = !paused}}
+  func suspend(_ value:Bool){suspended=value;let offscreen=superview.map{parent in let area=metal.map{$0.convert($0.bounds,to:parent)} ?? convert(bounds,to:parent);return !area.intersects(parent.bounds)} ?? false;let paused=value || root.paused || isHidden || alphaValue<=0 || offscreen;widget?.suspend(paused);if metal?.isPaused != paused{metal?.isPaused=paused};if let image=child as? NSImageView,image.animates == paused{image.animates = !paused}}
   var sceneRect=CGRect.null,sceneAngle=Double.nan
   let root: Configuration, proxy: Configuration, audio: SystemAudio, media: NowPlaying
   var metal: MTKView?, renderer: WallpaperRenderer?, widget: NativeWidget?
@@ -399,6 +399,8 @@ struct SceneMusicCard: View {
 }
 final class NativeWidget: WKWebView, WKNavigationDelegate {
   private var timer: Timer?, root: URL
+  private var suspended=false
+  func suspend(_ value:Bool){guard suspended != value else{return};suspended=value;if value{let zero="{\"bands\":["+Array(repeating:"0",count:64).joined(separator:",")+"],\"beat\":0,\"bpm\":0,\"playing\":false}";evaluateJavaScript("window.wirepulseAudio="+zero+";window.dispatchEvent(new CustomEvent('wirepulse:audio',{detail:window.wirepulseAudio}));",completionHandler:nil)}}
   init(path: String, audio: SystemAudio, media: NowPlaying) {
     root = URL(fileURLWithPath: path).deletingLastPathComponent()
     let config = WKWebViewConfiguration()
@@ -421,7 +423,7 @@ final class NativeWidget: WKWebView, WKNavigationDelegate {
     loadFileURL(URL(fileURLWithPath: path), allowingReadAccessTo: root)
     timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) {
       [weak self, weak audio, weak media] _ in
-      guard let self = self, let s = audio?.analyzer.snapshot() else { return }
+      guard let self = self,!self.suspended,let s = audio?.analyzer.snapshot() else { return }
       let json: [String: Any] = [
         "bands": s.bands, "beat": s.age < 1 ? s.beat : 0,
         "bpm": (media?.tempoBpm ?? 0) > 0 ? media!.tempoBpm : s.bpm, "playing": s.age < 0.4,
