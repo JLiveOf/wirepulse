@@ -9,7 +9,7 @@ Yamato integrates the validated Windows Tulipan history with the native macOS ap
 - GIF timing in the desktop editor uses one monotonic frame source, with 60/75/165/240 FPS regression comparisons.
 - Sliders in all desktop editors, one undo action per continuous slider gesture, draggable layers, locks, rotation, duplicate/delete, optional guides and explicit Save/Cancel.
 - Optimized front-hemisphere rendering on all platforms, with edges clipped at the silhouette and offscreen patch culling. The original full transparent mesh remains available by disabling optimized rendering.
-- Image/GIF/video backgrounds on all platforms: AVFoundation on macOS, Media Foundation on Windows and FFmpeg on Linux. Videos loop silently and stop decoding while suspended.
+- Image/GIF/video backgrounds on all platforms: AVFoundation on macOS, Media Foundation on Windows and FFmpeg on Linux. Videos loop silently and stop decoding while suspended. Image/GIF backgrounds use the same centered cover crop on every platform.
 - HTML widgets stop live audio updates while suspended; desktop snapshot capture pauses too. Cider tempo is forwarded consistently to widgets.
 - Preserves existing scenes, preferences, renderer choices and independent display profiles. Windows still defaults to Direct3D 11 batches for new configurations.
 
