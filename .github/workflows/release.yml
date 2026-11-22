@@ -211,6 +211,11 @@ jobs:
           path: packages
       - name: Verify complete download set and create checksums
         run: python3 scripts/check-release.py packages
+      - name: Add the editor video demo
+        run: |
+          cp docs/media/editor-demo.mp4 packages/editor-demo.mp4
+          cd packages
+          sha256sum editor-demo.mp4 >> SHA256SUMS.txt
       - name: Publish one release with every platform
         env:
           GH_TOKEN: ${{ github.token }}
