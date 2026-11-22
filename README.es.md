@@ -27,9 +27,7 @@ Los fondos de vídeo en Linux necesitan FFmpeg. El audio y las portadas pueden s
 
 Abre WirePulse desde la bandeja o barra de menús → **Editar escritorio**. Añade objetos, arrástralos y guarda. Las propiedades de cada objeto incluyen formato de texto, animación y gradientes.
 
-[![Ver la demo del editor](docs/media/editor-demo.jpg)](https://github.com/JLiveOf/wirepulse/releases/download/v4.1.0/editor-demo.mp4)
-
-**[Ver la demo: añadir y editar elementos](https://github.com/JLiveOf/wirepulse/releases/download/v4.1.0/editor-demo.mp4)**
+https://github.com/user-attachments/assets/586ff496-34da-49b2-820b-7a625c7f0e12
 
 En Ajustes → **Inicio** están el idioma, el inicio de sesión y las actualizaciones. El idioma se aplica al reiniciar. El canal beta incluye las prereleases de GitHub. La app pregunta antes de descargar y recuerda la versión omitida o la decisión de no volver a preguntar. Las actualizaciones `.deb` de Linux abren el instalador de paquetes del sistema.
 

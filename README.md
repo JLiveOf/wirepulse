@@ -27,9 +27,7 @@ Linux video backgrounds require FFmpeg. Audio and artwork may require system per
 
 Open WirePulse from the tray or menu bar → **Edit desktop**. Add objects, drag them into place and save. Text formatting, animation and gradients are in each object's properties.
 
-[![Watch the desktop editor demo](docs/media/editor-demo.jpg)](https://github.com/JLiveOf/wirepulse/releases/download/v4.1.0/editor-demo.mp4)
-
-**[Watch the demo: add and edit elements](https://github.com/JLiveOf/wirepulse/releases/download/v4.1.0/editor-demo.mp4)**
+https://github.com/user-attachments/assets/586ff496-34da-49b2-820b-7a625c7f0e12
 
 Settings → **Startup** contains language, login startup and update preferences. Language changes require a restart. Beta includes GitHub prereleases. Updates ask before downloading; skipping one version or disabling future prompts is remembered. Linux `.deb` updates open the system package installer.
 
