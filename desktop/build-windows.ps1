@@ -37,6 +37,8 @@ try {
  "Renderer and WindowsSettings subdirectories contain the exact dependency notices." | Set-Content publish/ThirdPartyNotices/COMPONENTS.txt -Encoding utf8
  if($Test){
   New-Item -ItemType Directory -Force test-results | Out-Null
+  & "$PWD/publish/WirePulse.exe" --self-test
+  if($LASTEXITCODE -ne 0){throw "Windows self-test failed before UI probes"}
   foreach($case in @(
    @{Name='editor-save';Args=@('--winui-editor-test-output','test-results/editor-save.json')},
    @{Name='editor-discard';Args=@('--winui-editor-test-output','test-results/editor-discard.json','--editor-test-discard')},

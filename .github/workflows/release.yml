@@ -103,6 +103,8 @@ jobs:
           name: windows-renderers
           path: |
             desktop/test-results/renderers/
+            desktop/test-results/*.log
+            desktop/test-results/*.err
             desktop/test-results/winui-native.json
             desktop/test-results/video-*.json
             desktop/test-results/audio-loopback.json
