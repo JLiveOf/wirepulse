@@ -20,7 +20,7 @@ public sealed class StartupRegistration
         if (!windows) return;
         if (WindowsStartupTask.OwnedBy(executable, registryPath)) WindowsStartupTask.Remove(registryPath);
         using var key=Registry.CurrentUser.OpenSubKey(registryPath, true);
-        if (string.Equals(key?.GetValue(ValueName) as string, WindowsCommand(executable), StringComparison.OrdinalIgnoreCase)) key.DeleteValue(ValueName, false);
+        if (string.Equals(key?.GetValue(ValueName) as string, WindowsCommand(executable), StringComparison.OrdinalIgnoreCase)) key?.DeleteValue(ValueName, false);
     }
     public static string WindowsCommand(string path) => "\"" + path + "\" --autostart --no-settings";
     static string EntryString(string text) => text.Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
