@@ -10,7 +10,11 @@ struct SceneItem: Codable, Identifiable, Equatable {
   var x = 0.35, y = 0.3, width = 0.3, height = 0.4
   var visible = true, locked = false, keepAspect = true, opacity = 1.0
   var asset = "", text = "Tu texto", font = "System", color = "#ffffff"
+  var gradients=[String:GradientSpec]()
+  var textSize=0.0,textSpeed=1.0,textDistance=12.0
+  var textBold=false,textItalic=false,textAlign="center",textAnimation="none"
   var style = [String: SceneValue]()
+  mutating func cleanEffects(){textSize=textSize.isFinite ? min(512,max(0,textSize)):0;textSpeed=textSpeed.isFinite ? min(5,max(0.1,textSpeed)):1;textDistance=textDistance.isFinite ? min(200,max(0,textDistance)):12;if !TextMotion.modes.contains(textAnimation){textAnimation="none"};if !["left","center","right"].contains(textAlign){textAlign="center"};gradients=Dictionary(uniqueKeysWithValues:gradients.prefix(32).map{($0.key,$0.value.cleaned())})}
   func rect(_ size: CGSize) -> CGRect {
     CGRect(
       x: x * size.width, y: y * size.height, width: width * size.width, height: height * size.height
@@ -26,7 +30,7 @@ struct SceneItem: Codable, Identifiable, Equatable {
 extension SceneItem {
   enum CodingKeys: String, CodingKey {
     case id, kind, name, x, y, width, height, visible, locked, keepAspect, opacity, asset, text,
-      font, color, style, rotation
+      font, color, style, rotation, gradients,textSize,textBold,textItalic,textAlign,textAnimation,textSpeed,textDistance
   }
   init(from decoder: Decoder) throws {
     self.init()
@@ -47,6 +51,14 @@ extension SceneItem {
     text = try c.decodeIfPresent(String.self, forKey: .text) ?? "Tu texto"
     font = try c.decodeIfPresent(String.self, forKey: .font) ?? "System"
     color = try c.decodeIfPresent(String.self, forKey: .color) ?? "#ffffff"
+    gradients=try c.decodeIfPresent([String:GradientSpec].self,forKey:.gradients) ?? [:]
+    textSize=try c.decodeIfPresent(Double.self,forKey:.textSize) ?? 0
+    textBold=try c.decodeIfPresent(Bool.self,forKey:.textBold) ?? false
+    textItalic=try c.decodeIfPresent(Bool.self,forKey:.textItalic) ?? false
+    textAlign=try c.decodeIfPresent(String.self,forKey:.textAlign) ?? "center"
+    textAnimation=try c.decodeIfPresent(String.self,forKey:.textAnimation) ?? "none"
+    textSpeed=try c.decodeIfPresent(Double.self,forKey:.textSpeed) ?? 1
+    textDistance=try c.decodeIfPresent(Double.self,forKey:.textDistance) ?? 12
     style = try c.decodeIfPresent([String: SceneValue].self, forKey: .style) ?? [:]
   }
 }
@@ -87,7 +99,7 @@ struct SceneDocument: Codable, Equatable {
   static func make(_ kind: String, _ c: Configuration, _ size: CGSize) -> SceneItem {
     var item = SceneItem()
     item.kind = kind
-    item.name = L10n.text(kinds.first { $0.0 == kind }?.1 ?? kind)
+    item.gradients=c.gradients;item.name = L10n.text(kinds.first { $0.0 == kind }?.1 ?? kind)
     item.font = c.clockFont
     item.style = c.values.mapValues { .number($0) }.merging(c.colors.mapValues { .string($0) }) {
       _, new in new
@@ -205,7 +217,7 @@ final class SceneRoot: NSView {
 final class SceneNode: NSView {
   override var isFlipped: Bool { true }
   private var suspended=false
-  func suspend(_ value:Bool){suspended=value;let offscreen=superview.map{parent in let area=metal.map{$0.convert($0.bounds,to:parent)} ?? convert(bounds,to:parent);return !area.intersects(parent.bounds)} ?? false;let paused=value || root.paused || isHidden || alphaValue<=0 || offscreen;widget?.suspend(paused);if metal?.isPaused != paused{metal?.isPaused=paused};if let image=child as? NSImageView,image.animates == paused{image.animates = !paused}}
+  func suspend(_ value:Bool){suspended=value;let offscreen=superview.map{parent in let area=metal.map{$0.convert($0.bounds,to:parent)} ?? convert(bounds,to:parent);return !area.intersects(parent.bounds)} ?? false;let paused=value || root.paused || isHidden || alphaValue<=0 || offscreen;widget?.suspend(paused);(child as? AnimatedTextView)?.pause(paused);if metal?.isPaused != paused{metal?.isPaused=paused};if let image=child as? NSImageView,image.animates == paused{image.animates = !paused}}
   var sceneRect=CGRect.null,sceneAngle=Double.nan
   let root: Configuration, proxy: Configuration, audio: SystemAudio, media: NowPlaying
   var metal: MTKView?, renderer: WallpaperRenderer?, widget: NativeWidget?
@@ -222,7 +234,7 @@ final class SceneNode: NSView {
     layer?.masksToBounds = true
   }
   required init?(coder: NSCoder) { fatalError() }
-  func apply(_ next: SceneItem) {
+  func apply(_ input: SceneItem) {var next=input;next.cleanEffects()
     clipsToBounds = next.kind != "orb"
     layer?.masksToBounds = next.kind != "orb"
     if isHidden == next.visible{isHidden = !next.visible}
@@ -272,9 +284,8 @@ final class SceneNode: NSView {
         view.animates = true
         child = view
       } else if next.kind == "text" {
-        let view = NSTextField(wrappingLabelWithString: next.text)
-        view.alignment = .center
-        view.textColor = NSColor(hex: next.color)
+        let view = AnimatedTextView()
+        view.update(next)
         child = view
       } else if next.kind == "clock" {
         proxy.values["clockshow"] = 1
@@ -295,6 +306,8 @@ final class SceneNode: NSView {
     }
     if item?.font != next.font{previousSize = .zero}
     item = next
+    if proxy.gradients != next.gradients{proxy.gradients=next.gradients}
+    (child as? AnimatedTextView)?.update(next)
     suspend(suspended)
     if let text=child as? NSTextField {
       if text.stringValue != next.text{text.stringValue=next.text;previousSize = .zero}
@@ -381,8 +394,7 @@ struct SceneMusicCard: View {
         }
         TimelineView(.periodic(from: .now, by: 1)) { _ in
           VStack(spacing: 4) {
-            ProgressView(value: media.duration > 0 ? min(1, media.elapsed() / media.duration) : 0)
-              .tint(Color(nsColor: config.color("accent")))
+            GeometryReader{p in ZStack(alignment:.leading){Capsule().fill(.white.opacity(0.18));Capsule().fill(config.paint("accent")).frame(width:p.size.width*(media.duration>0 ? min(1,media.elapsed()/media.duration):0))}}.frame(height:max(2,h*0.025))
             HStack {
               Text(stamp(media.elapsed()))
               Spacer()

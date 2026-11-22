@@ -67,6 +67,7 @@ final class Configuration: ObservableObject {
  @Published var independentDisplays:Bool { didSet{if persistent{UserDefaults.standard.set(independentDisplays,forKey:"independentDisplays")} }}
  static let defaults: [String:Double] = ["dim":0,"sensitivity":0.7,"bass":1.2,"gate":0.015,"smoothing":0.5,"sphere":1,"orboptimized":1,"fullmesh":1,"radius":55,"sphereX":97,"sphereY":123,"deformation":1,"pulse":0.2,"rotation":0.5,"density":42,"linewidth":0.65,"glow":6,"opacity":1,"spectrum":1,"spectrumX":0,"spectrumY":0,"spectrumHeight":100,"spectrumWidth":15,"segmented":1,"card":1,"hideidle":0,"cardX":0.8,"cardY":1.3,"cardscale":0.75,"unlimitedfps":0,"fps":60,"pausefullscreen":1,"pausemaximized":1,"quality":1,"bgshow":1,"bgreact":1,"bgstyle":0,"bgopacity":0.3,"bgdensity":120,"bgspacing":100,"bgline":0.65,"bgspeed":20,"bgdirection":135,"bgboost":3,"clockshow":1,"clock24":1,"clocksize":48,"clockX":50,"clockY":82]
  @Published var values: [String:Double] { didSet { if persistent{UserDefaults.standard.set(values,forKey:storagePrefix+"values") } }}
+ @Published var gradients:[String:GradientSpec]{didSet{if persistent,let data=try? JSONEncoder().encode(gradients){UserDefaults.standard.set(data,forKey:storagePrefix+"gradients")}}}
  @Published var colors: [String:String] { didSet { if persistent{UserDefaults.standard.set(colors,forKey:storagePrefix+"colors") } }}
  @Published var backgroundPath: String { didSet { if persistent{UserDefaults.standard.set(backgroundPath,forKey:storagePrefix+"backgroundPath") } }}
  @Published var mediaSource: String { didSet { if persistent{UserDefaults.standard.set(mediaSource,forKey:"mediaSource") } }}
@@ -93,6 +94,7 @@ final class Configuration: ObservableObject {
   ciderURL=UserDefaults.standard.string(forKey:"ciderURL") ?? "http://127.0.0.1:10767"
   ciderToken=CiderReader.loadToken()
   values = (template?.values ?? Self.defaults).merging(UserDefaults.standard.dictionary(forKey:storagePrefix+"values") as? [String:Double] ?? [:]) { _,new in new }
+  gradients=UserDefaults.standard.data(forKey:storagePrefix+"gradients").flatMap{try? JSONDecoder().decode([String:GradientSpec].self,from:$0)} ?? template?.gradients ?? [:]
   colors = (template?.colors ?? ["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf","bgcolor":"#ff143c","clockcolor":"#ffffff"]).merging(UserDefaults.standard.dictionary(forKey:storagePrefix+"colors") as? [String:String] ?? [:]) { _,new in new }
   backgroundPath = UserDefaults.standard.string(forKey:storagePrefix+"backgroundPath") ?? template?.backgroundPath ?? ""
   mediaSource = UserDefaults.standard.string(forKey:"mediaSource") ?? "Automático"
@@ -103,11 +105,13 @@ final class Configuration: ObservableObject {
  }
  func preview()->Configuration{let copy=Configuration(profile:UUID().uuidString,template:self,persistent:false);copy.copyLayout(from:self);return copy}
  var hasSaved:Bool{UserDefaults.standard.object(forKey:storagePrefix+"values") != nil}
- func copyLayout(from other:Configuration){renderProfile=other.renderProfile;scene=other.scene;editorSnap=other.editorSnap;values=other.values;colors=other.colors;backgroundPath=other.backgroundPath;topCentered=other.topCentered;topMargin=other.topMargin;clockFont=other.clockFont}
+ func copyLayout(from other:Configuration){renderProfile=other.renderProfile;scene=other.scene;editorSnap=other.editorSnap;values=other.values;colors=other.colors;gradients=other.gradients;backgroundPath=other.backgroundPath;topCentered=other.topCentered;topMargin=other.topMargin;clockFont=other.clockFont}
  func n(_ key:String)->Double { values[key] ?? Self.defaults[key] ?? 0 }
  func on(_ key:String)->Bool { n(key)>0.5 }
+ func gradient(_ key:String)->GradientSpec{gradients[key] ?? GradientSpec()}
+ func paint(_ key:String)->AnyShapeStyle{gradient(key).shape(color(key))}
  func color(_ key:String)->NSColor { NSColor(hex:colors[key] ?? "#ffffff") }
- func reset() { scene=nil; values=Self.defaults; colors=["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf","bgcolor":"#ff143c","clockcolor":"#ffffff"];backgroundPath="";clockFont="System";topCentered=true;topMargin=4.8 }
+ func reset() { scene=nil;gradients=[:]; values=Self.defaults; colors=["backgroundcolor":"#000000","wirecolor":"#ff143c","accent":"#b226bf","bgcolor":"#ff143c","clockcolor":"#ffffff"];backgroundPath="";clockFont="System";topCentered=true;topMargin=4.8 }
  func chooseImage() {
   let panel=NSOpenPanel();panel.allowedContentTypes=[.image,.movie];panel.canChooseDirectories=false
   guard panel.runModal() == .OK,let url=panel.url else{return}

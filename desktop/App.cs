@@ -10,6 +10,7 @@ namespace WirePulse;
 
 public sealed partial class App : Application
 {
+    UpdateRelease? pendingUpdate;UpdatePrompt? updatePrompt;
     Settings settings = null!; readonly Spectrum spectrum = new(); MediaService media = null!; AudioCapture audio = null!; SettingsWindow? panel; EditorWindow? editor; Window? screenProbe; readonly List<Surface> walls = [];
     readonly Dictionary<string, Settings> profiles = [], available = []; DispatcherTimer? maintenance; TrayIcon? tray; bool audioPaused,polling, quitting, rebuilding, lastIndependent; DateTime lastStatus = DateTime.MinValue; double lastCpu, lastWall; double cpuPercent;
     sealed class Surface(Window window, WallpaperView view, string name, double hz, PixelRect bounds) { public Window Window = window; public WallpaperView View = view; public string Name = name; public double Hz = hz; public FramePacer Pacer = new();public RenderStatistics Updates=new(); public PixelRect Bounds = bounds; public bool Active = true, Scheduled, Covered; public double Target;public string SuspensionReason=""; }
@@ -24,7 +25,7 @@ public sealed partial class App : Application
             if(Program.Args.Contains("--windows-video-test")){WindowsVideoTest.Run(life);base.OnFrameworkInitializationCompleted();return;}
             if(Program.Option("--winui-editor-test-output") is string editorTestOutput){RunWindowsEditorTest(life,editorTestOutput);base.OnFrameworkInitializationCompleted();return;}
 #endif
-            if(Program.Args.Contains("--widget-smoke-test")){WidgetSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;}if(Program.Args.Contains("--renderer-smoke-test")){RendererSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;} settings = new(); media = new(settings); audio = new(spectrum); audio.Start();
+            if(Program.Args.Contains("--widget-smoke-test")){WidgetSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;}if(Program.Args.Contains("--renderer-smoke-test")){RendererSmoke.Run(life);base.OnFrameworkInitializationCompleted();return;} settings = new();UpdateService.Current.Available+=release=>Dispatcher.UIThread.Post(()=>{pendingUpdate=release;OfferPendingUpdate();});if(!Program.Args.Any(a=>a.StartsWith("--")&&a is not("--autostart" or "--no-settings")))_=Task.Run(async()=>{await Task.Delay(5000);await UpdateService.Current.CheckAsync();}); media = new(settings); audio = new(spectrum); audio.Start();
             life.Exit += (_, _) => { quitting = true; maintenance?.Stop(); foreach (var wall in walls) { wall.Active = false; wall.View.Dispose(); } audio.Dispose(); tray?.Dispose(); screenProbe?.Close(); };
             var menu = new NativeMenu(); var show = new NativeMenuItem(L10n.Text("Ajustes de WirePulse")); show.Click += (_, _) => ShowSettings(); menu.Add(show); var edit=new NativeMenuItem(L10n.Text("Editar escritorio…"));edit.Click+=(_,_)=>ShowEditor(settings,null);menu.Add(edit);
             var pause = new NativeMenuItem(L10n.Text("Pausar / reanudar animación")); pause.Click += (_, _) => { settings.Paused = !settings.Paused; foreach (var p in profiles.Values) p.Paused = settings.Paused; }; menu.Add(pause);
@@ -38,6 +39,7 @@ public sealed partial class App : Application
         }
         base.OnFrameworkInitializationCompleted();
     }
+    void OfferPendingUpdate(){if(pendingUpdate==null||updatePrompt!=null||editor!=null||ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime life||life.Windows.OfType<StartupPrompt>().Any(w=>w.IsVisible))return;var release=pendingUpdate;pendingUpdate=null;updatePrompt=new UpdatePrompt(release,()=>life.Shutdown());updatePrompt.Closed+=(_,_)=>updatePrompt=null;updatePrompt.Show();}
     void ShowSettings() {
 #if WINDOWS
         if(ShowWindowsSettings())return;
@@ -68,7 +70,7 @@ if(editor.WindowsEditorEnabled)ShowWindowsEditor();
     }
     void Schedule(Surface surface) { if (surface.Scheduled || surface.Covered || !surface.Active) return; surface.Scheduled = true; surface.Window.RequestAnimationFrame(time => { surface.Scheduled = false; if (!surface.Active || surface.Covered || quitting) return; var s = surface.View.Configuration; double target = s.On("unlimitedfps") ? surface.Hz : Math.Min(surface.Hz, Math.Clamp(s.N("fps"), 15, 360)); if (s.RenderProfile == "Ligero") target = Math.Min(target, 60); if (s.Paused) target = Math.Min(target, 15); if (s.Scene==null && !surface.View.HasAnimatedMedia && !s.On("sphere") && !s.On("spectrum") && !s.On("bgshow")) target = 4; surface.Target = target; surface.View.SetFrameLimit(target); double now=Stopwatch.GetTimestamp()/(double)Stopwatch.Frequency; if (surface.Pacer.Due(now, target)){surface.Updates.Record(0);surface.View.Advance(now);} Schedule(surface); }); }
     async void Maintain(object? sender, EventArgs e)
-    {
+    {OfferPendingUpdate();
         if (quitting) return; foreach (var w in walls) { w.Hz=DisplayTiming.RefreshRate(w.Bounds); try{if(w.View.Presenter==null)w.View.UsePresenter(DesktopHost.EnsurePresentation(w.Window.TryGetPlatformHandle()?.Handle??IntPtr.Zero));}catch(Exception error){Trace.WriteLine(error);}w.SuspensionReason=DisplayTiming.CoverageReason(w.Bounds,w.View.Configuration.SuspendFullscreen,w.View.Configuration.SuspendMaximized);
 if(editor!=null&&editor.EditingScreen==w.Bounds)w.SuspensionReason="editor de escritorio";
 w.Covered=w.SuspensionReason.Length>0;w.View.Suspend(w.Covered); if (!w.Covered) Schedule(w); if (!w.Covered) w.View.Adapt(w.Target > 0 ? w.Target : 60); }

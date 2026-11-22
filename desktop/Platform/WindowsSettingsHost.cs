@@ -45,6 +45,10 @@ public sealed partial class App {
   if(request["global"]?.GetValue<bool>()==true)target=settings;
   Avalonia.Size wallSize()=>walls.FirstOrDefault(w=>ReferenceEquals(w.View.Configuration,target))?.View.Bounds.Size??walls.FirstOrDefault()?.View.Bounds.Size??new Avalonia.Size(1920,1080);
   switch(op){
+   case "update-channel":UpdateService.Current.Configure(channel:request["value"]!.GetValue<string>());break;
+   case "update-automatic":UpdateService.Current.Configure(automatic:request["value"]!.GetValue<bool>());break;
+   case "update-check":_=UpdateService.Current.CheckAsync(true);break;
+   case "gradient":{string key=request["key"]!.GetValue<string>();if(!target.Specs.Any(s=>s.Key==key&&s.Kind=="color"))throw new ArgumentException("Propiedad desconocida");target.Gradients[key]=(request["value"]!.Deserialize<GradientSpec>(LayoutPackage.Json)??new()).Clean();target.Save();break;}
    case "set":{
     string key=request["key"]!.GetValue<string>();var spec=target.Specs.FirstOrDefault(s=>s.Key==key)??throw new ArgumentException("Control desconocido");var value=request["value"];
     if(spec.Kind=="slider"){double number=value!.GetValue<double>();if(!double.IsFinite(number))throw new ArgumentException("Valor inválido");target.Set(key,Math.Clamp(number,spec.Min,spec.Max));}
@@ -73,9 +77,9 @@ public sealed partial class App {
    case "get":break;
    default:throw new ArgumentException("Acción desconocida");
   }
-  object Values(Settings s)=>new{values=s.Values,scene=s.Scene!=null,profile=s.RenderProfile,backgroundStyle=s.BackgroundStyle,clockFont=s.ClockFont,suspendMaximized=s.SuspendMaximized,suspendFullscreen=s.SuspendFullscreen};
+  object Values(Settings s)=>new{gradients=s.Gradients,values=s.Values,scene=s.Scene!=null,profile=s.RenderProfile,backgroundStyle=s.BackgroundStyle,clockFont=s.ClockFont,suspendMaximized=s.SuspendMaximized,suspendFullscreen=s.SuspendFullscreen};
   var spectrumFrame=spectrum.Snapshot();bool startup=false,startupPriority=false;try{var registration=new StartupRegistration();startup=registration.Enabled;startupPriority=registration.PriorityEnabled;}catch{}
-  return JsonSerializer.SerializeToNode(new{global=Values(settings),displays=available.ToDictionary(p=>p.Key,p=>Values(p.Value)),specs=settings.Specs.Select(s=>new{key=s.Key,title=s.Title,kind=s.Kind,group=s.Group,min=s.Min,max=s.Max,step=s.Step}),independent=settings.IndependentDisplays,mediaSource=settings.MediaSource,ciderUrl=settings.CiderUrl,ciderToken=settings.CiderToken,engine=settings.WindowsEngine,renderer=settings.WindowsRenderer,activeEngine=RenderEngines.Requested,activeRenderer=GraphicsBackend.Requested,startup,startupPriority,paused=settings.Paused,audioRunning=!windowsAudioPaused,audio=windowsAudioPaused?"Captura detenida":audio.Status,sampleRate=spectrumFrame.SampleRate,fft=spectrumFrame.FftSize,bands=spectrumFrame.Bands,age=spectrumFrame.Age,bpm=PlaybackTempo.Resolve(media.Current,spectrumFrame.Bpm),media=media.Status,performance=walls.Select(w=>new{name=w.Name,fps=w.Covered?0:w.View.Statistics.Fps,target=w.Target,drawMs=w.View.Statistics.DrawMs,backend=w.View.EngineStatus,suspended=w.SuspensionReason})})!;
+  return JsonSerializer.SerializeToNode(new{updates=new{channel=UpdateService.Current.Preferences.Channel,automatic=UpdateService.Current.Preferences.Automatic,status=UpdateService.Current.Status,installed=UpdateService.InstalledVersion},global=Values(settings),displays=available.ToDictionary(p=>p.Key,p=>Values(p.Value)),specs=settings.Specs.Select(s=>new{key=s.Key,title=s.Title,kind=s.Kind,group=s.Group,min=s.Min,max=s.Max,step=s.Step}),independent=settings.IndependentDisplays,mediaSource=settings.MediaSource,ciderUrl=settings.CiderUrl,ciderToken=settings.CiderToken,engine=settings.WindowsEngine,renderer=settings.WindowsRenderer,activeEngine=RenderEngines.Requested,activeRenderer=GraphicsBackend.Requested,startup,startupPriority,paused=settings.Paused,audioRunning=!windowsAudioPaused,audio=windowsAudioPaused?"Captura detenida":audio.Status,sampleRate=spectrumFrame.SampleRate,fft=spectrumFrame.FftSize,bands=spectrumFrame.Bands,age=spectrumFrame.Age,bpm=PlaybackTempo.Resolve(media.Current,spectrumFrame.Bpm),media=media.Status,performance=walls.Select(w=>new{name=w.Name,fps=w.Covered?0:w.View.Statistics.Fps,target=w.Target,drawMs=w.View.Statistics.DrawMs,backend=w.View.EngineStatus,suspended=w.SuspensionReason})})!;
  }
 }
 #endif

@@ -1,0 +1,40 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Headless;
+using Avalonia.Media;
+using Avalonia.Media.Imaging;
+using Avalonia.VisualTree;
+using SkiaSharp;
+using System.Text.Json;
+using System.Security.Cryptography;
+using WirePulse;
+
+void Check(bool ok,string name){if(!ok)throw new Exception(name);Console.WriteLine("PASS "+name);}
+foreach(var (a,b) in new[]{("4.1.0","4.0.99"),("4.1.0","4.1.0-beta.9"),("4.1.0-beta.10","4.1.0-beta.2"),("4.1.0-beta.2","4.1.0-beta.1"),("4.2.0","4.1.99")})Check(ReleaseVersion.Parse(a)!.CompareTo(ReleaseVersion.Parse(b))>0,"semantic version "+a+" > "+b);
+Check(ReleaseVersion.Parse("v4.1.0+abc")!.CompareTo(ReleaseVersion.Parse("4.1.0"))==0&&ReleaseVersion.Parse("v4.x.0")==null,"tags, build metadata and malformed versions");
+object Release(string tag,bool beta=false,bool draft=false,string? url=null)=>new{tag_name=tag,prerelease=beta,draft,assets=new[]{new{name="WirePulse-"+tag.TrimStart('v')+"-win-x64-Setup.exe",browser_download_url=url??"https://github.com/JLiveOf/wirepulse/releases/download/"+tag+"/WirePulse.exe",size=123,digest="sha256:"+new string('a',64)},new{name="WirePulse-"+tag.TrimStart('v')+"-macOS-arm64.zip",browser_download_url="https://github.com/JLiveOf/wirepulse/releases/download/"+tag+"/WirePulse.zip",size=123,digest="sha256:"+new string('a',64)}}};
+string json=JsonSerializer.Serialize(new[]{Release("v4.1.1"),Release("v4.2.0-beta.2",true),Release("v4.2.0-beta.10",true),Release("v5.0.0",draft:true)});
+Check(UpdateService.Select(json,"4.1.0","stable","windows")?.Tag=="v4.1.1","stable excludes prereleases and drafts");
+Check(UpdateService.Select(json,"4.1.0","beta","windows")?.Tag=="v4.2.0-beta.10","beta selects newest semantic version");
+Check(UpdateService.Select(json,"4.1.1","stable","windows")==null,"installed version is not offered again");
+Check(UpdateService.Select(json,"4.1.0","stable","windows","4.1.1")==null,"skip persists across v-prefixed tag names");
+Check(UpdateService.Select(json,"9.0.0","beta","windows")==null,"never downgrade");
+Check(UpdateService.Select(JsonSerializer.Serialize(new[]{Release("v4.9.0",url:"https://evil.example/WirePulse.exe")}),"4.1.0","stable","windows")==null,"reject non-repository download URLs");
+Check(UpdateService.Select(json,"4.1.0","stable","unknown")==null,"require a compatible platform asset");
+Check(UpdateService.ResolveInstalled("4.2.0",new("v4.2.0-beta.10","abc"),"abc")=="4.2.0-beta.10","retain installed prerelease identity");
+Check(UpdateService.ResolveInstalled("4.2.0",new("v4.2.0-beta.10","abc"),"different")=="4.2.0","manual replacement invalidates prerelease identity");
+string temp=Path.Combine(Path.GetTempPath(),"wirepulse-effects-"+Guid.NewGuid());Directory.CreateDirectory(temp);
+try{
+ var updates=new UpdateService(Path.Combine(temp,"updates.json"));updates.Configure(channel:"beta",automatic:false,skipped:"v4.2.0-beta.10");var restored=new UpdateService(Path.Combine(temp,"updates.json"));Check(restored.Preferences.Channel=="beta"&&!restored.Preferences.Automatic&&restored.Preferences.Skipped=="v4.2.0-beta.10","update choices survive restart");await restored.CheckAsync();Check(restored.Status=="","never-ask disables startup network check");
+ string file=Path.Combine(temp,"package");File.WriteAllText(file,"verified");string hash=Convert.ToHexString(SHA256.HashData(File.ReadAllBytes(file)));Check(UpdateService.HashMatches(file,hash),"accept matching SHA-256");File.AppendAllText(file,"tampered");Check(!UpdateService.HashMatches(file,hash),"reject tampered update");
+ using(var bitmap=new SKBitmap(256,32))using(var canvas=new SKCanvas(bitmap))using(var shader=new GradientSpec(true,"#0000ff",0).Shader(SKColors.Red,256,32))using(var paint=new SKPaint{Shader=shader}){canvas.Clear();canvas.DrawRect(0,0,256,32,paint);Check(bitmap.GetPixel(1,16).Red>240&&bitmap.GetPixel(254,16).Blue>240,"two-color gradient reaches both endpoints");}
+ using(var bitmap=new SKBitmap(256,32))using(var canvas=new SKCanvas(bitmap))using(var shader=new GradientSpec(true,"#0000ff",0).Shader(SKColors.Transparent,256,32))using(var paint=new SKPaint{Shader=shader}){canvas.Clear();canvas.DrawRect(0,0,256,32,paint);Check(bitmap.GetPixel(1,16).Alpha<10&&bitmap.GetPixel(254,16).Alpha>240,"gradient preserves transparent and opaque endpoints");}
+ AppBuilder.Configure<App>().UseHeadless(new AvaloniaHeadlessPlatformOptions{UseHeadlessDrawing=false}).UseSkia().SetupWithoutStarting();
+ var settings=new Settings("effects-"+Guid.NewGuid()){Ephemeral=true};var spectrum=new Spectrum();var media=new MediaService(settings);
+ SceneNode TextNode(){var item=new SceneItem{Kind="text",Text="A👩‍🚀éZ",TextAnimation="typewriter",Width=1,Height=1};var node=new SceneNode(item,settings,spectrum,media);node.Arrange(new Rect(0,0,320,90));return node;}
+ using(var node=TextNode()){node.Advance(1,1,false);node.Advance(2,1,false);var label=(TextBlock)node.Child!;Check(label.Text=="A👩‍🚀","typewriter preserves Unicode grapheme clusters");node.Advance(100,98,true);Check(label.Text=="A👩‍🚀","paused text does not advance");}
+ string AtRate(int rate){using var node=TextNode();double total=0,end=2.137;while(total<end){double dt=Math.Min(1d/rate,end-total);total+=dt;node.Advance(total,dt,false);}return ((TextBlock)node.Child!).Text!;}
+ Check(new[]{60,75,165,240}.Select(AtRate).Distinct().Count()==1,"text timing is independent of monitor refresh rate");
+ var scene=new SceneDocument{Items=[new SceneItem{Kind="text",Text="User text",TextSize=37,TextBold=true,TextItalic=true,TextAlign="right",TextAnimation="float",TextSpeed=1.7,TextDistance=24,Gradients=new(){["color"]=new(true,"#0088ff",135)}}]};settings.Scene=scene;settings.Gradients["backgroundcolor"]=new(true,"#330088",90);string layout=Path.Combine(temp,"effects.wirepulse");LayoutPackage.Export(layout,settings,new Size(1920,1080));var package=LayoutPackage.Import(layout,Path.Combine(temp,"assets"));var item=package.Scene.Items.Single();Check(item.Text=="User text"&&item.TextSize==37&&item.TextBold&&item.TextItalic&&item.TextAlign=="right"&&item.TextAnimation=="float"&&item.TextSpeed==1.7&&item.TextDistance==24&&item.Gradients["color"].Angle==135&&package.Background.Gradient?.Angle==90,"portable layouts preserve text formatting, animation and gradients");
+ var orb=new SceneItem{Kind="orb"};using var orbNode=new SceneNode(orb,settings,spectrum,media);var renderer=orbNode.View;for(int i=0;i<30;i++){orb.Gradients["wirecolor"]=new(true,i%2==0?"#ff0000":"#0000ff",i*10);orbNode.Update(orb);Check(ReferenceEquals(renderer,orbNode.View),"gradient edit retains renderer "+i);}
+}finally{Directory.Delete(temp,true);}

@@ -76,9 +76,17 @@ properties.Children.Clear();if(Selected is not{} item){properties.Children.Add(n
   int generalCount=properties.Children.Count;
   string group=item.Kind switch{"orb"=>"Orbe","spectrum"=>"Espectro","card"=>"Tarjeta","clock"=>"Reloj","stars" or "mesh"=>"Fondo animado",_=>""};
   foreach(var spec in draft.Specs.Where(s=>s.Group==group&&!LayoutKeys.Contains(s.Key)&&s.Kind!="image"&&s.Key is not("sphere" or "spectrum" or "card" or "clockshow" or "bgshow"))){var value=item.Style.GetValueOrDefault(spec.Key)??spec.Value;
-   if(spec.Kind=="color"){Label(spec.Title);properties.Children.Add(ColorDialog.Button(this,value?.GetValue<string>()??"#ffffff",x=>{Checkpoint();item.Style[spec.Key]=JsonValue.Create(x);Changed();}));}
+   if(spec.Kind=="color"){Label(spec.Title);properties.Children.Add(ColorDialog.Button(this,value?.GetValue<string>()??"#ffffff",x=>{Checkpoint();item.Style[spec.Key]=JsonValue.Create(x);Changed();}));properties.Children.Add(GradientEditor.Create(this,()=>item.Gradients.GetValueOrDefault(spec.Key)??new(),g=>{item.Gradients[spec.Key]=g;Changed();},Checkpoint));}
    else if(spec.Kind is "bool" or "toggle"){bool on=value is JsonValue v&&(v.TryGetValue<bool>(out var b)?b:v.TryGetValue<double>(out var n)&&n>.5);Toggle(spec.Title,on,x=>item.Style[spec.Key]=JsonValue.Create(x));}
    else if(spec.Kind=="slider")Range(spec.Title,value?.GetValue<double>()??0,spec.Min,spec.Max,spec.Step,x=>item.Style[spec.Key]=JsonValue.Create(x));
+  }
+  if(item.Kind=="text"){
+   properties.Children.Add(GradientEditor.Create(this,()=>item.Gradients.GetValueOrDefault("color")??new(),g=>{item.Gradients["color"]=g;Changed();},Checkpoint));
+   Range("Tamaño de texto (0 = automático)",item.TextSize,0,512,1,v=>item.TextSize=v);Toggle("Negrita",item.TextBold,v=>item.TextBold=v);Toggle("Cursiva",item.TextItalic,v=>item.TextItalic=v);
+   void Choice(string label,string[] ids,string[] names,string value,Action<string> set){Label(label);var choice=new ComboBox{ItemsSource=names,ItemTemplate=LocalizedChoices.Template,SelectedIndex=Array.IndexOf(ids,value),HorizontalAlignment=HorizontalAlignment.Stretch};choice.SelectionChanged+=(_,_)=>{if(choice.SelectedIndex<0)return;Checkpoint();set(ids[choice.SelectedIndex]);Changed();};properties.Children.Add(choice);}
+   Choice("Alineación",["left","center","right"],["Izquierda","Centro","Derecha"],item.TextAlign,v=>item.TextAlign=v);
+   Choice("Animación de texto",TextMotion.Modes,["Sin animación","Flotar","Pulso","Máquina de escribir","Desplazar"],item.TextAnimation,v=>item.TextAnimation=v);
+   Range("Velocidad de animación",item.TextSpeed,.1,5,.1,v=>item.TextSpeed=v);Range("Distancia de animación",item.TextDistance,0,200,1,v=>item.TextDistance=v);
   }
   Range("Opacidad",item.Opacity,0,1,.01,x=>item.Opacity=x);
   var general=new StackPanel{Spacing=10};for(int i=0;i<generalCount;i++){var child=properties.Children[0];properties.Children.RemoveAt(0);general.Children.Add(child);}properties.Children.Add(new Expander{Header=L10n.Text("Propiedades del objeto"),Content=general,HorizontalAlignment=HorizontalAlignment.Stretch,HorizontalContentAlignment=HorizontalAlignment.Stretch});

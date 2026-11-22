@@ -21,7 +21,7 @@ public sealed partial class App {
    completed=true;timeout.Stop();editor=null;bool valid=false;string? failure=null;
    try{var ui=JsonNode.Parse(File.ReadAllText(output+".ui.json"))!;valid=ui["valid"]!.GetValue<bool>();if(!valid)failure=ui["error"]?.GetValue<string>();
     if(discard)valid&=JsonSerializer.Serialize(settings.Scene)==original;
-    else{var saved=settings.Scene!.Items.Single(i=>i.Id==orb.Id);valid&=saved.Style["density"]!.GetValue<double>()==27&&Math.Abs(saved.Opacity-.64)<.001&&settings.Scene.Items.Last().Id==orb.Id;}
+    else{var saved=settings.Scene!.Items.Single(i=>i.Id==orb.Id);valid&=saved.Style["density"]!.GetValue<double>()==27&&Math.Abs(saved.Opacity-.64)<.001&&settings.Scene.Items.Last().Id==orb.Id;var savedText=settings.Scene.Items.Single(i=>i.Id==text.Id);valid&=savedText.TextSize==37&&savedText.TextBold&&savedText.TextAnimation=="typewriter"&&savedText.Gradients["color"].Enabled&&savedText.Gradients["color"].Angle==90;}
     if(!valid&&failure==null)failure="El resultado guardado/descartado no coincide con el borrador del editor";
    }catch(Exception ex){failure=ex.ToString();}
    Write(valid,failure);var finish=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(400)};finish.Tick+=(_,_)=>{finish.Stop();life.Shutdown(valid?0:1);};finish.Start();

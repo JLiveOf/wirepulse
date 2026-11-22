@@ -65,6 +65,8 @@ jobs:
           path: desktop/layout-roundtrip.wirepulse
       - name: English and Spanish localization
         run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --localization-self-test
+      - name: Text effects, gradients and updater policies
+        run: dotnet run --project tests/Effects -c Release
       - name: English settings and editor
         run: dotnet run --project tests/UiTests -c Release -- --english
       - name: Settings and independent display editing
@@ -144,6 +146,7 @@ jobs:
           ./macos/build.sh
       - name: FFT, Cider, display profiles and relocation
         run: |
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --effects-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --localization-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --layout-self-test desktop/tests/fixtures/portable-layout.wirepulse --layout-output layout-roundtrip-macos.wirepulse
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --media-self-test desktop/tests/fixtures/background.mp4

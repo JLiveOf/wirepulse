@@ -10,6 +10,6 @@ struct ClockOverlay:View {
   let measured=(value as NSString).size(withAttributes:[.font:font])
   let x=max(measured.width/2,min(g.size.width-measured.width/2,g.size.width*config.n("clockX")/100))
   let y=max(measured.height/2,min(g.size.height-measured.height/2,g.size.height*config.n("clockY")/100))
-  Text(value).font(Font(font)).foregroundStyle(Color(nsColor:config.color("clockcolor"))).position(x:x,y:y)
+  Text(value).font(Font(font)).foregroundStyle(config.paint("clockcolor")).position(x:x,y:y)
  }}}.allowsHitTesting(false)}
 }

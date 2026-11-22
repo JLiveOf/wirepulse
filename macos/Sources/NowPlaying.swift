@@ -88,7 +88,7 @@ struct MusicCard:View {
       Text(media.title.isEmpty ? "Audio del sistema":media.provider).font(.system(size:max(9,h*0.016))).padding(6).background(.white.opacity(0.12),in:RoundedRectangle(cornerRadius:7))
      }
      TimelineView(.periodic(from:.now,by:1)){_ in VStack(spacing:7){
-      GeometryReader{p in ZStack(alignment:.leading){Capsule().fill(.white.opacity(0.18));Capsule().fill(Color(nsColor:config.color("accent"))).frame(width:p.size.width*(media.duration>0 ? media.elapsed()/media.duration:0))}}.frame(height:max(3,h*0.0065))
+      GeometryReader{p in ZStack(alignment:.leading){Capsule().fill(.white.opacity(0.18));Capsule().fill(config.paint("accent")).frame(width:p.size.width*(media.duration>0 ? media.elapsed()/media.duration:0))}}.frame(height:max(3,h*0.0065))
       HStack{Text(stamp(media.elapsed()));Spacer();Text(media.duration>0 ? "−"+stamp(media.duration-media.elapsed()):"—")}.font(.system(size:max(10,h*0.019))).foregroundStyle(.white.opacity(0.6))
      }}
     }.padding(.horizontal,max(16,g.size.width*0.015)).padding(.vertical,h*0.02).frame(width:width)

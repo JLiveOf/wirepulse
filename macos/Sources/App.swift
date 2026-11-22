@@ -8,7 +8,7 @@ final class WallpaperSurface {
  var suspensionReason="";private var suspended=false
  private var imagePath=""
  private var sceneRoot:SceneRoot?
- private let backgroundDim=CALayer()
+ private let backgroundDim=CALayer(),backgroundGradient=CAGradientLayer()
  private let audio:SystemAudio,media:NowPlaying
  private var legacy=[NSView]()
  init(screen:NSScreen,config:Configuration,audio:SystemAudio,media:NowPlaying)throws{
@@ -17,7 +17,7 @@ final class WallpaperSurface {
   renderer=try WallpaperRenderer(config:config,analyzer:audio.analyzer,device:device,media:media)
   window=NSWindow(contentRect:screen.frame,styleMask:.borderless,backing:.buffered,defer:false,screen:screen)
   window.title=L10n.text("WirePulse · fondo animado");window.level=NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.desktopWindow))+1);window.collectionBehavior=[.canJoinAllSpaces,.stationary,.ignoresCycle];window.ignoresMouseEvents=true;window.hasShadow=false;window.isOpaque=true;window.isReleasedWhenClosed=false;window.hidesOnDeactivate=false
-  let root=NSView(frame:NSRect(origin:.zero,size:screen.frame.size));root.wantsLayer=true;window.contentView=root
+  let root=NSView(frame:NSRect(origin:.zero,size:screen.frame.size));root.wantsLayer=true;window.contentView=root;root.layer?.addSublayer(backgroundGradient)
   background=BackgroundMedia(frame:root.bounds);background.wantsLayer=true;background.layer?.contentsGravity = .resizeAspectFill;background.layer?.masksToBounds=true;background.autoresizingMask=[.width,.height];root.addSubview(background);backgroundDim.backgroundColor=NSColor.black.cgColor;background.layer?.addSublayer(backgroundDim)
   view=MTKView(frame:root.bounds,device:device);view.colorPixelFormat = .bgra8Unorm;view.autoResizeDrawable=false;view.framebufferOnly=true;view.layer?.isOpaque=false;view.autoresizingMask=[.width,.height];view.delegate=renderer;view.preferredFramesPerSecond=Int(config.n("fps"));root.addSubview(view)
   let overlay=NSHostingView(rootView:MusicCard(config:config,media:media,audio:audio));overlay.frame=root.bounds;overlay.autoresizingMask=[.width,.height];root.addSubview(overlay)
@@ -30,7 +30,8 @@ final class WallpaperSurface {
 
   for child in legacy{child.isHidden=config.scene != nil};view.isPaused=config.scene != nil
   if config.scene != nil{if sceneRoot==nil,let root=window.contentView{let scene=SceneRoot(frame:root.bounds,config:config,audio:audio,media:media);scene.autoresizingMask=[.width,.height];root.addSubview(scene);sceneRoot=scene};sceneRoot?.refresh()}else{sceneRoot?.removeFromSuperview();sceneRoot=nil}
-background.layer?.backgroundColor=config.color("backgroundcolor").cgColor
+background.layer?.backgroundColor=config.gradient("backgroundcolor").enabled ? NSColor.clear.cgColor:config.color("backgroundcolor").cgColor
+  let gradient=config.gradient("backgroundcolor");backgroundGradient.frame=background.bounds;backgroundGradient.isHidden = !gradient.enabled;let w=max(1,background.bounds.width),h=max(1,background.bounds.height);let(a,b)=gradient.points(w,h);backgroundGradient.startPoint=CGPoint(x:a.x/w,y:1-a.y/h);backgroundGradient.endPoint=CGPoint(x:b.x/w,y:1-b.y/h);backgroundGradient.colors=[config.color("backgroundcolor").cgColor,NSColor(hex:gradient.end).cgColor]
   if imagePath != config.backgroundPath{imagePath=config.backgroundPath;background.load(imagePath)}
   suspend(suspended)
  }
@@ -45,6 +46,7 @@ final class AppDelegate:NSObject,NSApplicationDelegate{
  private var surfaces=[WallpaperSurface](),item:NSStatusItem!,settingsWindow:NSWindow?,timer:Timer?,subscriptions=Set<AnyCancellable>(),observers=[NSObjectProtocol](),resumeAudio=false,displayProfiles=[String:Configuration](),lastIndependent=false,sessionSuspended=false
  private var coverageTimer:Timer?
  func applicationDidFinishLaunching(_ notification:Notification){
+  DispatchQueue.main.asyncAfter(deadline:.now()+5){Task{await UpdateManager.shared.check()}}
   NSApp.setActivationPolicy(.accessory)
   item=NSStatusBar.system.statusItem(withLength:NSStatusItem.squareLength);item.button?.image=NSImage(systemSymbolName:"waveform.circle.fill",accessibilityDescription:"WirePulse")
   let menu=NSMenu();menu.addItem(withTitle:L10n.text("WirePulse · Ajustes…"),action:#selector(showSettings),keyEquivalent:",");menu.addItem(withTitle:L10n.text("Editar escritorio…"),action:#selector(editDesktop),keyEquivalent:"e");menu.addItem(withTitle:L10n.text("Pausar / reanudar animación"),action:#selector(toggleAnimation),keyEquivalent:"");menu.addItem(withTitle:L10n.text("Reiniciar audio del sistema"),action:#selector(restartAudio),keyEquivalent:"");menu.addItem(.separator());menu.addItem(withTitle:L10n.text("Salir de WirePulse"),action:#selector(quit),keyEquivalent:"q");for entry in menu.items{entry.target=self};item.menu=menu
@@ -55,7 +57,7 @@ final class AppDelegate:NSObject,NSApplicationDelegate{
   for name in [NSWorkspace.screensDidSleepNotification,NSWorkspace.sessionDidResignActiveNotification]{observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in guard let self=self else{return};self.resumeAudio=self.resumeAudio||self.audio.requested;self.audio.stop();self.sessionSuspended=true;self.updateSuspensions()})}
   for name in [NSWorkspace.screensDidWakeNotification,NSWorkspace.sessionDidBecomeActiveNotification]{observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in guard let self=self else{return};self.sessionSuspended=false;self.updateSuspensions();if self.resumeAudio{self.resumeAudio=false;self.audio.start()}})}
   coverageTimer=Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in self?.updateSuspensions()}
-  timer=Timer.scheduledTimer(withTimeInterval:2,repeats:true){[weak self] _ in guard let self=self else{return};self.media.poll(source:self.config.mediaSource,ciderURL:self.config.ciderURL,ciderToken:self.config.ciderToken);self.writeStatus()}
+  timer=Timer.scheduledTimer(withTimeInterval:2,repeats:true){[weak self] _ in guard let self=self else{return};Task{@MainActor in UpdateManager.shared.offerPending()};self.media.poll(source:self.config.mediaSource,ciderURL:self.config.ciderURL,ciderToken:self.config.ciderToken);self.writeStatus()}
   if !UserDefaults.standard.bool(forKey:"hasLaunched"){showSettings();UserDefaults.standard.set(true,forKey:"hasLaunched")}
   DispatchQueue.main.asyncAfter(deadline:.now()+0.5){[weak self] in self?.startup.promptIfNeeded()}
   DispatchQueue.main.asyncAfter(deadline:.now()+0.8){[weak self] in self?.audio.start()}

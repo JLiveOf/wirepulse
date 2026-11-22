@@ -7,7 +7,8 @@ name=f'WirePulse-{version}-{rid}'
 stage=output/name
 if stage.exists():shutil.rmtree(stage)
 shutil.copytree(root/'publish',stage)
-shutil.copy2(root/'README.md',stage/'README.md')
+shutil.copy2(root.parent/'README.md',stage/'README.md')
+shutil.copy2(root.parent/'README.es.md',stage/'README.es.md')
 from notices import collect
 collect(root,stage/'ThirdPartyNotices')
 if rid.startswith('win'):

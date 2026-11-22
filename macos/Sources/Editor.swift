@@ -494,11 +494,7 @@ struct EditorChrome: View {
         }
         if item.kind == "text" {
           TextEditor(text: binding(item.text) { $0.text = $1 }).frame(height: 80)
-          ColorPicker(L10n.text("Color"),
-            selection: Binding(
-              get: { Color(nsColor: NSColor(hex: model.item?.color ?? "#ffffff")) },
-              set: { color in model.change { $0.color = NSColor(color).hex } }),
-            supportsOpacity: true)
+          ColorPropertyView(title:"Color",color:binding(item.color){$0.color=$1},gradient:binding(item.gradients["color"] ?? GradientSpec()){$0.gradients["color"]=$1},gesture:gesture)
         }
         if item.kind == "text" || item.kind == "clock" {
           Picker(L10n.text("Fuente"), selection: binding(item.font) { $0.font = $1 }) {
@@ -523,6 +519,14 @@ struct EditorChrome: View {
             }
           ) { spec in style(spec) }
         }
+        if item.kind=="text"{
+          Text(L10n.text("Tamaño de texto (0 = automático)"));Slider(value:binding(item.textSize){$0.textSize=$1},in:0...512,step:1,onEditingChanged:gesture)
+          Toggle(L10n.text("Negrita"),isOn:binding(item.textBold){$0.textBold=$1});Toggle(L10n.text("Cursiva"),isOn:binding(item.textItalic){$0.textItalic=$1})
+          Picker(L10n.text("Alineación"),selection:binding(item.textAlign){$0.textAlign=$1}){Text(L10n.text("Izquierda")).tag("left");Text(L10n.text("Centro")).tag("center");Text(L10n.text("Derecha")).tag("right")}
+          Picker(L10n.text("Animación de texto"),selection:binding(item.textAnimation){$0.textAnimation=$1}){Text(L10n.text("Sin animación")).tag("none");Text(L10n.text("Flotar")).tag("float");Text(L10n.text("Pulso")).tag("pulse");Text(L10n.text("Máquina de escribir")).tag("typewriter");Text(L10n.text("Desplazar")).tag("scroll")}
+          Text(L10n.text("Velocidad de animación"));Slider(value:binding(item.textSpeed){$0.textSpeed=$1},in:0.1...5,step:0.1,onEditingChanged:gesture)
+          Text(L10n.text("Distancia de animación"));Slider(value:binding(item.textDistance){$0.textDistance=$1},in:0...200,step:1,onEditingChanged:gesture)
+        }
         Text(L10n.text("Opacidad"))
         Slider(value: binding(item.opacity) { $0.opacity = $1 }, in: 0...1,onEditingChanged:gesture)
       }
@@ -537,15 +541,7 @@ struct EditorChrome: View {
   @ViewBuilder func style(_ spec: ControlSpec) -> some View {
     switch spec.kind {
     case .color:
-      ColorPicker(L10n.text(spec.title),
-        selection: Binding(
-          get: {
-            if case .string(let s) = model.item?.style[spec.id] {
-              return Color(nsColor: NSColor(hex: s))
-            }
-            return Color(nsColor:model.draft.color(spec.id))
-          }, set: { value in model.change { $0.style[spec.id] = .string(NSColor(value).hex) } }),
-        supportsOpacity: true)
+      ColorPropertyView(title:spec.title,color:Binding(get:{if case .string(let value)=model.item?.style[spec.id]{return value};return model.draft.colors[spec.id] ?? "#ffffff"},set:{value in model.change{$0.style[spec.id] = .string(value)}}),gradient:Binding(get:{model.item?.gradients[spec.id] ?? GradientSpec()},set:{value in model.change{$0.gradients[spec.id]=value}}),gesture:gesture)
     case .toggle:
       Toggle(L10n.text(spec.title),
         isOn: Binding(

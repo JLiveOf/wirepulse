@@ -1,0 +1,12 @@
+using Avalonia;
+using Avalonia.Controls;
+using Avalonia.Layout;
+using Avalonia.Media;
+namespace WirePulse;
+public sealed class UpdatePrompt:Window
+{
+ readonly CancellationTokenSource stop=new();bool handedOff,installing;
+ public UpdatePrompt(UpdateRelease release,Action quit){Title=L10n.Text("Actualización de WirePulse");Width=580;MinHeight=240;SizeToContent=SizeToContent.Height;CanResize=false;WindowStartupLocation=WindowStartupLocation.CenterScreen;var root=new StackPanel{Margin=new Thickness(24),Spacing=16};root.Children.Add(new TextBlock{Text=L10n.Text("Hay una nueva versión de WirePulse.")+"\n"+UpdateService.InstalledVersion+" → "+release.Tag,FontSize=20,TextWrapping=TextWrapping.Wrap});var status=new TextBlock{Text=L10n.Text("Se descargará desde GitHub y se verificará antes de instalar."),TextWrapping=TextWrapping.Wrap};root.Children.Add(status);var progress=new ProgressBar{Minimum=0,Maximum=100,IsVisible=false};root.Children.Add(progress);var buttons=new StackPanel{Orientation=Orientation.Horizontal,Spacing=8};var update=new Button{Content=L10n.Text("Actualizar")};var skip=new Button{Content=L10n.Text("Omitir esta versión")};var never=new Button{Content=L10n.Text("No me vuelvas a preguntar")};buttons.Children.Add(update);buttons.Children.Add(skip);buttons.Children.Add(never);root.Children.Add(buttons);Content=root;
+  skip.Click+=(_,_)=>{UpdateService.Current.Configure(skipped:release.Tag);Close();};never.Click+=(_,_)=>{UpdateService.Current.Configure(automatic:false);Close();};update.Click+=async(_,_)=>{buttons.IsEnabled=false;progress.IsVisible=true;status.Text=L10n.Text("Descargando actualización…");try{string package=await UpdateService.Current.DownloadAsync(release,new Progress<double>(v=>progress.Value=v*100),stop.Token);status.Text=L10n.Text("Instalando actualización…");installing=true;bool exit=await UpdateInstaller.StartAsync(package,release.Tag);installing=false;handedOff=true;Close();if(exit)quit();else{var notice=new Window{Title=L10n.Text("Actualización de WirePulse"),Width=460,Height=160,Content=new TextBlock{Text=L10n.Text("Completa la instalación en el gestor de paquetes y reinicia WirePulse."),Margin=new Thickness(24),TextWrapping=TextWrapping.Wrap}};notice.Show();}}catch(OperationCanceledException){Close();}catch(Exception e){installing=false;status.Text=L10n.Text("No se pudo actualizar: "+e.Message);buttons.IsEnabled=true;progress.IsVisible=false;}};Closing+=(_,e)=>{if(installing)e.Cancel=true;};Closed+=(_,_)=>{if(!handedOff)stop.Cancel();};
+ }
+}

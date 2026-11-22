@@ -32,6 +32,7 @@ public sealed partial class EditorWindow {
    case "editor-get":break;
    case "editor-test-focus":if(Program.Option("--winui-editor-test-output")==null)throw new InvalidOperationException("Solo para pruebas");Activate();break;
    case "editor-select":canvas.SelectedId=id;RefreshList();Inspector();canvas.InvalidateVisual();windowsGesture=null;break;
+   case "editor-gradient":{if(item==null)throw new InvalidOperationException("Selecciona un objeto");string key=request["key"]!.GetValue<string>();if(key!="color"&&!draft.Specs.Any(s=>s.Key==key&&s.Kind=="color"))throw new ArgumentException("Propiedad desconocida");var gradient=request["value"]!.Deserialize<GradientSpec>(WindowsJson)?.Clean()??new();WindowsCheckpoint(request);item.Gradients[key]=gradient;Changed();break;}
    case "editor-style":{
     if(item==null)throw new InvalidOperationException("Selecciona un objeto");string key=request["key"]!.GetValue<string>();
     string group=item.Kind switch{"orb"=>"Orbe","spectrum"=>"Espectro","card"=>"Tarjeta","clock"=>"Reloj","stars" or "mesh"=>"Fondo animado",_=>""};
@@ -46,6 +47,11 @@ public sealed partial class EditorWindow {
     if(item==null)throw new InvalidOperationException("Selecciona un objeto");string key=request["key"]!.GetValue<string>();var value=request["value"];
     WindowsCheckpoint(request);
     switch(key){
+     case "textSize":item.TextSize=Math.Clamp(value!.GetValue<double>(),0,512);break;
+     case "textBold":item.TextBold=value!.GetValue<bool>();break;case "textItalic":item.TextItalic=value!.GetValue<bool>();break;
+     case "textAlign":item.TextAlign=value!.GetValue<string>() is var align && align is "left" or "center" or "right"?align:"center";break;
+     case "textAnimation":item.TextAnimation=TextMotion.Modes.Contains(value!.GetValue<string>())?value!.GetValue<string>():"none";break;
+     case "textSpeed":item.TextSpeed=Math.Clamp(value!.GetValue<double>(),.1,5);break;case "textDistance":item.TextDistance=Math.Clamp(value!.GetValue<double>(),0,200);break;
      case "opacity":item.Opacity=Math.Clamp(value!.GetValue<double>(),0,1);break;
      case "rotation":{double angle=value!.GetValue<double>();if(!double.IsFinite(angle))throw new ArgumentException("Ángulo inválido");item.Rotation=angle%360;break;}
      case "visible":item.Visible=value!.GetValue<bool>();break;case "locked":item.Locked=value!.GetValue<bool>();break;case "keepAspect":item.KeepAspect=value!.GetValue<bool>();break;
