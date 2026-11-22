@@ -18,18 +18,18 @@ internal static class WindowsStartupTask
     public static bool Enabled(string key) => WithFolder<bool>(folder => {
         object? task = null;
         try { task = folder.GetTask(Name(key)); return ((dynamic)task).Enabled; }
-        catch (COMException e) when ((uint)e.HResult == 0x80070002) { return false; }
+        catch (Exception e) when ((uint)e.HResult == 0x80070002) { return false; }
         finally { if (task != null) Marshal.FinalReleaseComObject(task); }
     });
     public static bool OwnedBy(string executable, string key) => WithFolder<bool>(folder => {
         object? task=null;
         try { task=folder.GetTask(Name(key)); var xml=XDocument.Parse((string)((dynamic)task).Xml); XNamespace ns="http://schemas.microsoft.com/windows/2004/02/mit/task"; return string.Equals(xml.Descendants(ns+"Command").FirstOrDefault()?.Value, executable, StringComparison.OrdinalIgnoreCase); }
-        catch(COMException e) when ((uint)e.HResult==0x80070002) { return false; }
+        catch(Exception e) when ((uint)e.HResult==0x80070002) { return false; }
         finally { if(task!=null) Marshal.FinalReleaseComObject(task); }
     });
     public static void Remove(string key) => WithFolder<bool>(folder => {
         try { folder.DeleteTask(Name(key), 0); }
-        catch (COMException e) when ((uint)e.HResult == 0x80070002) { }
+        catch (Exception e) when ((uint)e.HResult == 0x80070002) { }
         return true;
     });
     public static void Register(string executable, string key) => WithFolder<bool>(folder => {
