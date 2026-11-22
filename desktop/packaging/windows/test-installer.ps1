@@ -32,6 +32,13 @@ try {
         if ($safeLink.Arguments -ne '--renderer "CPU (compatibilidad)"') { throw 'Safe-mode arguments are incorrect' }
         if ((Get-ItemProperty $arp).DisplayVersion -ne $Version) { throw 'Uninstall registration has incorrect version' }
         Invoke-Checked (Join-Path $install 'WirePulse.exe') @('--self-test')
+        $app = Join-Path $install 'WirePulse.exe'
+        Invoke-Checked $app @('--record-release',"v$Version-beta.1")
+        $versionFile = Join-Path $logs "version-$round.txt"
+        $probe = Start-Process -FilePath $app -ArgumentList '--version' -RedirectStandardOutput $versionFile -PassThru -Wait
+        if ($probe.ExitCode -ne 0 -or (Get-Content $versionFile -Raw).Trim() -ne "$Version-beta.1") { throw 'Updater lost installed prerelease identity' }
+        Invoke-Checked $app @('--record-release',"v$Version")
+        Write-Output 'PASS installed version and prerelease markers'
         if ((Get-Content $sentinel).Trim() -ne 'keep-user-preferences') { throw 'Upgrade changed user preferences' }
         Write-Output "PASS install/reinstall $round, menu shortcut, installed app self-test and preserved preferences"
     }

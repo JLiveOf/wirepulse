@@ -18,6 +18,22 @@ func testEffects(output:String?)throws {
  let decoded=try JSONDecoder().decode(SceneItem.self,from:JSONEncoder().encode(item));precondition(decoded==item)
  var legacy=try JSONDecoder().decode(SceneItem.self,from:Data("{\"kind\":\"text\",\"text\":\"Legacy\"}".utf8));legacy.cleanEffects();precondition(legacy.textAnimation=="none" && legacy.textSize==0 && legacy.gradients.isEmpty)
  print("PASS native text timing, formatting/gradient serialization and legacy scenes")
+ let fm=FileManager.default,temp=fm.temporaryDirectory.appendingPathComponent("wirepulse-swap-"+UUID().uuidString);try fm.createDirectory(at:temp,withIntermediateDirectories:true);defer{try? fm.removeItem(at:temp)}
+ for rollback in [false,true]{
+  let root=temp.appendingPathComponent(String(rollback)),target=root.appendingPathComponent("WirePulse ' quoted; safe.app"),incoming=root.appendingPathComponent("incoming.app"),backup=root.appendingPathComponent("backup.app")
+  let fake = #"""
+#!/bin/sh
+dir=$(dirname "$0")
+printf '%s' "$2" > "$dir/recorded"
+"""#
+  for folder in [target,incoming]{let bin=folder.appendingPathComponent("Contents/MacOS");try fm.createDirectory(at:bin,withIntermediateDirectories:true);let file=bin.appendingPathComponent("WirePulse");try (fake+"\n").write(to:file,atomically:true,encoding:.utf8);try fm.setAttributes([.posixPermissions:0o755],ofItemAtPath:file.path)}
+  try Data("old".utf8).write(to:target.appendingPathComponent("old"));try Data("new".utf8).write(to:incoming.appendingPathComponent("new"));if rollback{try fm.removeItem(at:incoming)}
+  let script=root.appendingPathComponent("install.sh");try UpdateManager.swapScript(target:target,incoming:incoming,backup:backup,pid:Int32.max,tag:"v4.1.0-beta.1",opener:"/usr/bin/true").write(to:script,atomically:true,encoding:.utf8)
+  try LayoutPackage.run("/bin/sh",[script.path])
+  if rollback{precondition(fm.fileExists(atPath:target.appendingPathComponent("old").path))}else{precondition(fm.fileExists(atPath:backup.appendingPathComponent("old").path));let recorded=try String(contentsOf:target.appendingPathComponent("Contents/MacOS/recorded"),encoding:.utf8);precondition(recorded=="v4.1.0-beta.1")}
+ }
+
+ print("PASS native updater atomic replacement, rollback, backup and quoted paths")
  _=NSApplication.shared
  item.textAlign="center";item.textItalic=false;item.textAnimation="none";item.color="#ff0000";item.gradients["color"]=GradientSpec(enabled:true,end:"#0000ff",angle:0)
  let view=AnimatedTextView(frame:CGRect(x:0,y:0,width:720,height:160));view.update(item)

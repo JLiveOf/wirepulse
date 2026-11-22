@@ -23,6 +23,7 @@ Check(UpdateService.Select(JsonSerializer.Serialize(new[]{Release("v4.9.0",url:"
 Check(UpdateService.Select(json,"4.1.0","stable","unknown")==null,"require a compatible platform asset");
 Check(UpdateService.ResolveInstalled("4.2.0",new("v4.2.0-beta.10","abc"),"abc")=="4.2.0-beta.10","retain installed prerelease identity");
 Check(UpdateService.ResolveInstalled("4.2.0",new("v4.2.0-beta.10","abc"),"different")=="4.2.0","manual replacement invalidates prerelease identity");
+Check(ReleaseVersion.Parse("4.1.0-beta.01")==null&&ReleaseVersion.Parse("4.1.0-beta..1")==null,"reject malformed prerelease identifiers");
 string temp=Path.Combine(Path.GetTempPath(),"wirepulse-effects-"+Guid.NewGuid());Directory.CreateDirectory(temp);
 try{
  if(!OperatingSystem.IsWindows()){
