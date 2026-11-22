@@ -474,5 +474,16 @@
   "No se pudieron guardar los ajustes de actualización.": "Could not save update preferences.",
   "No se pudo leer el paquete Debian.": "Could not read the Debian package.",
   "No se pudo comprobar el paquete.": "Could not verify the package.",
-  "Actualización cancelada.": "Update cancelled."
+  "Actualización cancelada.": "Update cancelled.",
+  "Vamos a preparar tu escritorio": "Let's set up your desktop",
+  "Comprobar actualizaciones automáticamente": "Check for updates automatically",
+  "Puedes cambiar estas opciones más adelante en Ajustes.": "You can change these options later in Settings.",
+  "Empezar": "Get started",
+  "No se pudieron guardar los ajustes iniciales: ": "Could not save initial settings: ",
+  "Activa el audio del sistema": "Enable system audio",
+  "WirePulse necesita permiso para que el fondo reaccione a tu música. Pulsa Activar audio y acepta el aviso de macOS. No se guarda ni se envía el audio.": "WirePulse needs permission to make your wallpaper react to music. Click Enable audio and accept the macOS prompt. Audio is never stored or uploaded.",
+  "Esperando permiso de audio…": "Waiting for audio permission…",
+  "Activar audio": "Enable audio",
+  "Abrir permisos del sistema": "Open system permissions",
+  "Audio del sistema preparado.": "System audio is ready."
 }

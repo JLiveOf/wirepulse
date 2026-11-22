@@ -42,11 +42,12 @@ background.layer?.backgroundColor=config.gradient("backgroundcolor").enabled ? N
 }
 final class AppDelegate:NSObject,NSApplicationDelegate{
  let config=Configuration(),audio=SystemAudio(),media=NowPlaying(),startup=StartupManager()
+ private var welcome:WelcomeController?
  private var editorWindow:SceneEditorWindow?
  private var surfaces=[WallpaperSurface](),item:NSStatusItem!,settingsWindow:NSWindow?,timer:Timer?,subscriptions=Set<AnyCancellable>(),observers=[NSObjectProtocol](),resumeAudio=false,displayProfiles=[String:Configuration](),lastIndependent=false,sessionSuspended=false
  private var coverageTimer:Timer?
  func applicationDidFinishLaunching(_ notification:Notification){
-  DispatchQueue.main.asyncAfter(deadline:.now()+5){Task{await UpdateManager.shared.check()}}
+  if !WelcomeController.needs(UpdateManager.installed){DispatchQueue.main.asyncAfter(deadline:.now()+5){Task{await UpdateManager.shared.check()}}}
   NSApp.setActivationPolicy(.accessory)
   item=NSStatusBar.system.statusItem(withLength:NSStatusItem.squareLength);item.button?.image=NSImage(systemSymbolName:"waveform.circle.fill",accessibilityDescription:"WirePulse")
   let menu=NSMenu();menu.addItem(withTitle:L10n.text("WirePulse · Ajustes…"),action:#selector(showSettings),keyEquivalent:",");menu.addItem(withTitle:L10n.text("Editar escritorio…"),action:#selector(editDesktop),keyEquivalent:"e");menu.addItem(withTitle:L10n.text("Pausar / reanudar animación"),action:#selector(toggleAnimation),keyEquivalent:"");menu.addItem(withTitle:L10n.text("Reiniciar audio del sistema"),action:#selector(restartAudio),keyEquivalent:"");menu.addItem(.separator());menu.addItem(withTitle:L10n.text("Salir de WirePulse"),action:#selector(quit),keyEquivalent:"q");for entry in menu.items{entry.target=self};item.menu=menu
@@ -58,19 +59,21 @@ final class AppDelegate:NSObject,NSApplicationDelegate{
   for name in [NSWorkspace.screensDidWakeNotification,NSWorkspace.sessionDidBecomeActiveNotification]{observers.append(NSWorkspace.shared.notificationCenter.addObserver(forName:name,object:nil,queue:.main){[weak self] _ in guard let self=self else{return};self.sessionSuspended=false;self.updateSuspensions();if self.resumeAudio{self.resumeAudio=false;self.audio.start()}})}
   coverageTimer=Timer.scheduledTimer(withTimeInterval:1,repeats:true){[weak self] _ in self?.updateSuspensions()}
   timer=Timer.scheduledTimer(withTimeInterval:2,repeats:true){[weak self] _ in guard let self=self else{return};Task{@MainActor in UpdateManager.shared.offerPending()};self.media.poll(source:self.config.mediaSource,ciderURL:self.config.ciderURL,ciderToken:self.config.ciderToken);self.writeStatus()}
-  if !UserDefaults.standard.bool(forKey:"hasLaunched"){showSettings();UserDefaults.standard.set(true,forKey:"hasLaunched")}
-  DispatchQueue.main.asyncAfter(deadline:.now()+0.5){[weak self] in self?.startup.promptIfNeeded()}
-  DispatchQueue.main.asyncAfter(deadline:.now()+0.8){[weak self] in self?.audio.start()}
+  let diagnostic=CommandLine.arguments.dropFirst().contains{$0.hasPrefix("--") && $0 != "--autostart" && $0 != "--no-settings"}
+  if !diagnostic && WelcomeController.needs(UpdateManager.installed){welcome=WelcomeController(audio:audio,startup:startup,onFinish:{[weak self] in self?.welcome=nil})}
+  else{DispatchQueue.main.asyncAfter(deadline:.now()+0.8){[weak self] in self?.audio.start()}}
+
  }
  private func rebuild(){if let window=settingsWindow{window.contentView=nil};for s in surfaces{s.close()};surfaces=[];do{for screen in NSScreen.screens{let profile=profileFor(screen);surfaces.append(try WallpaperSurface(screen:screen,config:config.independentDisplays ? profile:config,audio:audio,media:media))}}catch{NSAlert(error:L10n.error(error)).runModal()};if let window=settingsWindow{window.contentView=NSHostingView(rootView:DisplaySettingsView(root:config,audio:audio,media:media,profiles:displayProfiles,startup:startup,edit:{[weak self] target in self?.openEditor(target)}))}}
  private func profileFor(_ screen:NSScreen)->Configuration{let key=displayKey(screen);if let p=displayProfiles[key]{return p};let p=Configuration(profile:key,template:config);displayProfiles[key]=p;p.objectWillChange.sink{[weak self] _ in DispatchQueue.main.async{guard let self=self else{return};for surface in self.surfaces{surface.update(config:surface.config)}}}.store(in:&subscriptions);return p}
  func applicationShouldHandleReopen(_ sender:NSApplication,hasVisibleWindows flag:Bool)->Bool{showSettings();return true}
  @objc func showSettings(){
+  if let welcome=welcome{NSApp.activate(ignoringOtherApps:true);welcome.window.makeKeyAndOrderFront(nil);return}
   if settingsWindow==nil{let window=NSWindow(contentRect:NSRect(x:0,y:0,width:820,height:680),styleMask:[.titled,.closable,.miniaturizable,.resizable],backing:.buffered,defer:false);window.title=L10n.text("WirePulse · Yamato · Ajustes");window.contentView=NSHostingView(rootView:DisplaySettingsView(root:config,audio:audio,media:media,profiles:displayProfiles,startup:startup,edit:{[weak self] target in self?.openEditor(target)}));window.center();window.isReleasedWhenClosed=false;settingsWindow=window}
   NSApp.activate(ignoringOtherApps:true);settingsWindow?.makeKeyAndOrderFront(nil)
  }
  @objc func editDesktop(){openEditor(config.independentDisplays ? profileFor(NSScreen.main ?? NSScreen.screens[0]):config)}
- func openEditor(_ target:Configuration){if let editor=editorWindow,editor.isVisible{editor.makeKeyAndOrderFront(nil);return};let screen=NSScreen.screens.first{config.independentDisplays && displayProfiles[displayKey($0)] === target} ?? NSScreen.main ?? NSScreen.screens[0];let editor=SceneEditorWindow(screen:screen,config:target,audio:audio,media:media);editorWindow=editor;updateSuspensions();editor.onFinish={[weak self] in self?.editorWindow=nil;self?.updateSuspensions()};NSApp.activate(ignoringOtherApps:true);editor.makeKeyAndOrderFront(nil)}
+ func openEditor(_ target:Configuration){if welcome != nil{showSettings();return};if let editor=editorWindow,editor.isVisible{editor.makeKeyAndOrderFront(nil);return};let screen=NSScreen.screens.first{config.independentDisplays && displayProfiles[displayKey($0)] === target} ?? NSScreen.main ?? NSScreen.screens[0];let editor=SceneEditorWindow(screen:screen,config:target,audio:audio,media:media);editorWindow=editor;updateSuspensions();editor.onFinish={[weak self] in self?.editorWindow=nil;self?.updateSuspensions()};NSApp.activate(ignoringOtherApps:true);editor.makeKeyAndOrderFront(nil)}
  private func updateSuspensions(){let windows=(CGWindowListCopyWindowInfo([.optionOnScreenOnly,.excludeDesktopElements],kCGNullWindowID) as? [[String:Any]]) ?? [];for surface in surfaces{let editing=editorWindow?.screen.map{displayKey($0)==displayKey(surface.screen)} ?? false;surface.suspensionReason=sessionSuspended ? "sesión suspendida":editing ? "editor de escritorio":DisplayPolicy.reason(screen:surface.screen,config:surface.config,windows:windows);surface.suspend(!surface.suspensionReason.isEmpty)}}
  @objc func toggleAnimation(){config.paused.toggle();for profile in displayProfiles.values{profile.paused=config.paused}}
  @objc func restartAudio(){audio.start()}

@@ -158,6 +158,7 @@ jobs:
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --editor-self-test --gif-fixture desktop/tests/fixtures/disposal.gif
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --orb-render-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --scene-self-test
+          macos/dist/WirePulse.app/Contents/MacOS/WirePulse --welcome-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --startup-self-test
           macos/dist/WirePulse.app/Contents/MacOS/WirePulse --display-profile-test
           python3 macos/scripts/test-cider.py macos/dist/WirePulse.app/Contents/MacOS/WirePulse

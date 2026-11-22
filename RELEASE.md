@@ -1,9 +1,10 @@
-# WirePulse 4.1.0
+# WirePulse 4.2.0
 
-- Editable text boxes: font size, bold, italic, alignment, floating, pulse, typewriter and scrolling animations.
-- Two-color gradients with adjustable direction for every configurable color, in all renderers and editors.
-- Opt-in beta update channel using GitHub prereleases, version comparison, SHA-256 validation, startup prompts, skip-version and never-ask preferences. Manual checks remain available in Settings → Startup.
-- Concise English and Spanish README files and a desktop editor video demo.
-- Existing scenes and portable layouts remain compatible; text animation and gradient properties travel with exported layouts.
+- Matching welcome experience on Windows, macOS and Linux: a centered logo and name with the welcome sound, followed by an animated transition to initial settings.
+- Choose login startup, automatic update checks and stable/beta channel. Existing choices are preserved until explicitly saved. Windows also retains its optional priority startup choice.
+- On macOS, an audio permission step precedes the splash. Continue becomes available after real system-audio samples arrive, including during silence. The window provides retry and System Settings controls.
+- Welcome runs once per installed version, including upgrades, and is acknowledged only after completing setup. Closing it keeps setup available on the next launch.
+- Welcome audio is bundled for offline playback on every platform. No audio is recorded or uploaded.
+- The English and Spanish READMEs now play the editor demo inline on GitHub.
 
-Updates preserve user preferences. Linux DEB installations use the system package installer; portable Linux and macOS replace the installation after the app exits and retain a backup. Windows updates use the per-user installer.
+Existing layouts and preferences remain compatible. Linux playback uses PulseAudio utilities, already required for system audio capture.

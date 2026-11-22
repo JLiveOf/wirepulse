@@ -12,13 +12,17 @@ for name in sorted(expected):
  elif name.endswith('.zip'):
   with zipfile.ZipFile(path) as z:
    assert z.testzip() is None,f'Corrupt ZIP: {name}'
-   if 'macOS' in name:assert 'WirePulse.app/Contents/MacOS/WirePulse' in z.namelist()
+   if 'macOS' in name:
+    assert 'WirePulse.app/Contents/MacOS/WirePulse' in z.namelist()
+    assert 'WirePulse.app/Contents/Resources/Welcome.wav' in z.namelist(), 'Missing macOS welcome audio'
    else:
     assert any(n.endswith('/WirePulse.exe') for n in z.namelist())
+    assert any(n.endswith('/Assets/Welcome.wav') for n in z.namelist()), 'Missing Windows welcome audio'
     for required in ['WindowsSettings/WirePulse.Settings.exe','WindowsSettings/WirePulse.Settings.pri']:
      assert any(n.endswith('/'+required) for n in z.namelist()),f'Missing WinUI companion resource: {required}'
  elif name.endswith('.tar.gz'):
   with tarfile.open(path) as t:
+   assert any(x.name.endswith('/Assets/Welcome.wav') for x in t.getmembers()), 'Missing Linux welcome audio'
    exe=next(x for x in t.getmembers() if x.name.endswith('/WirePulse'));assert exe.mode&0o111,'Linux executable permission missing'
  elif name.endswith('.deb'):assert path.read_bytes()[:8]==b'!<arch>\n','Invalid Debian package'
 (folder/'SHA256SUMS.txt').write_text(''.join(hashlib.sha256((folder/name).read_bytes()).hexdigest()+'  '+name+'\n' for name in sorted(expected)))
