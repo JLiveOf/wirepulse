@@ -83,10 +83,11 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   }}
   visibility.rebuild(mesh:mesh,edges:edges);projected=Array(repeating:.zero,count:mesh.count)
  }
- var gradientKey=""
+ private var activeGradient:GradientSampler?
+ private func useGradient(_ key:String){guard !key.isEmpty else{activeGradient=nil;return};let spec=config.gradient(key);activeGradient=spec.enabled ? GradientSampler(spec,config.color(key).rgba,width,height):nil}
  var width:Float=1,height:Float=1
  private func point(_ x:Float,_ y:Float)->SIMD2<Float>{SIMD2(x/width*2-1,1-y/height*2)}
- private func triangle(_ a:SIMD2<Float>,_ b:SIMD2<Float>,_ c:SIMD2<Float>,_ color:SIMD4<Float>){let gradient=config.gradient(gradientKey);if !gradient.enabled{vertices.append(WireVertex(position:point(a.x,a.y),color:color));vertices.append(WireVertex(position:point(b.x,b.y),color:color));vertices.append(WireVertex(position:point(c.x,c.y),color:color));return};let base=config.color(gradientKey).rgba,alpha=color.w;func sample(_ p:SIMD2<Float>)->SIMD4<Float>{var v=gradient.sample(base,Double(p.x),Double(p.y),Double(width),Double(height));v.w*=alpha;return v};vertices.append(WireVertex(position:point(a.x,a.y),color:sample(a)));vertices.append(WireVertex(position:point(b.x,b.y),color:sample(b)));vertices.append(WireVertex(position:point(c.x,c.y),color:sample(c)))}
+ private func triangle(_ a:SIMD2<Float>,_ b:SIMD2<Float>,_ c:SIMD2<Float>,_ color:SIMD4<Float>){guard let gradient=activeGradient else{vertices.append(WireVertex(position:point(a.x,a.y),color:color));vertices.append(WireVertex(position:point(b.x,b.y),color:color));vertices.append(WireVertex(position:point(c.x,c.y),color:color));return};vertices.append(WireVertex(position:point(a.x,a.y),color:gradient.color(a,color.w)));vertices.append(WireVertex(position:point(b.x,b.y),color:gradient.color(b,color.w)));vertices.append(WireVertex(position:point(c.x,c.y),color:gradient.color(c,color.w)))}
  func rect(_ x:Float,_ y:Float,_ w:Float,_ h:Float,_ color:SIMD4<Float>){guard w>0,h>0 else{return};let a=SIMD2(x,y),b=SIMD2(x+w,y),c=SIMD2(x,y+h),d=SIMD2(x+w,y+h);triangle(a,b,c,color);triangle(c,b,d,color)}
  func line(_ a:SIMD2<Float>,_ b:SIMD2<Float>,_ thickness:Float,_ color:SIMD4<Float>){
   if max(a.x,b.x)<0 || min(a.x,b.x)>width || max(a.y,b.y)<0 || min(a.y,b.y)>height{return}
@@ -97,13 +98,13 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
   self.width=max(1,width);self.height=max(1,height);vertices.removeAll(keepingCapacity:true)
   let snapshot=analyzer.snapshot(),decay=pow(Float(config.n("smoothing")),dt*60)
   for i in 0..<64{let input=snapshot.age<0.3 && !config.paused ? snapshot.bands[i]:0;let v=min(1,max(0,input-Float(config.n("gate")))*Float(config.n("sensitivity"))*((snapshot.ranges.indices.contains(i) && snapshot.ranges[i].upperBound>20 && snapshot.ranges[i].lowerBound<160) ? Float(config.n("bass")):1));smooth[i]=v+(smooth[i]-v)*decay;if smooth[i]<0.0001{smooth[i]=0}}
-  gradientKey="backgroundcolor";if !transparent && config.backgroundPath.isEmpty && config.gradient("backgroundcolor").enabled{var color=config.color("backgroundcolor").rgba;color.w=1;rect(0,0,width,height,color)};gradientKey=""
+  useGradient("backgroundcolor");if !transparent && config.backgroundPath.isEmpty && config.gradient("backgroundcolor").enabled{var color=config.color("backgroundcolor").rgba;color.w=1;rect(0,0,width,height,color)};useGradient("")
   if !config.backgroundPath.isEmpty{rect(0,0,width,height,SIMD4(0,0,0,Float(config.n("dim")/100)))}
   let beat=snapshot.age<0.8 && !config.paused ? snapshot.beat*exp(-snapshot.age*7):0
   let ciderBpm=media?.tempoBpm ?? 0
-  gradientKey="bgcolor"
+  useGradient("bgcolor")
   drawSpace(time:time,dt:dt,beat:beat,bpm:ciderBpm>0 ? ciderBpm:snapshot.bpm)
-  gradientKey="wirecolor"
+  useGradient("wirecolor")
   let bassIndices=snapshot.ranges.indices.filter{snapshot.ranges[$0].upperBound>20 && snapshot.ranges[$0].lowerBound<160};let low=bassIndices.reduce(Float(0)){$0+smooth[$1]}/Float(max(1,bassIndices.count))
   if !config.paused{angle += dt*Float(config.n("rotation"))}
   if config.on("sphere"){
@@ -114,15 +115,15 @@ final class WallpaperRenderer:NSObject,MTKViewDelegate {
    for i in mesh.indices where visibility.vertex(i){let p=mesh[i];let e=smooth[p.bin],ripple=sin(p.phase+time*1.7)*e,d:Float=1+deformation*(e*(full ? 0.22:0.045)+ripple*(full ? 0.16:0.025));let x=(p.x*ca-p.z*sa)*d,y=p.y*d,z=(p.x*sa+p.z*ca)*d;projected[i]=SIMD3(cx+x*radius,cy+(y*ct-z*st)*radius,z*ct+y*st)}
    let base=config.color("wirecolor").rgba,opacity=Float(config.n("opacity")),thickness=Float(config.n("linewidth")),glow=config.renderProfile=="Ligero" ? 0:Float(config.n("glow")) * (config.renderProfile=="Automático" ? Float(detail*detail):1)
    for pass in (config.on("orboptimized") ? 1:0)...1{
-    var c=base;c.w=(config.gradient("wirecolor").enabled ? 1:base.w)*opacity*(pass==1 ? 0.85:0.24)
+    var c=base;c.w=(activeGradient != nil ? 1:base.w)*opacity*(pass==1 ? 0.85:0.24)
     for (index,edge) in edges.enumerated(){if !visibility.edge(index){continue};let (a,b)=edge;var p=projected[a],q=projected[b];if config.on("orboptimized") && !OrbVisibility.clipFront(&p,&q){continue};let z=(p.z+q.z)*0.5;if !full && abs(z)>0.25{continue};if (z>0) != (pass==1){continue};let aa=SIMD2(p.x,p.y),bb=SIMD2(q.x,q.y)
      if glow>0{var halo=c;halo.w *= 0.06;line(aa,bb,thickness+glow,halo);halo.w *= 1.5;line(aa,bb,thickness+glow*0.4,halo)}
      line(aa,bb,thickness,c)
     }
    }
-   if !full{var c=base;c.w=(config.gradient("wirecolor").enabled ? 1:base.w)*opacity*0.48;for j in 0..<14{var previous:SIMD2<Float>?;for i in 0...48{let a=Float(i)/48*Float.pi*2,radial=radius*(0.48+Float(j)*0.007+smooth[i%48]*deformation*0.42),twist=a+sin(a*3+time*0.3+Float(j)*0.13)*0.09,p=SIMD2(cx+cos(twist)*radial,cy+sin(twist)*radial*0.94);if let prev=previous{line(prev,p,thickness,c)};previous=p}}}
+   if !full{var c=base;c.w=(activeGradient != nil ? 1:base.w)*opacity*0.48;for j in 0..<14{var previous:SIMD2<Float>?;for i in 0...48{let a=Float(i)/48*Float.pi*2,radial=radius*(0.48+Float(j)*0.007+smooth[i%48]*deformation*0.42),twist=a+sin(a*3+time*0.3+Float(j)*0.13)*0.09,p=SIMD2(cx+cos(twist)*radial,cy+sin(twist)*radial*0.94);if let prev=previous{line(prev,p,thickness,c)};previous=p}}}
   }
-  gradientKey=""
+  useGradient("")
   if config.on("spectrum"){
    let x=width*Float(config.n("spectrumX")/100),y=height*Float(config.n("spectrumY")/100),h=height*Float(config.n("spectrumHeight")/100),maximum=width*Float(config.n("spectrumWidth")/100),row=h/64,step=max(4,width/240),barHeight=max(1,row*0.68)
    for i in 0..<64{let length=smooth[63-i]*maximum;peaks[i]=max(length,peaks[i]-dt*maximum*0.25)

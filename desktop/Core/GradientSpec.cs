@@ -23,3 +23,10 @@ internal sealed class GradientShaderCache:IDisposable
  public SKShader? Get(GradientSpec? next,SKColor color,double w,double h){if(next?.Enabled!=true){shader?.Dispose();shader=null;spec=null;return null;}if(spec!=next||start!=color||width!=w||height!=h){shader?.Dispose();spec=next;start=color;width=w;height=h;shader=next.Shader(color,w,h);}return shader;}
  public void Dispose()=>shader?.Dispose();
 }
+/// Cached palette and projection for the native line engines. Construct once per color group/frame.
+internal readonly struct GradientSampler
+{
+ readonly Vector4 start,end;readonly float dx,dy,offset,inverse;
+ public GradientSampler(GradientSpec spec,SKColor color,double w,double h){start=new(color.Red/255f,color.Green/255f,color.Blue/255f,color.Alpha/255f);var last=Color.Parse(spec.End);end=new(last.R/255f,last.G/255f,last.B/255f,last.A/255f);double a=spec.Angle*Math.PI/180;dx=(float)Math.Cos(a);dy=(float)Math.Sin(a);inverse=1/(float)Math.Max(.0001,Math.Abs(dx)*w+Math.Abs(dy)*h);offset=.5f-((float)w/2*dx+(float)h/2*dy)*inverse;}
+ public Vector4 Sample(float x,float y)=>Vector4.Lerp(start,end,Math.Clamp((x*dx+y*dy)*inverse+offset,0,1));
+}

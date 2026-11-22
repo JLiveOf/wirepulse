@@ -44,4 +44,14 @@ printf '%s' "$2" > "$dir/recorded"
  precondition(red>100 && blue>100,"Gradient text did not render both colors: \(red), \(blue)")
  if let output=output{try rep.representation(using:.png,properties:[:])!.write(to:URL(fileURLWithPath:output))}
  print("PASS native gradient text pixels: red=\(red), blue=\(blue)")
+ let config=Configuration(profile:"gradient-test-"+UUID().uuidString,persistent:false),analyzer=SpectrumAnalyzer()
+ config.values["sphere"]=1;config.values["spectrum"]=0;config.values["bgshow"]=0;config.values["sphereX"]=50;config.values["sphereY"]=50;config.values["radius"]=35;config.values["glow"]=0;config.renderProfile="Calidad";config.colors["wirecolor"]="#00ff0000";config.gradients["wirecolor"]=GradientSpec(enabled:true,end:"#0000ff",angle:0)
+ guard let device=MTLCreateSystemDefaultDevice() else{throw SceneAssets.failure("Metal unavailable in gradient test")}
+ let renderer=try WallpaperRenderer(config:config,analyzer:analyzer,device:device),metalImage=temp.appendingPathComponent("metal-gradient.png")
+ try renderer.renderPreview(to:metalImage)
+ guard let pixels=NSBitmapImageRep(data:try Data(contentsOf:metalImage)) else{throw SceneAssets.failure("Metal preview unavailable")}
+ var colored=0;for y in stride(from:0,to:pixels.pixelsHigh,by:2){for x in stride(from:0,to:pixels.pixelsWide,by:2){if let c=pixels.colorAt(x:x,y:y)?.usingColorSpace(.deviceRGB),c.blueComponent>0.1{colored+=1}}}
+ precondition(colored>100,"Metal gradient discarded the opaque endpoint of a transparent start")
+ print("PASS Metal gradient render with transparent start: \(colored) blue pixels")
+
 }

@@ -23,3 +23,10 @@ enum TextMotion {
  static let modes=["none","float","pulse","typewriter","scroll"]
  static func frame(_ mode:String,_ time:Double,_ speed:Double,_ distance:Double,_ count:Int)->(x:Double,y:Double,scale:Double,opacity:Double,characters:Int){let t=max(0,time)*min(5,max(0.1,speed)),wave=sin(t * .pi*2/3);switch mode{case "float":return(0,wave*distance,1,1,count);case "pulse":return(0,0,1+0.05*wave,0.75+0.25*(wave+1)/2,count);case "scroll":return((1-(t/6).truncatingRemainder(dividingBy:1)*2)*distance,0,1,1,count);case "typewriter":return(0,0,1,1,min(count,max(0,Int((t/5).truncatingRemainder(dividingBy:1)*1.5*Double(count)))));default:return(0,0,1,1,count)}}
 }
+
+/// Palette parsing and projection happen once per group, outside the vertex loop.
+struct GradientSampler {
+ let start:SIMD4<Float>,end:SIMD4<Float>,direction:SIMD2<Float>,offset:Float,inverse:Float
+ init(_ spec:GradientSpec,_ start:SIMD4<Float>,_ w:Float,_ h:Float){self.start=start;end=NSColor(hex:spec.end).rgba;let a=spec.angle * Double.pi/180.0;let d=SIMD2<Float>(Float(cos(a)),Float(sin(a)));direction=d;let span:Float=Swift.max(0.0001,abs(d.x)*w+abs(d.y)*h);inverse=1/span;offset=0.5-simd_dot(SIMD2<Float>(w/2,h/2),d)/span}
+ func color(_ point:SIMD2<Float>,_ opacity:Float)->SIMD4<Float>{let factor:Float=Swift.min(1,Swift.max(0,simd_dot(point,direction)*inverse+offset));var color=start+(end-start)*factor;color.w*=opacity;return color}
+}
