@@ -56,7 +56,7 @@ sealed partial class SettingsWindow:Window {
    _=>"M12,1 L12,12 M6,4 A10,10 0 1 0 18,4"
   };
   var path=(Microsoft.UI.Xaml.Shapes.Path)XamlReader.Load("<Path xmlns='http://schemas.microsoft.com/winfx/2006/xaml/presentation' Stroke='#1598FF' StrokeThickness='1.6' StrokeStartLineCap='Round' StrokeEndLineCap='Round' Data='"+data+"'/>");
-  var row=new StackPanel{Orientation=Orientation.Horizontal,Spacing=14};row.Children.Add(new Viewbox{Width=20,Height=20,Child=path});row.Children.Add(new TextBlock{Text=name,FontSize=15,VerticalAlignment=VerticalAlignment.Center});return row;
+  var row=new StackPanel{Orientation=Orientation.Horizontal,Spacing=14};row.Children.Add(new Viewbox{Width=20,Height=20,Child=path});row.Children.Add(new TextBlock{Text=L10n.Text(name),FontSize=15,VerticalAlignment=VerticalAlignment.Center});return row;
  }
  JsonObject CurrentSettings=>state["independent"]?.GetValue<bool>()==true&&state["displays"]?[profile] is JsonObject display?display:state["global"]?.AsObject()??new();
  JsonNode? Value(string key)=>CurrentSettings["values"]?[key];
