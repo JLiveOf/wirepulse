@@ -50,8 +50,10 @@ try {
   )){
    $process=Start-Process -WindowStyle Hidden -FilePath "$PWD/publish/WirePulse.exe" -ArgumentList $case.Args -PassThru -RedirectStandardOutput "test-results/$($case.Name).log" -RedirectStandardError "test-results/$($case.Name).err"
    if(!$process.WaitForExit(45000)){$process.Kill($true);throw "$($case.Name) timed out"}
+   foreach($diagnostic in @('WirePulse-editor-error.txt','WirePulse-settings-error.txt','WirePulse-editor-state.json')){if(Test-Path "$env:TEMP/$diagnostic"){Copy-Item "$env:TEMP/$diagnostic" "test-results/$($case.Name)-$diagnostic" -Force}}
+   if(!(Test-Path "test-results/$($case.Name).json")){Get-Content "test-results/$($case.Name).err" -ErrorAction SilentlyContinue;throw "$($case.Name) produced no report"}
    $report=Get-Content "test-results/$($case.Name).json" -Raw | ConvertFrom-Json
-   if($process.ExitCode -ne 0 -or !$report.valid){throw "$($case.Name) failed; inspect test-results"}
+   if($process.ExitCode -ne 0 -or !$report.valid){Get-Content "test-results/$($case.Name)*.json","test-results/$($case.Name)*.txt" -ErrorAction SilentlyContinue;throw "$($case.Name) failed; inspect test-results"}
    Write-Output "PASS $($case.Name)"
   }
  }
