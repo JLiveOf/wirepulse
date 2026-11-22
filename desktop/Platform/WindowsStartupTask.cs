@@ -45,7 +45,7 @@ internal static class WindowsStartupTask
             E("RegistrationInfo", E("Description", "WirePulse: inicio prioritario por usuario")),
             E("Triggers", E("LogonTrigger", new object[]{ E("Enabled", "true"), E("UserId", sid) })),
             E("Principals", new XElement(ns + "Principal", new XAttribute("id", "User"), E("UserId", sid), E("LogonType", "InteractiveToken"), E("RunLevel", "LeastPrivilege"))),
-            E("Settings", new object[]{ E("MultipleInstancesPolicy", "IgnoreNew"), E("DisallowStartIfOnBatteries", "false"), E("StopIfGoingOnBatteries", "false"), E("ExecutionTimeLimit", "PT0S"), E("Priority", "7") }),
+            E("Settings", new object[]{ E("MultipleInstancesPolicy", "IgnoreNew"), E("DisallowStartIfOnBatteries", "false"), E("StopIfGoingOnBatteries", "false"), E("ExecutionTimeLimit", "PT0S"), E("Priority", "4") }),
             new XElement(ns + "Actions", new XAttribute("Context", "User"), E("Exec", new object[]{ E("Command", executable), E("Arguments", "--autostart --no-settings"), E("WorkingDirectory", Path.GetDirectoryName(executable) ?? "") }))).ToString();
     }
 }
