@@ -88,7 +88,7 @@ final class SceneEditorModel: ObservableObject {
     var item = SceneDocument.make(kind, draft, size)
     if kind == "image" || kind == "widget" {
       let panel = NSOpenPanel()
-      panel.title = kind == "image" ? "Añadir imagen o GIF" : "Añadir widget HTML"
+      panel.title = L10n.text(kind == "image" ? "Añadir imagen o GIF" : "Añadir widget HTML")
       panel.prompt = "Añadir"
       defer { window?.makeKeyAndOrderFront(nil) }
       panel.canChooseDirectories = kind == "widget"
@@ -104,7 +104,7 @@ final class SceneEditorModel: ObservableObject {
           item.height = item.width * size.width * ratio / size.height
         }
       } catch {
-        NSAlert(error: error).runModal()
+        NSAlert(error: L10n.error(error)).runModal()
         return
       }
     }
@@ -414,8 +414,8 @@ struct EditorChrome: View {
     ZStack(alignment: .topTrailing) {
       if model.inspector {
         VStack(alignment: .leading, spacing: 10) {
-          Text("Objetos").font(.title2.bold())
-          Text("Arrastra ⠿ para ordenar · arriba queda delante").font(.caption)
+          Text(L10n.text("Objetos")).font(.title2.bold())
+          Text(L10n.text("Arrastra ⠿ para ordenar · arriba queda delante")).font(.caption)
           LayerTable(model:model).frame(height:180)
           ScrollView { properties }
         }.padding().frame(width: 290).frame(maxHeight: max(160, (availableHeight ?? model.size.height) - 120)).background(
@@ -425,17 +425,17 @@ struct EditorChrome: View {
       VStack {
         Spacer()
         HStack {
-          Menu("＋ Añadir") {
-            ForEach(SceneDocument.kinds, id: \.0) { kind in Button(kind.1) { model.add(kind.0) } }
+          Menu(L10n.text("＋ Añadir")) {
+            ForEach(SceneDocument.kinds, id: \.0) { kind in Button(L10n.text(kind.1)) { model.add(kind.0) } }
           }
-          Button("↶") { model.history(true) }
-          Button("↷") { model.history(false) }
-          Toggle("Ajustar a guías", isOn: $model.snap).fixedSize()
-          Button("Eliminar objeto") { model.delete() }.disabled(
+          Button(L10n.text("↶")) { model.history(true) }
+          Button(L10n.text("↷")) { model.history(false) }
+          Toggle(L10n.text("Ajustar a guías"), isOn: $model.snap).fixedSize()
+          Button(L10n.text("Eliminar objeto")) { model.delete() }.disabled(
             model.item == nil || model.item?.locked == true)
-          Button("Propiedades") { model.inspector.toggle() }
-          Button("Cancelar") { finish(false) }
-          Button("Guardar diseño") { finish(true) }.buttonStyle(.borderedProminent)
+          Button(L10n.text("Propiedades")) { model.inspector.toggle() }
+          Button(L10n.text("Cancelar")) { finish(false) }
+          Button(L10n.text("Guardar diseño")) { finish(true) }.buttonStyle(.borderedProminent)
         }.padding(12).background(.regularMaterial, in: RoundedRectangle(cornerRadius: 14)).padding()
       }.frame(maxWidth: .infinity, maxHeight: .infinity)
     }
@@ -443,31 +443,31 @@ struct EditorChrome: View {
   @ViewBuilder var properties: some View {
     if let item = model.item {
       VStack(alignment: .leading) {
-        DisclosureGroup("Propiedades generales"){
-        TextField("Nombre", text: binding(item.name) { $0.name = $1 })
-        Toggle("Visible", isOn: binding(item.visible) { $0.visible = $1 })
-        Toggle("Bloquear posición", isOn: binding(item.locked) { $0.locked = $1 })
-        Toggle("Mantener proporciones", isOn: binding(item.keepAspect) { $0.keepAspect = $1 })
-        Text("Ángulo (°)")
+        DisclosureGroup(L10n.text("Propiedades generales")){
+        TextField(L10n.text("Nombre"), text: binding(item.name) { $0.name = $1 })
+        Toggle(L10n.text("Visible"), isOn: binding(item.visible) { $0.visible = $1 })
+        Toggle(L10n.text("Bloquear posición"), isOn: binding(item.locked) { $0.locked = $1 })
+        Toggle(L10n.text("Mantener proporciones"), isOn: binding(item.keepAspect) { $0.keepAspect = $1 })
+        Text(L10n.text("Ángulo (°)"))
         Slider(value:binding(item.rotation){$0.rotation=$1},in: -180...180,step:1,onEditingChanged:gesture)
         Text(String(format:"%.0f°",item.rotation)).monospacedDigit()
         HStack {
-          Button("↶ 90°") { model.change { $0.rotation -= 90 } }
-          Button("↷ 90°") { model.change { $0.rotation += 90 } }
-          Button("Sin giro") { model.change { $0.rotation = 0 } }
+          Button(L10n.text("↶ 90°")) { model.change { $0.rotation -= 90 } }
+          Button(L10n.text("↷ 90°")) { model.change { $0.rotation += 90 } }
+          Button(L10n.text("Sin giro")) { model.change { $0.rotation = 0 } }
         }
         HStack {
-          Button("Duplicar") { model.duplicate() }
-          Button("Eliminar") { model.delete() }
+          Button(L10n.text("Duplicar")) { model.duplicate() }
+          Button(L10n.text("Eliminar")) { model.delete() }
         }
         HStack {
-          Button("Centrar") {
+          Button(L10n.text("Centrar")) {
             model.change {
               $0.x = (1 - $0.width) / 2
               $0.y = (1 - $0.height) / 2
             }
           }
-          Button("Encajar") {
+          Button(L10n.text("Encajar")) {
             model.change {
               var r = $0.rect(model.size)
               let scale = min(
@@ -481,12 +481,12 @@ struct EditorChrome: View {
           }
         }
         HStack {
-          Button("Al frente") {
+          Button(L10n.text("Al frente")) {
             model.checkpoint()
             model.document.items.removeAll { $0.id == item.id }
             model.document.items.append(item)
           }
-          Button("Al fondo") {
+          Button(L10n.text("Al fondo")) {
             model.checkpoint()
             model.document.items.removeAll { $0.id == item.id }
             model.document.items.insert(item, at: 0)
@@ -494,16 +494,15 @@ struct EditorChrome: View {
         }
         if item.kind == "text" {
           TextEditor(text: binding(item.text) { $0.text = $1 }).frame(height: 80)
-          ColorPicker(
-            "Color",
+          ColorPicker(L10n.text("Color"),
             selection: Binding(
               get: { Color(nsColor: NSColor(hex: model.item?.color ?? "#ffffff")) },
               set: { color in model.change { $0.color = NSColor(color).hex } }),
             supportsOpacity: true)
         }
         if item.kind == "text" || item.kind == "clock" {
-          Picker("Fuente", selection: binding(item.font) { $0.font = $1 }) {
-            Text("Sistema").tag("System")
+          Picker(L10n.text("Fuente"), selection: binding(item.font) { $0.font = $1 }) {
+            Text(L10n.text("Sistema")).tag("System")
             ForEach(Self.fonts, id: \.self) {
               Text($0).tag($0)
             }
@@ -524,11 +523,11 @@ struct EditorChrome: View {
             }
           ) { spec in style(spec) }
         }
-        Text("Opacidad")
+        Text(L10n.text("Opacidad"))
         Slider(value: binding(item.opacity) { $0.opacity = $1 }, in: 0...1,onEditingChanged:gesture)
       }
     } else {
-      Text("Selecciona un objeto para editarlo.")
+      Text(L10n.text("Selecciona un objeto para editarlo."))
     }
   }
   func gesture(_ active:Bool){if active{model.beginGesture()}else{model.endGesture()}}
@@ -538,8 +537,7 @@ struct EditorChrome: View {
   @ViewBuilder func style(_ spec: ControlSpec) -> some View {
     switch spec.kind {
     case .color:
-      ColorPicker(
-        spec.title,
+      ColorPicker(L10n.text(spec.title),
         selection: Binding(
           get: {
             if case .string(let s) = model.item?.style[spec.id] {
@@ -549,8 +547,7 @@ struct EditorChrome: View {
           }, set: { value in model.change { $0.style[spec.id] = .string(NSColor(value).hex) } }),
         supportsOpacity: true)
     case .toggle:
-      Toggle(
-        spec.title,
+      Toggle(L10n.text(spec.title),
         isOn: Binding(
           get: {
             if case .number(let n) = model.item?.style[spec.id] { return n > 0.5 }
@@ -558,7 +555,7 @@ struct EditorChrome: View {
             return model.draft.on(spec.id)
           }, set: { value in model.change { $0.style[spec.id] = .number(value ? 1 : 0) } }))
     case .slider(let lo, let hi, let step):
-      Text(spec.title)
+      Text(L10n.text(spec.title))
       Slider(
         value: Binding(
           get: {
@@ -585,7 +582,7 @@ final class SceneEditorWindow: NSWindow,NSWindowDelegate {
     model.window = self
     isReleasedWhenClosed = false
     level = .floating
-    title = "WirePulse · Editar escritorio"
+    title = L10n.text("WirePulse · Editar escritorio")
     let root = NSView(frame: CGRect(origin: .zero, size: screen.frame.size))
     root.wantsLayer = true
     root.layer?.backgroundColor = config.color("backgroundcolor").cgColor
@@ -621,9 +618,9 @@ final class SceneEditorWindow: NSWindow,NSWindowDelegate {
   func finish(_ save: Bool) {
     if !save && model.document != initial {
       let alert = NSAlert()
-      alert.messageText = "¿Descartar los cambios del diseño?"
-      alert.addButton(withTitle: "Seguir editando")
-      alert.addButton(withTitle: "Descartar")
+      alert.messageText = L10n.text("¿Descartar los cambios del diseño?")
+      alert.addButton(withTitle: L10n.text("Seguir editando"))
+      alert.addButton(withTitle: L10n.text("Descartar"))
       if alert.runModal() != .alertSecondButtonReturn { return }
     }
     if save { model.save() }

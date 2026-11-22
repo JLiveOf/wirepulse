@@ -40,12 +40,12 @@ struct LayoutPackage:Codable {
 extension Configuration {
  func transferLayout(importing:Bool){
   guard !layoutTransferRunning else{return}
-  if NSApp.windows.contains(where:{$0 is SceneEditorWindow && $0.isVisible}){let alert=NSAlert();alert.messageText="Guarda o cancela el editor antes de transferir un layout.";alert.runModal();return}
+  if NSApp.windows.contains(where:{$0 is SceneEditorWindow && $0.isVisible}){let alert=NSAlert();alert.messageText=L10n.text("Guarda o cancela el editor antes de transferir un layout.");alert.runModal();return}
   let target:URL
-  if importing{let panel=NSOpenPanel();panel.title="Importar layout de WirePulse";panel.allowedContentTypes=[.data];guard panel.runModal() == .OK,let url=panel.url else{return};target=url}
-  else{let panel=NSSavePanel();panel.title="Exportar layout de WirePulse";panel.nameFieldStringValue="WirePulse-layout.wirepulse";guard panel.runModal() == .OK,let url=panel.url else{return};target=url}
+  if importing{let panel=NSOpenPanel();panel.title=L10n.text("Importar layout de WirePulse");panel.allowedContentTypes=[.data];guard panel.runModal() == .OK,let url=panel.url else{return};target=url}
+  else{let panel=NSSavePanel();panel.title=L10n.text("Exportar layout de WirePulse");panel.nameFieldStringValue="WirePulse-layout.wirepulse";guard panel.runModal() == .OK,let url=panel.url else{return};target=url}
   layoutTransferRunning=true
   let copy=preview(),size=NSScreen.screens.first(where:{storagePrefix=="display-"+displayKey($0)+"-"})?.frame.size ?? NSScreen.main?.frame.size ?? CGSize(width:1920,height:1080)
-  DispatchQueue.global(qos:.userInitiated).async{[weak self] in defer{DispatchQueue.main.async{self?.layoutTransferRunning=false}};do{if importing{let package=try LayoutPackage.load(target);DispatchQueue.main.async{guard let self=self else{return};package.apply(self)}}else{try LayoutPackage.export(to:target,config:copy,size:size)}}catch{DispatchQueue.main.async{NSAlert(error:error).runModal()}}}
+  DispatchQueue.global(qos:.userInitiated).async{[weak self] in defer{DispatchQueue.main.async{self?.layoutTransferRunning=false}};do{if importing{let package=try LayoutPackage.load(target);DispatchQueue.main.async{guard let self=self else{return};package.apply(self)}}else{try LayoutPackage.export(to:target,config:copy,size:size)}}catch{DispatchQueue.main.async{NSAlert(error:L10n.error(error)).runModal()}}}
  }
 }

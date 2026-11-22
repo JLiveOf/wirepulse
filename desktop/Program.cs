@@ -12,6 +12,7 @@ internal static class Program
     {
         Args = args; try
         {
+            if (args.Contains("--localization-self-test")) return LocalizationTest.Run();
             if (args.Contains("--instance-lock-probe")) { using var probe = new SingleInstance(Option("--probe-name") ?? ""); if (!probe.Owned) return 2; Console.WriteLine("ACQUIRED"); Thread.Sleep(int.Parse(Option("--instance-lock-probe") ?? "1000")); return 0; }
             if(Option("--coverage-probe") is string coverage){var r=System.Text.Json.JsonSerializer.Deserialize<int[]>(coverage)!;Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new{reason=OperatingSystem.IsLinux()?LinuxCoverage.Probe(new Avalonia.PixelRect(r[0],r[1],r[2],r[3]),!args.Contains("--ignore-fullscreen"),!args.Contains("--ignore-maximized")):DisplayTiming.CoverageReason(new Avalonia.PixelRect(r[0],r[1],r[2],r[3]),!args.Contains("--ignore-fullscreen"),!args.Contains("--ignore-maximized"))}));return 0;}
             if (args.Contains("--cleanup-owned-autostart")) { new StartupRegistration().RemoveOwned(); return 0; }

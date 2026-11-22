@@ -1,0 +1,2 @@
+"NSAppleEventsUsageDescription" = "WirePulse reads the title, artwork and playback progress from Apple Music or Spotify. In Automatic mode it may read the active browser tab playing audio to identify services such as YouTube.";
+"NSAudioCaptureUsageDescription" = "WirePulse analyzes audio played by your apps to animate the desktop orb and spectrum. It does not use the microphone or save recordings.";

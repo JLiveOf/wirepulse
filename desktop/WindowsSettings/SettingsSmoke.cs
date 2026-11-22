@@ -10,11 +10,11 @@ sealed partial class SettingsWindow {
  async Task RunSmokeTest(string output){
   var checks=new List<string>();var before=state.DeepClone().AsObject();string? failure=null;string[] names=before["displays"]!.AsObject().Select(p=>p.Key).ToArray();double original=0;string first=names.FirstOrDefault()??"";bool changed=false;
   try{
-   foreach(var item in navigation.MenuItems.Cast<NavigationViewItem>()){navigation.SelectedItem=item;await Task.Delay(40);if(content.Children.Count<2||heading.Text!=(string)item.Tag)throw new Exception("Página incompleta: "+item.Tag);checks.Add("Native WinUI page: "+item.Tag);}
+   foreach(var item in navigation.MenuItems.Cast<NavigationViewItem>()){navigation.SelectedItem=item;await Task.Delay(40);if(content.Children.Count<2||heading.Text!=L10n.Text((string)item.Tag))throw new Exception("Página incompleta: "+item.Tag);checks.Add("Native WinUI page: "+item.Tag);}
    if(names.Length==0)throw new Exception("Windows did not expose a display");
    state=await Request(Command("property","IndependentDisplays",JsonValue.Create(true),true));SyncDisplays();profile=first;displays.SelectedItem=first;navigation.SelectedItem=navigation.MenuItems[0];BuildPage();await Task.Delay(80);
    original=state["displays"]![first]!["values"]!["sensitivity"]!.GetValue<double>();changed=true;
-   var slider=Descendants<Slider>(content).First(s=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(s)=="Sensibilidad de audio");
+   var slider=Descendants<Slider>(content).First(s=>Microsoft.UI.Xaml.Automation.AutomationProperties.GetName(s)==L10n.Text("Sensibilidad de audio"));
    double testValue=Math.Abs(original-.91)>.001?.91:.73;slider.Value=testValue;await Task.Delay(300);state=await Request(Command("get"));
    if(Math.Abs(state["displays"]![first]!["values"]!["sensitivity"]!.GetValue<double>()-testValue)>.0001)throw new Exception("Native slider did not reach the renderer");
    foreach(string name in names.Skip(1)){if(state["displays"]![name]!["values"]!["sensitivity"]!.GetValue<double>()!=before["displays"]![name]!["values"]!["sensitivity"]!.GetValue<double>())throw new Exception("Editing one display changed another");displays.SelectedItem=name;profile=name;BuildPage();}

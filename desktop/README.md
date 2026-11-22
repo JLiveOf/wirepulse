@@ -53,3 +53,7 @@ The Setup.exe installer installs per user in %LOCALAPPDATA%/Programs/WirePulse, 
 The first normal launch asks about login startup; it can be changed in Settings / Inicio. Windows uses HKCU Run for normal startup. The optional “Inicio prioritario” uses a per-user Task Scheduler logon trigger without a configured delay (interactive token, least privileges, normal CPU priority). Enabling it also enables startup and removes the Run entry; disabling priority switches back to normal startup. Disabling startup or uninstalling removes the task. Windows controls final launch order; first launch is not guaranteed. No passwords or administrator permissions are requested. Linux ~/.config/autostart/wirepulse.desktop. Both use --autostart --no-settings. If you move a portable build, disable and enable startup again to update its path.
 
 To build the installer on Windows install Inno Setup 6.4+ and run the usual packaging command. Installer sources and install/reinstall/uninstall tests are in packaging/windows/.
+
+## Interface language
+
+WirePulse supports English and Spanish across all three platforms. It follows the system language by default (English for other languages). Override it in Settings → Startup → Language, then restart WirePulse. Layout keys, object text, imported filenames and music metadata are not translated.

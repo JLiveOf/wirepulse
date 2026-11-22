@@ -1,3 +1,15 @@
+import Foundation
+if CommandLine.arguments.contains("--localization-self-test"){
+ precondition(L10n.english.count>400,"Missing bundled translation catalog")
+ precondition(L10n.resolve("system","es-MX")=="es" && L10n.resolve("en","es-ES")=="en" && L10n.resolve("system","fr-FR")=="en")
+ precondition(L10n.translate("Guardar diseño","en")=="Save layout" && L10n.translate("Guardar diseño","es")=="Guardar diseño")
+ precondition(L10n.translate("64 bandas · FFT 8192 · análisis 0–24000 Hz","en")=="64 bands · FFT 8192 · analysis 0–24000 Hz")
+ precondition(L10n.translate("No se pudo importar: fixture.png","en")=="Could not import: fixture.png")
+ precondition(L10n.translate("Error42 λ-日本語","en")=="Error42 λ-日本語")
+ precondition(L10n.translate("Leyendo portada de Cider…","en")=="Reading artwork from Cider…")
+ for spec in controls{precondition(L10n.translate(spec.title,"en") != spec.title || spec.title=="Color","Missing translated control: \(spec.id)")}
+ print("PASS native English/Spanish catalogs, locales, dynamic messages and controls");exit(0)
+}
 import AppKit
 import MetalKit
 import ServiceManagement

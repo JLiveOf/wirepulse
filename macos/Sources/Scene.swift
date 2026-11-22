@@ -87,7 +87,7 @@ struct SceneDocument: Codable, Equatable {
   static func make(_ kind: String, _ c: Configuration, _ size: CGSize) -> SceneItem {
     var item = SceneItem()
     item.kind = kind
-    item.name = kinds.first { $0.0 == kind }?.1 ?? kind
+    item.name = L10n.text(kinds.first { $0.0 == kind }?.1 ?? kind)
     item.font = c.clockFont
     item.style = c.values.mapValues { .number($0) }.merging(c.colors.mapValues { .string($0) }) {
       _, new in new
@@ -371,12 +371,12 @@ struct SceneMusicCard: View {
             }
           }.frame(width: h * 0.55, height: h * 0.55).clipped().cornerRadius(p)
           VStack(alignment: .leading) {
-            Text(media.title.isEmpty ? "Audio del sistema" : media.title).font(
+            Text(media.title.isEmpty ? L10n.text("Audio del sistema") : media.title).font(
               .system(size: max(9, h * 0.15), weight: .bold))
             Text(media.artist).font(.system(size: max(8, h * 0.12)))
             Text(media.album).font(.system(size: max(7, h * 0.1))).foregroundStyle(.secondary)
           }.lineLimit(1).frame(maxWidth: .infinity, alignment: .leading)
-          Text(media.provider).font(.system(size: max(7, h * 0.09))).padding(6).background(
+          Text(media.provider=="Audio del sistema" ? L10n.text(media.provider):media.provider).font(.system(size: max(7, h * 0.09))).padding(6).background(
             .white.opacity(0.12), in: RoundedRectangle(cornerRadius: 6))
         }
         TimelineView(.periodic(from: .now, by: 1)) { _ in

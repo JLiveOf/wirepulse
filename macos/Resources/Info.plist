@@ -15,9 +15,9 @@
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>CFBundleShortVersionString</key>
-	<string>4.0.1</string>
+	<string>4.0.2</string>
 	<key>CFBundleVersion</key>
-	<string>4.0.1</string>
+	<string>4.0.2</string>
 	<key>LSMinimumSystemVersion</key>
 	<string>14.2</string>
 	<key>LSUIElement</key>
@@ -28,5 +28,12 @@
 	<string>WirePulse analiza el audio que reproducen tus aplicaciones para animar el orbe y el espectro del escritorio. No usa el micrófono ni guarda grabaciones.</string>
 	<key>NSHighResolutionCapable</key>
 	<true/>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+	</array>
 </dict>
 </plist>

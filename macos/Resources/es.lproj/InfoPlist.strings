@@ -1,0 +1,2 @@
+"NSAppleEventsUsageDescription" = "WirePulse consulta título, portada y progreso de Apple Music o Spotify. En modo Automático puede consultar la pestaña activa del navegador que reproduce audio para identificar servicios como YouTube.";
+"NSAudioCaptureUsageDescription" = "WirePulse analiza el audio que reproducen tus aplicaciones para animar el orbe y el espectro del escritorio. No usa el micrófono ni guarda grabaciones.";

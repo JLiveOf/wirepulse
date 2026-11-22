@@ -9,6 +9,7 @@
   <Version>$([System.IO.File]::ReadAllText('$(MSBuildThisFileDirectory)../../VERSION').Trim())</Version>
   <DefineConstants>$(DefineConstants);DISABLE_XAML_GENERATED_MAIN</DefineConstants>
  </PropertyGroup>
+ <ItemGroup><Compile Include="../Core/L10n.cs" Link="L10n.cs"/><EmbeddedResource Include="../Assets/en.json" Link="Assets/en.json"/></ItemGroup>
  <ItemGroup><PackageReference Include="Microsoft.WindowsAppSDK" Version="1.8.260921001"/></ItemGroup>
  <Target Name="PublishWinUIResources" AfterTargets="Publish"><Copy SourceFiles="$(OutDir)$(AssemblyName).pri" DestinationFolder="$(PublishDir)"/></Target>
 </Project>

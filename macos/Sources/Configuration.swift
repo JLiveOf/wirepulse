@@ -113,7 +113,7 @@ final class Configuration: ObservableObject {
   guard panel.runModal() == .OK,let url=panel.url else{return}
   do {let folder=FileManager.default.urls(for:.applicationSupportDirectory,in:.userDomainMask)[0].appendingPathComponent("WirePulse",isDirectory:true);try FileManager.default.createDirectory(at:folder,withIntermediateDirectories:true)
    let target=folder.appendingPathComponent("background-"+UUID().uuidString+"."+url.pathExtension);if FileManager.default.fileExists(atPath:target.path){try FileManager.default.removeItem(at:target)};try FileManager.default.copyItem(at:url,to:target);backgroundPath=target.path
-  }catch{NSAlert(error:error).runModal()}
+  }catch{NSAlert(error:L10n.error(error)).runModal()}
  }
 }
 extension NSColor {

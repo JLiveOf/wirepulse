@@ -24,6 +24,6 @@ public sealed class StartupRegistration
     }
     public static string WindowsCommand(string path) => "\"" + path + "\" --autostart --no-settings";
     static string EntryString(string text) => text.Replace("\\", "\\\\").Replace("\n", "\\n").Replace("\r", "\\r");
-    public static string LinuxEntry(string path) { var quoted = new StringBuilder("\""); foreach (char c in path) { if (c is '\\' or '"' or '$' or '`') quoted.Append('\\'); quoted.Append(c == '%' ? "%%" : c.ToString()); } quoted.Append('"'); return "[Desktop Entry]\nType=Application\nName=WirePulse\nComment=Fondo reactivo al audio\nExec=" + EntryString(quoted.ToString()) + " --autostart --no-settings\nTryExec=" + EntryString(path) + "\nTerminal=false\nX-GNOME-Autostart-enabled=true\nX-WirePulse-Managed=true\n"; }
+    public static string LinuxEntry(string path) { var quoted = new StringBuilder("\""); foreach (char c in path) { if (c is '\\' or '"' or '$' or '`') quoted.Append('\\'); quoted.Append(c == '%' ? "%%" : c.ToString()); } quoted.Append('"'); return "[Desktop Entry]\nType=Application\nName=WirePulse\nComment=Audio-reactive desktop wallpaper\nComment[es]=Fondo reactivo al audio\nExec=" + EntryString(quoted.ToString()) + " --autostart --no-settings\nTryExec=" + EntryString(path) + "\nTerminal=false\nX-GNOME-Autostart-enabled=true\nX-WirePulse-Managed=true\n"; }
     public static bool ShouldPrompt(bool asked, bool autostart, bool suppressed) => !asked && !autostart && !suppressed;
 }

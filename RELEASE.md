@@ -1,3 +1,11 @@
+# WirePulse 4.0.2
+
+English and Spanish across Windows, Linux and macOS: settings, desktop editor, tray/menu bar, startup consent, file/color dialogs and status/error messages. System language is detected automatically (English fallback); Settings → Startup lets you override it. Restart WirePulse after changing the language. User text, music metadata and portable-layout identifiers are preserved.
+
+Windows: the editor’s Properties button now toggles the inspector both ways. Polling preserves the hidden panel and the toolbar remains available to reopen it.
+
+Validation includes both language catalogs, all control labels, English/Spanish editor tests, and native WinUI inspector visibility.
+
 # WirePulse 4.0.1
 
 Windows: optional priority login startup in the first-launch prompt and Settings → Inicio. Uses a per-user, non-elevated scheduled logon task with no configured delay; Windows still determines actual startup order. Switching modes removes duplicate registrations. Disabling autostart and uninstalling clean up the scheduled task. CPU priority is unchanged. macOS and Linux retain their existing startup mechanisms.
