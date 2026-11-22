@@ -6,7 +6,17 @@ struct GradientSpec:Codable,Equatable {
  var enabled=false,end="#007aff",angle=0.0
  func cleaned()->GradientSpec{GradientSpec(enabled:enabled,end:NSColor(hex:end).hex,angle:angle.isFinite ? angle.truncatingRemainder(dividingBy:360):0)}
  func points(_ w:Double,_ h:Double)->(CGPoint,CGPoint){let a=angle * .pi/180,x=cos(a),y=sin(a),span=abs(x)*w+abs(y)*h;return(CGPoint(x:w/2-x*span/2,y:h/2-y*span/2),CGPoint(x:w/2+x*span/2,y:h/2+y*span/2))}
- func sample(_ start:SIMD4<Float>,_ x:Double,_ y:Double,_ w:Double,_ h:Double)->SIMD4<Float>{let a=angle * .pi/180,dx=cos(a),dy=sin(a),t=Float(min(1,max(0,0.5+((x-w/2)*dx+(y-h/2)*dy)/max(0.0001,abs(dx)*w+abs(dy)*h))));return start+(NSColor(hex:end).rgba-start)*t}
+ func sample(_ start:SIMD4<Float>,_ x:Double,_ y:Double,_ w:Double,_ h:Double)->SIMD4<Float>{
+  let radians:Double=angle * Double.pi/180.0
+  let dx:Double=cos(radians),dy:Double=sin(radians)
+  let offset:Double=(x-w/2.0)*dx+(y-h/2.0)*dy
+  let span:Double=Swift.max(0.0001,abs(dx)*w+abs(dy)*h)
+  let fraction:Double=0.5+offset/span
+  let t:Float=Float(Swift.min(1.0,Swift.max(0.0,fraction)))
+  let endColor:SIMD4<Float>=NSColor(hex:end).rgba
+  return start+(endColor-start)*t
+ }
+
  func shape(_ start:NSColor)->AnyShapeStyle{guard enabled else{return AnyShapeStyle(Color(nsColor:start))};let(a,b)=points(1,1);return AnyShapeStyle(LinearGradient(colors:[Color(nsColor:start),Color(nsColor:NSColor(hex:end))],startPoint:UnitPoint(x:a.x,y:a.y),endPoint:UnitPoint(x:b.x,y:b.y)))}
 }
 enum TextMotion {
