@@ -66,7 +66,7 @@ sealed partial class SettingsWindow:Window {
  }
  JsonObject Command(string op,string? key=null,JsonNode? value=null,bool global=false)=>new(){["op"]=op,["key"]=key,["value"]=value,["profile"]=profile,["global"]=global};
  async Task FlushSliders(){var batch=pending.Values.ToArray();pending.Clear();foreach(var request in batch)await Apply(request);}
- async Task Apply(JsonObject request){try{state=await Request(request);UpdateLive();}catch(Exception ex){Error(ex.Message);}}
+ async Task Apply(JsonObject request){try{state=await Request(request);UpdateLive();if(request["op"]?.GetValue<string>() is "startup" or "startup-priority")BuildPage();}catch(Exception ex){Error(ex.Message);}}
  void Error(string text){message.Title="No se pudo aplicar el cambio";message.Message=text;message.Severity=InfoBarSeverity.Error;message.IsOpen=true;}
  async Task SetIndependent(bool value){if(loading)return;await Apply(Command("property","IndependentDisplays",JsonValue.Create(value),true));SyncDisplays();BuildPage();}
  void SyncDisplays(){bool previous=loading;loading=true;independent.IsChecked=state["independent"]?.GetValue<bool>()==true;var names=state["displays"]?.AsObject().Select(x=>x.Key).ToArray()??[];displays.ItemsSource=names;displays.Visibility=independent.IsChecked==true?Visibility.Visible:Visibility.Collapsed;if(!names.Contains(profile))profile=names.FirstOrDefault()??"";displays.SelectedItem=profile;loading=previous;}
