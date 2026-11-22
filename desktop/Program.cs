@@ -12,6 +12,7 @@ internal static class Program
     {
         Args = args; try
         {
+            if (Option("--update-preferences-probe") != null) { var prefs=UpdateService.Current.Preferences;Console.WriteLine(System.Text.Json.JsonSerializer.Serialize(new{channel=prefs.Channel,automatic=prefs.Automatic,skipped=prefs.Skipped}));return 0; }
             if (args.Contains("--version")) { Console.WriteLine(UpdateService.InstalledVersion); return 0; }
             if (Option("--record-release") is string installedTag) return UpdateService.RecordInstalledTag(installedTag);
             if (args.Contains("--localization-self-test")) return LocalizationTest.Run();
