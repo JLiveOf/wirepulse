@@ -50,6 +50,6 @@ El dibujo sigue el reloj nativo del sistema y puede adaptarse a 165 Hz u otras f
 
 The Setup.exe installer installs per user in %LOCALAPPDATA%/Programs/WirePulse, with a Start menu shortcut, optional desktop shortcut and uninstall registration. No administrator rights are requested. Preferences are retained when uninstalling. Close WirePulse before upgrading.
 
-The first normal launch asks about login startup; it can be changed in Settings / Inicio. Windows uses HKCU Run and Linux ~/.config/autostart/wirepulse.desktop. Both use --autostart --no-settings. If you move a portable build, disable and enable startup again to update its path.
+The first normal launch asks about login startup; it can be changed in Settings / Inicio. Windows uses HKCU Run for normal startup. The optional “Inicio prioritario” uses a per-user Task Scheduler logon trigger without a configured delay (interactive token, least privileges, normal CPU priority). Enabling it also enables startup and removes the Run entry; disabling priority switches back to normal startup. Disabling startup or uninstalling removes the task. Windows controls final launch order; first launch is not guaranteed. No passwords or administrator permissions are requested. Linux ~/.config/autostart/wirepulse.desktop. Both use --autostart --no-settings. If you move a portable build, disable and enable startup again to update its path.
 
 To build the installer on Windows install Inno Setup 6.4+ and run the usual packaging command. Installer sources and install/reinstall/uninstall tests are in packaging/windows/.

@@ -1,3 +1,7 @@
+# WirePulse 4.0.1
+
+Windows: optional priority login startup in the first-launch prompt and Settings → Inicio. Uses a per-user, non-elevated scheduled logon task with no configured delay; Windows still determines actual startup order. Switching modes removes duplicate registrations. Disabling autostart and uninstalling clean up the scheduled task. CPU priority is unchanged. macOS and Linux retain their existing startup mechanisms.
+
 # WirePulse 4.0.0 · Yamato
 
 Yamato integrates the validated Windows Tulipan history with the native macOS app and Linux Mint/Cinnamon X11 in one common release.

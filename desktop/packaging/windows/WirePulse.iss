@@ -48,6 +48,9 @@ Name: "{autodesktop}\WirePulse"; Filename: "{app}\WirePulse.exe"; WorkingDir: "{
 [Run]
 Filename: "{app}\WirePulse.exe"; Description: "{cm:LaunchProgram,WirePulse}"; Flags: nowait postinstall skipifsilent
 
+[UninstallRun]
+Filename: "{app}\WirePulse.exe"; Parameters: "--cleanup-owned-autostart"; Flags: runhidden waituntilterminated; RunOnceId: "DisableWirePulseStartup"
+
 [Code]
 function ApplicationMutex(Param: String): String;
 begin

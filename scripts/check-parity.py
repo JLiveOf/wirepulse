@@ -20,5 +20,5 @@ for source in ['desktop/SettingsWindow.cs','desktop/WindowsSettings/SettingsWind
 for source in ['desktop/WindowsSettings/SettingsWindow.cs','desktop/SettingsWindow.cs','macos/Sources/Settings.swift']:
  text=(root/source).read_text()
  for group in dict.fromkeys(x['group'] for x in specs):assert '"'+group+'"' in text,f'{source}: page missing {group}'
-assert (root/'VERSION').read_text().strip()=='4.0.0','Yamato version mismatch'
+assert re.fullmatch(r'4\.0\.\d+', (root/'VERSION').read_text().strip()), 'Yamato version mismatch'
 print(f'PASS {len(specs)} shared controls, groups, slider ranges/steps and five providers across all settings UIs')
