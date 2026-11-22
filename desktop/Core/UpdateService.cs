@@ -18,6 +18,8 @@ public sealed class UpdatePreferences {public string Channel{get;set;}="stable";
 public sealed class UpdateService
 {
  public const string Repository="JLiveOf/wirepulse";
+ // Initialize the case-insensitive options before Current loads persisted preferences.
+ static readonly JsonSerializerOptions json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase,PropertyNameCaseInsensitive=true};
  static readonly HttpClient http=CreateClient();static HttpClient CreateClient(){var c=new HttpClient{Timeout=TimeSpan.FromMinutes(15),MaxResponseContentBufferSize=8*1024*1024};c.DefaultRequestHeaders.UserAgent.ParseAdd("WirePulse/4.1.0");c.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");return c;}
  public static string BuildVersion=>typeof(UpdateService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]??"4.1.0";
  public sealed record InstalledRelease(string Tag,string Hash);
@@ -31,7 +33,6 @@ public sealed class UpdateService
  public static int RecordInstalledTag(string tag){var parsed=ReleaseVersion.Parse(tag);if(parsed==null||parsed.Core!=ReleaseVersion.Parse(BuildVersion)?.Core)return 1;WriteMarker(tag,FileHash(BinaryPath));return 0;}
  public static async Task RecordDebPackageAsync(string package,string tag){var start=new ProcessStartInfo("dpkg-deb"){UseShellExecute=false,RedirectStandardOutput=true};start.ArgumentList.Add("--fsys-tarfile");start.ArgumentList.Add(package);using var process=Process.Start(start)??throw new IOException("No se pudo leer el paquete Debian.");string? hash=null;using(var reader=new System.Formats.Tar.TarReader(process.StandardOutput.BaseStream)){System.Formats.Tar.TarEntry? entry;while((entry=await reader.GetNextEntryAsync())!=null){if(entry.Name.TrimStart('.','/')=="opt/wirepulse/WirePulse.dll"&&entry.DataStream!=null)hash=Convert.ToHexString(await SHA256.HashDataAsync(entry.DataStream));}}await process.WaitForExitAsync();if(process.ExitCode!=0||hash==null)throw new InvalidDataException("El paquete no contiene WirePulse.");WriteMarker(tag,hash);}
  public static readonly UpdateService Current=new();
- static readonly JsonSerializerOptions json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase,PropertyNameCaseInsensitive=true};
  readonly string file;int checking;public string Status{get;private set;}="";public UpdatePreferences Preferences{get;private set;}=new();public event Action<UpdateRelease>? Available;
  public UpdateService(string? path=null){file=path??Path.Combine(Settings.Folder,"updates.json");try{Preferences=JsonSerializer.Deserialize<UpdatePreferences>(File.ReadAllText(file),json)??new();}catch{}if(Preferences.Channel is not("stable" or "beta"))Preferences.Channel="stable";}
  public void Configure(string? channel=null,bool? automatic=null,string? skipped=null){if(channel!=null)Preferences.Channel=channel=="beta"?"beta":"stable";if(automatic!=null)Preferences.Automatic=automatic.Value;if(skipped!=null)Preferences.Skipped=skipped;Directory.CreateDirectory(Path.GetDirectoryName(file)!);string temp=file+".tmp-"+Guid.NewGuid();File.WriteAllText(temp,JsonSerializer.Serialize(Preferences,json));File.Move(temp,file,true);}
