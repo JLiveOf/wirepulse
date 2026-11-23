@@ -91,6 +91,9 @@ jobs:
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
         run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
+      - name: Native glass welcome and X11 blurred backdrop
+        if: runner.os == 'Linux'
+        run: xvfb-run -a ./publish/WirePulse --welcome-smoke-test
       - name: Native HTML widget and audio event (Linux)
         timeout-minutes: 2
         if: runner.os == 'Linux'

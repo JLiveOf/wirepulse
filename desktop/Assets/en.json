@@ -485,5 +485,8 @@
   "Esperando permiso de audio…": "Waiting for audio permission…",
   "Activar audio": "Enable audio",
   "Abrir permisos del sistema": "Open system permissions",
-  "Audio del sistema preparado.": "System audio is ready."
+  "Audio del sistema preparado.": "System audio is ready.",
+  "Mostrar la splash en cada inicio": "Show splash screen on every launch",
+  "Bienvenida": "Welcome",
+  "Activa el permiso de audio para que el fondo reaccione a tu música. Puedes continuar sin activarlo.": "Enable audio permission to make your wallpaper react to music. You can continue without enabling it."
 }

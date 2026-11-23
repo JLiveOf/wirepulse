@@ -22,3 +22,7 @@ for source in ['desktop/WindowsSettings/SettingsWindow.cs','desktop/SettingsWind
  for group in dict.fromkeys(x['group'] for x in specs):assert '"'+group+'"' in text,f'{source}: page missing {group}'
 assert re.fullmatch(r'4\.\d+\.\d+', (root/'VERSION').read_text().strip()), 'Yamato version mismatch'
 print(f'PASS {len(specs)} shared controls, groups, slider ranges/steps and five providers across all settings UIs')
+
+for file in ["desktop/SettingsWindow.cs","desktop/WindowsSettings/SettingsWindow.cs","macos/Sources/Settings.swift","desktop/WelcomeWindow.cs","macos/Sources/Welcome.swift"]:
+ assert "Mostrar la splash en cada inicio" in (root/file).read_text(), "Missing splash preference: "+file
+print("PASS splash preference in initial setup and all three settings UIs")
