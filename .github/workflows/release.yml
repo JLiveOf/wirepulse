@@ -53,6 +53,9 @@ jobs:
         if: runner.os == 'Windows'
         shell: pwsh
         run: ./build-windows.ps1 -Test
+      - name: Native WinUI welcome and update windows
+        if: runner.os == 'Windows'
+        run: ./publish/WirePulse.exe --experience-self-test
       - name: DSP and Cider protocol
         shell: bash
         run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test

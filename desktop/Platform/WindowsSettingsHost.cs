@@ -14,10 +14,11 @@ internal sealed partial class WindowsSettingsHost(Func<JsonObject,JsonNode> hand
  readonly string pipe="WirePulse-Settings-"+Guid.NewGuid().ToString("N");readonly CancellationTokenSource stop=new();Process? process;Task? serverTask;
  [DllImport("user32.dll")]static extern bool ShowWindow(IntPtr hwnd,int command);
  [DllImport("user32.dll")]static extern bool SetForegroundWindow(IntPtr hwnd);
- public bool Show(){
+ public bool Alive=>process is{HasExited:false};
+ public bool Show(bool experience=false){
   string exe=Path.Combine(AppContext.BaseDirectory,"WindowsSettings","WirePulse.Settings.exe");if(!File.Exists(exe))return false;
   if(process is{HasExited:false}){process.Refresh();ShowWindow(process.MainWindowHandle,9);SetForegroundWindow(process.MainWindowHandle);return true;}
-  serverTask??=Serve();var start=new ProcessStartInfo(exe){UseShellExecute=false,WorkingDirectory=Path.GetDirectoryName(exe)!};start.ArgumentList.Add("--pipe");start.ArgumentList.Add(pipe);if(Program.Option("--winui-test-output") is string output){start.ArgumentList.Add("--smoke-output");start.ArgumentList.Add(Path.GetFullPath(output));}process=Process.Start(start);return process!=null;
+  serverTask??=Serve();var start=new ProcessStartInfo(exe){UseShellExecute=false,WorkingDirectory=Path.GetDirectoryName(exe)!};if(experience)start.ArgumentList.Add("--experience");if(Program.Args.Contains("--experience-self-test"))start.ArgumentList.Add("--experience-test");start.ArgumentList.Add("--pipe");start.ArgumentList.Add(pipe);if(Program.Option("--winui-test-output") is string output){start.ArgumentList.Add("--smoke-output");start.ArgumentList.Add(Path.GetFullPath(output));}process=Process.Start(start);return process!=null;
  }
  async Task Serve(){while(!stop.IsCancellationRequested){try{
   await using var server=new NamedPipeServerStream(pipe,PipeDirection.InOut,1,PipeTransmissionMode.Byte,PipeOptions.Asynchronous|PipeOptions.CurrentUserOnly);
@@ -45,6 +46,7 @@ public sealed partial class App {
   if(request["global"]?.GetValue<bool>()==true)target=settings;
   Avalonia.Size wallSize()=>walls.FirstOrDefault(w=>ReferenceEquals(w.View.Configuration,target))?.View.Bounds.Size??walls.FirstOrDefault()?.View.Bounds.Size??new Avalonia.Size(1920,1080);
   switch(op){
+   case "show-news":Dispatcher.UIThread.Post(ShowReleaseNotes);break;
    case "update-channel":UpdateService.Current.Configure(channel:request["value"]!.GetValue<string>());break;
    case "show-splash":welcomeState.ShowOnStartup=request["value"]!.GetValue<bool>();break;
    case "update-automatic":UpdateService.Current.Configure(automatic:request["value"]!.GetValue<bool>());break;

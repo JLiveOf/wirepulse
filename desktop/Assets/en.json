@@ -501,5 +501,12 @@
   "Silenciar música": "Mute music",
   "Activar música": "Unmute music",
   "No se pudieron guardar las novedades vistas: ": "Could not save the viewed release notes: ",
-  "Continuar": "Continue"
+  "Continuar": "Continue",
+  "¿Qué hay de nuevo?": "What’s new?",
+  "Novedades siempre a mano": "What’s new, always available",
+  "Abre esta pantalla desde Inicio con el botón ¿Qué hay de nuevo?.": "Open this screen from Startup with the What’s new? button.",
+  "Ventanas nativas en Windows": "Native windows on Windows",
+  "La bienvenida, la splash, las novedades y el aviso de actualización utilizan WinUI y un fondo acrílico transparente.": "Welcome, splash, release highlights and update prompts use WinUI with a transparent acrylic backdrop.",
+  "Más contraste y un nuevo cierre": "Better contrast and a new ending",
+  "Los textos del cristal de macOS se leen mejor. Al terminar la bienvenida suena un efecto de apagado de tele antigua.": "Text over macOS glass is easier to read. Finishing welcome plays a vintage TV shutdown effect."
 }

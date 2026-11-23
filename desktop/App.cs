@@ -22,6 +22,7 @@ public sealed partial class App : Application
         {
             life.ShutdownMode = ShutdownMode.OnExplicitShutdown;
 #if WINDOWS
+            if(Program.Args.Contains("--experience-self-test")){TestNativeExperience(life);base.OnFrameworkInitializationCompleted();return;}
             if(Program.Option("--windows-fps-test-output") is string fpsOutput){RunWindowsFrameLimitTest(life,fpsOutput);base.OnFrameworkInitializationCompleted();return;}
             if(Program.Args.Contains("--windows-video-test")){WindowsVideoTest.Run(life);base.OnFrameworkInitializationCompleted();return;}
             if(Program.Option("--winui-editor-test-output") is string editorTestOutput){RunWindowsEditorTest(life,editorTestOutput);base.OnFrameworkInitializationCompleted();return;}
@@ -41,14 +42,28 @@ public sealed partial class App : Application
         }
         base.OnFrameworkInitializationCompleted();
     }
-    void OfferPendingUpdate(){if(welcomePending||welcome!=null||pendingUpdate==null||updatePrompt!=null||editor!=null||ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime life||life.Windows.OfType<StartupPrompt>().Any(w=>w.IsVisible))return;var release=pendingUpdate;pendingUpdate=null;updatePrompt=new UpdatePrompt(release,()=>life.Shutdown());updatePrompt.Closed+=(_,_)=>updatePrompt=null;updatePrompt.Show();}
+    void OfferPendingUpdate(){if(welcomePending||welcome!=null||pendingUpdate==null||updatePrompt!=null||editor!=null||ApplicationLifetime is not IClassicDesktopStyleApplicationLifetime life||life.Windows.OfType<StartupPrompt>().Any(w=>w.IsVisible))return;var release=pendingUpdate;pendingUpdate=null;
+#if WINDOWS
+if(ShowNativeUpdate(release))return;
+#endif
+updatePrompt=new UpdatePrompt(release,()=>life.Shutdown());updatePrompt.Closed+=(_,_)=>updatePrompt=null;updatePrompt.Show();}
     void QueueWelcome(bool initialSetup){
         if(!OperatingSystem.IsLinux()){ShowWelcome(initialSetup);return;}
         // Let the wallpaper present a frame before taking Cinnamon's one-off blur sample.
         welcomePending=true;var delay=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(200)};
         delay.Tick+=(_,_)=>{delay.Stop();welcomePending=false;if(!quitting)ShowWelcome(initialSetup);};delay.Start();
     }
-    void ShowWelcome(bool initialSetup=true){bool showingNews=welcomeState.NeedsNews(UpdateService.InstalledVersion);var registration=new StartupRegistration();welcome=new WelcomeWindow(registration.Enabled,registration.PriorityEnabled,UpdateService.Current.Preferences.Automatic,UpdateService.Current.Preferences.Channel,(enabled,priority,automatic,channel)=>{try{if(enabled&&priority)registration.SetPriority(true);else registration.SetEnabled(enabled);UpdateService.Current.Configure(channel:channel,automatic:automatic);settings.StartupAsked=true;settings.Save();return null;}catch(Exception e){return "No se pudieron guardar los ajustes iniciales: "+e.Message;}},initialSetup:initialSetup,showOnStartup:welcomeState.ShowOnStartup,saveSplash:value=>{welcomeState.ShowOnStartup=value;welcomeState.Complete(UpdateService.InstalledVersion);},showNews:showingNews,acknowledgeNews:()=>welcomeState.CompleteNews(UpdateService.InstalledVersion));welcome.Closed+=(_,_)=>{bool done=welcome?.Configured==true;welcome=null;if(done){_=UpdateService.Current.CheckAsync();}else if(!initialSetup&&!showingNews&&!Program.Args.Contains("--no-settings")&&!Program.Args.Contains("--autostart"))ShowSettings();OfferPendingUpdate();};welcome.Show();welcome.Activate();}
+    public void ShowReleaseNotes(){if(welcome!=null||welcomePending){ShowSettings();return;}
+#if WINDOWS
+        if(ShowNativeExperience(false,true,true))return;
+#endif
+        welcome=new WelcomeWindow(false,false,true,"stable",(_,_,_,_)=>null,initialSetup:false,showNews:true,skipIntro:true);welcome.Closed+=(_,_)=>welcome=null;welcome.Show();welcome.ShowNews(false);welcome.Activate();
+    }
+    void ShowWelcome(bool initialSetup=true){
+#if WINDOWS
+        if(ShowNativeExperience(initialSetup,welcomeState.NeedsNews(UpdateService.InstalledVersion)))return;
+#endif
+bool showingNews=welcomeState.NeedsNews(UpdateService.InstalledVersion);var registration=new StartupRegistration();welcome=new WelcomeWindow(registration.Enabled,registration.PriorityEnabled,UpdateService.Current.Preferences.Automatic,UpdateService.Current.Preferences.Channel,(enabled,priority,automatic,channel)=>{try{if(enabled&&priority)registration.SetPriority(true);else registration.SetEnabled(enabled);UpdateService.Current.Configure(channel:channel,automatic:automatic);settings.StartupAsked=true;settings.Save();return null;}catch(Exception e){return "No se pudieron guardar los ajustes iniciales: "+e.Message;}},initialSetup:initialSetup,showOnStartup:welcomeState.ShowOnStartup,saveSplash:value=>{welcomeState.ShowOnStartup=value;welcomeState.Complete(UpdateService.InstalledVersion);},showNews:showingNews,acknowledgeNews:()=>welcomeState.CompleteNews(UpdateService.InstalledVersion));welcome.Closed+=(_,_)=>{bool done=welcome?.Configured==true;welcome=null;if(done){_=UpdateService.Current.CheckAsync();}else if(!initialSetup&&!showingNews&&!Program.Args.Contains("--no-settings")&&!Program.Args.Contains("--autostart"))ShowSettings();OfferPendingUpdate();};welcome.Show();welcome.Activate();}
     void ShowSettings() { if(welcomePending)return; if(welcome!=null){welcome.Activate();return;}
 #if WINDOWS
         if(ShowWindowsSettings())return;
@@ -80,6 +95,9 @@ if(editor.WindowsEditorEnabled)ShowWindowsEditor();
     void Schedule(Surface surface) { if (surface.Scheduled || surface.Covered || !surface.Active) return; surface.Scheduled = true; surface.Window.RequestAnimationFrame(time => { surface.Scheduled = false; if (!surface.Active || surface.Covered || quitting) return; var s = surface.View.Configuration; double target = s.On("unlimitedfps") ? surface.Hz : Math.Min(surface.Hz, Math.Clamp(s.N("fps"), 15, 360)); if (s.RenderProfile == "Ligero") target = Math.Min(target, 60); if (s.Paused) target = Math.Min(target, 15); if (s.Scene==null && !surface.View.HasAnimatedMedia && !s.On("sphere") && !s.On("spectrum") && !s.On("bgshow")) target = 4; surface.Target = target; surface.View.SetFrameLimit(target); double now=Stopwatch.GetTimestamp()/(double)Stopwatch.Frequency; if (surface.Pacer.Due(now, target)){surface.Updates.Record(0);surface.View.Advance(now);} Schedule(surface); }); }
     async void Maintain(object? sender, EventArgs e)
     {OfferPendingUpdate();
+        #if WINDOWS
+        MaintainNativeExperience();
+#endif
         if (quitting) return; foreach (var w in walls) { w.Hz=DisplayTiming.RefreshRate(w.Bounds); try{if(w.View.Presenter==null)w.View.UsePresenter(DesktopHost.EnsurePresentation(w.Window.TryGetPlatformHandle()?.Handle??IntPtr.Zero));}catch(Exception error){Trace.WriteLine(error);}w.SuspensionReason=DisplayTiming.CoverageReason(w.Bounds,w.View.Configuration.SuspendFullscreen,w.View.Configuration.SuspendMaximized);
 if(editor!=null&&editor.EditingScreen==w.Bounds)w.SuspensionReason="editor de escritorio";
 w.Covered=w.SuspensionReason.Length>0;w.View.Suspend(w.Covered); if (!w.Covered) Schedule(w); if (!w.Covered) w.View.Adapt(w.Target > 0 ? w.Target : 60); }

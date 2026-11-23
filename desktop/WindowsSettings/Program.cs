@@ -13,5 +13,5 @@ internal static class Program {
 sealed partial class SettingsApplication:Application {
  Window? window;NativeEditorShell? editor;readonly string[] args;
  public SettingsApplication(string[] args){this.args=args;UnhandledException+=(_,e)=>{File.WriteAllText(Path.Combine(Path.GetTempPath(),"WirePulse-settings-error.txt"),e.Exception.ToString());};InitializeComponent();RequestedTheme=ApplicationTheme.Dark;}
- protected override void OnLaunched(LaunchActivatedEventArgs args){try{if(this.args.Contains("--editor")){editor=new NativeEditorShell(this.args);editor.Start();}else{window=new SettingsWindow(this.args);window.Activate();}}catch(Exception ex){File.WriteAllText(Path.Combine(Path.GetTempPath(),"WirePulse-settings-error.txt"),ex.ToString());throw;}}
+ protected override void OnLaunched(LaunchActivatedEventArgs args){try{if(this.args.Contains("--experience")){window=new ExperienceWindow(this.args);window.Activate();}else if(this.args.Contains("--editor")){editor=new NativeEditorShell(this.args);editor.Start();}else{window=new SettingsWindow(this.args);window.Activate();}}catch(Exception ex){File.WriteAllText(Path.Combine(Path.GetTempPath(),"WirePulse-settings-error.txt"),ex.ToString());throw;}}
 }

@@ -1,20 +1,20 @@
 {
-  "version": "4.4.0",
+  "version": "4.5.0",
   "features": [
     {
       "icon": "sparkles",
-      "title": "Las novedades, a primera vista",
-      "description": "Descubre los cambios de cada versión en una pantalla dedicada, con la misma transición de cristal de la bienvenida."
-    },
-    {
-      "icon": "music",
-      "title": "Una banda sonora que continúa",
-      "description": "La música empieza una vez y enlaza con un bucle continuo mientras configuras WirePulse o lees las novedades."
+      "title": "Novedades siempre a mano",
+      "description": "Abre esta pantalla desde Inicio con el botón ¿Qué hay de nuevo?."
     },
     {
       "icon": "update",
-      "title": "Un inicio para cada ocasión",
-      "description": "En una instalación nueva verás primero los ajustes. Tras actualizar, irás directamente a las novedades sin repetir tu configuración."
+      "title": "Ventanas nativas en Windows",
+      "description": "La bienvenida, la splash, las novedades y el aviso de actualización utilizan WinUI y un fondo acrílico transparente."
+    },
+    {
+      "icon": "music",
+      "title": "Más contraste y un nuevo cierre",
+      "description": "Los textos del cristal de macOS se leen mejor. Al terminar la bienvenida suena un efecto de apagado de tele antigua."
     }
   ]
 }
