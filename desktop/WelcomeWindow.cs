@@ -44,7 +44,7 @@ public sealed class WelcomeWindow : Window
   finish.Click+=(_,_)=>{try{var message=save(startup.IsChecked==true,startup.IsChecked==true&&high.IsChecked==true,updates.IsChecked==true,channels.SelectedIndex==1?"beta":"stable");if(message!=null){error.Text=L10n.Text(message);return;}this.saveSplash?.Invoke(splashToggle.IsChecked==true);configured=true;Close();}catch(Exception e){error.Text=L10n.Text("No se pudieron guardar los ajustes iniciales: ")+e.Message;}};
   close.Click+=(_,_)=>Close();KeyDown+=(_,e)=>{if(e.Key==Avalonia.Input.Key.Escape)Close();};canvas.PointerPressed+=(_,e)=>{if(e.Source==canvas&&e.GetCurrentPoint(this).Properties.IsLeftButtonPressed)BeginMoveDrag(e);};
   Content=new Border{CornerRadius=new CornerRadius(28),BorderThickness=new Thickness(1),BorderBrush=new SolidColorBrush(Color.Parse("#50ffffff")),Background=new SolidColorBrush(Color.Parse("#55202630")),ClipToBounds=true,Child=canvas};clock=new DispatcherTimer{Interval=TimeSpan.FromMilliseconds(16)};clock.Tick+=(_,_)=>Animate();
-  var screen=Screens.Primary;if(screen!=null&&OperatingSystem.IsLinux()){backdropBitmap=WelcomeBackdrop.Capture(screen,SetupWidth,SetupHeight);backdrop.Source=backdropBitmap;}
+  var screen=Screens.Primary??Screens.All.FirstOrDefault();if(screen!=null&&OperatingSystem.IsLinux()){backdropBitmap=WelcomeBackdrop.Capture(screen,SetupWidth,SetupHeight);backdrop.Source=backdropBitmap;}
   Opened+=(_,_)=>{scale=Screens.ScreenFromWindow(this)?.Scaling??1;center=new Point(Position.X+CompactWidth*scale/2,Position.Y+CompactHeight*scale/2);PositionHeader(0);SetIntroProgress(0);if(playSound)sound.Play();elapsed.Start();clock.Start();};Closed+=(_,_)=>{clock.Stop();sound.Dispose();bitmap.Dispose();backdropBitmap?.Dispose();};
  }
  public bool Configured=>configured;
