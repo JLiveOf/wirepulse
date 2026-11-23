@@ -488,5 +488,18 @@
   "Audio del sistema preparado.": "System audio is ready.",
   "Mostrar la splash en cada inicio": "Show splash screen on every launch",
   "Bienvenida": "Welcome",
-  "Activa el permiso de audio para que el fondo reaccione a tu música. Puedes continuar sin activarlo.": "Enable audio permission to make your wallpaper react to music. You can continue without enabling it."
+  "Activa el permiso de audio para que el fondo reaccione a tu música. Puedes continuar sin activarlo.": "Enable audio permission to make your wallpaper react to music. You can continue without enabling it.",
+  "Novedades de\nWirePulse": "What’s New in\nWirePulse",
+  "Novedades de WirePulse": "What’s New in WirePulse",
+  "Consulta las notas de esta versión en GitHub.": "See the release notes for this version on GitHub.",
+  "Las novedades, a primera vista": "See what’s new at a glance",
+  "Descubre los cambios de cada versión en una pantalla dedicada, con la misma transición de cristal de la bienvenida.": "Discover the changes in each release on a dedicated screen, with the same glass transition as the welcome screen.",
+  "Una banda sonora que continúa": "A soundtrack that keeps playing",
+  "La música empieza una vez y enlaza con un bucle continuo mientras configuras WirePulse o lees las novedades.": "The music starts once, then continues in a seamless loop while you set up WirePulse or read what’s new.",
+  "Un inicio para cada ocasión": "The right start for every occasion",
+  "En una instalación nueva verás primero los ajustes. Tras actualizar, irás directamente a las novedades sin repetir tu configuración.": "On a fresh installation, setup comes first. After an update, go straight to what’s new without repeating your configuration.",
+  "Silenciar música": "Mute music",
+  "Activar música": "Unmute music",
+  "No se pudieron guardar las novedades vistas: ": "Could not save the viewed release notes: ",
+  "Continuar": "Continue"
 }

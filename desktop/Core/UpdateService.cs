@@ -20,8 +20,8 @@ public sealed class UpdateService
  public const string Repository="JLiveOf/wirepulse";
  // Initialize the case-insensitive options before Current loads persisted preferences.
  static readonly JsonSerializerOptions json=new(){PropertyNamingPolicy=JsonNamingPolicy.CamelCase,PropertyNameCaseInsensitive=true};
- static readonly HttpClient http=CreateClient();static HttpClient CreateClient(){var c=new HttpClient{Timeout=TimeSpan.FromMinutes(15),MaxResponseContentBufferSize=8*1024*1024};c.DefaultRequestHeaders.UserAgent.ParseAdd("WirePulse/4.3.0");c.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");return c;}
- public static string BuildVersion=>typeof(UpdateService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]??"4.3.0";
+ static readonly HttpClient http=CreateClient();static HttpClient CreateClient(){var c=new HttpClient{Timeout=TimeSpan.FromMinutes(15),MaxResponseContentBufferSize=8*1024*1024};c.DefaultRequestHeaders.UserAgent.ParseAdd("WirePulse/4.4.0");c.DefaultRequestHeaders.Accept.ParseAdd("application/vnd.github+json");return c;}
+ public static string BuildVersion=>typeof(UpdateService).Assembly.GetCustomAttribute<AssemblyInformationalVersionAttribute>()?.InformationalVersion.Split('+')[0]??"4.4.0";
  public sealed record InstalledRelease(string Tag,string Hash);
  static readonly Lazy<string> installed=new(()=>{try{var marker=JsonSerializer.Deserialize<InstalledRelease>(File.ReadAllText(MarkerPath),new JsonSerializerOptions{PropertyNameCaseInsensitive=true});return ResolveInstalled(BuildVersion,marker,FileHash(BinaryPath));}catch{return BuildVersion;}});
  public static string InstalledVersion=>installed.Value;

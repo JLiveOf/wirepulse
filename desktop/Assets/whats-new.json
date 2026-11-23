@@ -1,0 +1,20 @@
+{
+  "version": "4.4.0",
+  "features": [
+    {
+      "icon": "sparkles",
+      "title": "Las novedades, a primera vista",
+      "description": "Descubre los cambios de cada versión en una pantalla dedicada, con la misma transición de cristal de la bienvenida."
+    },
+    {
+      "icon": "music",
+      "title": "Una banda sonora que continúa",
+      "description": "La música empieza una vez y enlaza con un bucle continuo mientras configuras WirePulse o lees las novedades."
+    },
+    {
+      "icon": "update",
+      "title": "Un inicio para cada ocasión",
+      "description": "En una instalación nueva verás primero los ajustes. Tras actualizar, irás directamente a las novedades sin repetir tu configuración."
+    }
+  ]
+}
