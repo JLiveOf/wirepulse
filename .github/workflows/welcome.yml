@@ -1,0 +1,17 @@
+name: Linux welcome regression
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  welcome:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - run: sudo apt-get update -qq && sudo apt-get install -y libfontconfig1 libx11-6 libxfixes3 libice6 libsm6 xvfb
+      - run: dotnet publish desktop/WirePulse.csproj -c Release -f net10.0 -r linux-x64 --self-contained true -o /tmp/wirepulse-welcome -p:DebugType=None -p:DebugSymbols=false
+      - run: xvfb-run -a /tmp/wirepulse-welcome/WirePulse --welcome-smoke-test

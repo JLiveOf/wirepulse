@@ -20,13 +20,13 @@ internal static class WelcomeBackdrop
   if(!OperatingSystem.IsLinux()||string.IsNullOrEmpty(Environment.GetEnvironmentVariable("DISPLAY")))return null;
   IntPtr display=IntPtr.Zero,image=IntPtr.Zero;
   try{
-   display=XOpenDisplay(IntPtr.Zero);if(display==IntPtr.Zero)return null;
+   display=XOpenDisplay(IntPtr.Zero);if(display==IntPtr.Zero)throw new InvalidOperationException("Cannot connect to DISPLAY="+Environment.GetEnvironmentVariable("DISPLAY"));
    var bounds=screen.WorkingArea;int w=Math.Min(bounds.Width,(int)(width*screen.Scaling)),h=Math.Min(bounds.Height,(int)(height*screen.Scaling));
-   image=XGetImage(display,XDefaultRootWindow(display),Math.Max(0,bounds.X+(bounds.Width-w)/2),Math.Max(0,bounds.Y+(bounds.Height-h)/2),(uint)w,(uint)h,UIntPtr.MaxValue,2);if(image==IntPtr.Zero)return null;
+   image=XGetImage(display,XDefaultRootWindow(display),Math.Max(0,bounds.X+(bounds.Width-w)/2),Math.Max(0,bounds.Y+(bounds.Height-h)/2),(uint)w,(uint)h,UIntPtr.MaxValue,2);if(image==IntPtr.Zero)throw new InvalidOperationException("XGetImage returned no pixels: "+w+"x"+h);
    using var source=new SKBitmap(w,h);unsafe{uint* pixels=(uint*)source.GetPixels();for(int y=0;y<h;y++)for(int x=0;x<w;x++){uint rgb=(uint)XGetPixel(image,x,y).ToUInt64();pixels[y*w+x]=0xff000000|rgb;}}
    using var result=new SKBitmap((int)width,(int)height);using(var canvas=new SKCanvas(result)){canvas.Clear(SKColors.Black);using var paint=new SKPaint{ImageFilter=SKImageFilter.CreateBlur(22,22,SKShaderTileMode.Clamp)};canvas.Scale((float)width/w,(float)height/h);canvas.DrawBitmap(source,0,0,paint);}
    using var png=result.Encode(SKEncodedImageFormat.Png,100);using var stream=png.AsStream();return new Bitmap(stream);
-  }catch(Exception e){System.Diagnostics.Trace.WriteLine("Welcome backdrop: "+e.Message);return null;}
+  }catch(Exception e){Console.Error.WriteLine("Welcome backdrop: "+e);return null;}
   finally{if(image!=IntPtr.Zero)XDestroyImage(image);if(display!=IntPtr.Zero)XCloseDisplay(display);}
  }
 }
