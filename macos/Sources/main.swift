@@ -5,7 +5,10 @@ if CommandLine.arguments.contains("--welcome-self-test"){
  defer{defaults.removePersistentDomain(forName:suite)}
  precondition(WelcomeController.needs("4.1.1",defaults:defaults));defaults.set("4.1.1",forKey:WelcomeController.versionKey);precondition(!WelcomeController.needs("4.1.1",defaults:defaults) && WelcomeController.needs("4.1.2",defaults:defaults))
  let _=NSApplication.shared;let sound=try AVAudioPlayer(contentsOf:Bundle.main.url(forResource:"Welcome",withExtension:"wav")!);precondition(sound.duration>2.7 && sound.duration<2.8);let audio=SystemAudio();let startup=StartupManager(defaults:defaults,read:{.notRegistered},register:{fatalError("Test must not enable login startup")},unregister:{fatalError("Test must not disable login startup")});var closed=false
- let welcome=WelcomeController(audio:audio,startup:startup,onFinish:{closed=true});precondition(WelcomeController.active && !audio.requested);welcome.splash(playSound:false);welcome.showSetup();RunLoop.current.run(until:Date().addingTimeInterval(CommandLine.arguments.contains("--welcome-hold") ? 45:0.7))
+ let welcome=WelcomeController(audio:audio,startup:startup,onFinish:{closed=true});precondition(WelcomeController.active && !audio.requested)
+ let continueButton=(welcome.window.contentView!.subviews.compactMap{$0 as? NSStackView}.first!.arrangedSubviews.compactMap{$0 as? NSButton}).first{$0.title==L10n.text("Continuar")}!
+ precondition(continueButton.isEnabled && !audio.running && audio.analyzer.snapshot().frames==0,"Continue must remain available without captured audio")
+ welcome.splash(playSound:false);welcome.showSetup();RunLoop.current.run(until:Date().addingTimeInterval(CommandLine.arguments.contains("--welcome-hold") ? 45:0.7))
  if let i=CommandLine.arguments.firstIndex(of:"--welcome-preview"),i+1<CommandLine.arguments.count,let view=welcome.window.contentView,let bitmap=view.bitmapImageRepForCachingDisplay(in:view.bounds){view.cacheDisplay(in:view.bounds,to:bitmap);try bitmap.representation(using:.png,properties:[:])!.write(to:URL(fileURLWithPath:CommandLine.arguments[i+1]))}
  welcome.window.close();precondition(closed && !WelcomeController.active && !audio.requested);print("PASS native versioned welcome, splash transition, initial settings and cancellation without audio/login changes");exit(0)
 }

@@ -8,7 +8,7 @@ final class WelcomeController:NSObject,NSWindowDelegate {
  let window:NSWindow
  private let root=NSView(),logo=NSImageView(),name=NSTextField(labelWithString:"WirePulse"),form=NSStackView()
  private let audio:SystemAudio,startup:StartupManager,onFinish:()->Void
- private var timer:Timer?,player:AVAudioPlayer?,permissionStatus:NSTextField?,permissionContinue:NSButton?,setup=false,completed=false
+ private var timer:Timer?,player:AVAudioPlayer?,permissionStatus:NSTextField?,setup=false,completed=false
  private var startToggle:NSButton?,updatesToggle:NSButton?,channel:NSPopUpButton?,errorLabel:NSTextField?
  init(audio:SystemAudio,startup:StartupManager,onFinish:@escaping()->Void){
   self.audio=audio;self.startup=startup;self.onFinish=onFinish
@@ -22,14 +22,14 @@ final class WelcomeController:NSObject,NSWindowDelegate {
  private func button(_ title:String,_ action:Selector)->NSButton{let b=NSButton(title:L10n.text(title),target:self,action:action);b.bezelStyle = .rounded;return b}
  private func clearForm(){for view in form.arrangedSubviews{form.removeArrangedSubview(view);view.removeFromSuperview()}}
  private func header(){logo.frame=NSRect(x:28,y:494,width:42,height:42);name.frame=NSRect(x:84,y:497,width:300,height:32);name.font = .systemFont(ofSize:22,weight:.bold)}
- private func permission(){header();clearForm();form.addArrangedSubview(label("Activa el audio del sistema",23));form.addArrangedSubview(label("WirePulse necesita permiso para que el fondo reaccione a tu música. Pulsa Activar audio y acepta el aviso de macOS. No se guarda ni se envía el audio."));let status=label("Esperando permiso de audio…");permissionStatus=status;form.addArrangedSubview(status);form.addArrangedSubview(button("Activar audio",#selector(requestAudio)));form.addArrangedSubview(button("Abrir permisos del sistema",#selector(openPermissions)));let next=button("Continuar",#selector(continueAfterPermission));next.isEnabled=false;permissionContinue=next;form.addArrangedSubview(next);timer=Timer.scheduledTimer(withTimeInterval:0.25,repeats:true){[weak self] _ in self?.refreshPermission()};refreshPermission()}
+ private func permission(){header();clearForm();form.addArrangedSubview(label("Activa el audio del sistema",23));form.addArrangedSubview(label("WirePulse necesita permiso para que el fondo reaccione a tu música. Pulsa Activar audio y acepta el aviso de macOS. No se guarda ni se envía el audio."));let status=label("Esperando permiso de audio…");permissionStatus=status;form.addArrangedSubview(status);form.addArrangedSubview(button("Activar audio",#selector(requestAudio)));form.addArrangedSubview(button("Abrir permisos del sistema",#selector(openPermissions)));let next=button("Continuar",#selector(continueAfterPermission));form.addArrangedSubview(next);timer=Timer.scheduledTimer(withTimeInterval:0.25,repeats:true){[weak self] _ in self?.refreshPermission()};refreshPermission()}
  @objc private func requestAudio(){audio.start()}
  @objc private func openPermissions(){if let url=URL(string:"x-apple.systempreferences:com.apple.preference.security?Privacy_ScreenCapture"){NSWorkspace.shared.open(url)}}
- private func refreshPermission(){// Real PCM callbacks also arrive during silence: do not rely on playback volume or only tap creation.
+ private func refreshPermission(){
   let ready=audio.running && audio.analyzer.snapshot().frames>0
-  permissionContinue?.isEnabled=ready;permissionStatus?.stringValue=ready ? L10n.text("Audio del sistema preparado."):L10n.text(audio.status)
+  permissionStatus?.stringValue=ready ? L10n.text("Audio del sistema preparado."):L10n.text(audio.status)
  }
- @objc private func continueAfterPermission(){guard audio.running,audio.analyzer.snapshot().frames>0 else{return};timer?.invalidate();splash()}
+ @objc private func continueAfterPermission(){timer?.invalidate();splash()}
  func splash(playSound:Bool=true){timer?.invalidate();clearForm();form.isHidden=true;logo.frame=NSRect(x:242,y:284,width:136,height:136);name.font = .systemFont(ofSize:30,weight:.bold);name.frame=NSRect(x:238,y:224,width:240,height:44)
   if playSound,let url=Bundle.main.url(forResource:"Welcome",withExtension:"wav"){do{player=try AVAudioPlayer(contentsOf:url);player?.prepareToPlay();player?.play()}catch{NSLog("Welcome audio: %@",error.localizedDescription)}}
   timer=Timer.scheduledTimer(withTimeInterval:2.9,repeats:false){[weak self] _ in self?.showSetup()}
