@@ -55,7 +55,12 @@ jobs:
         run: ./build-windows.ps1 -Test
       - name: Native WinUI welcome and update windows
         if: runner.os == 'Windows'
-        run: ./publish/WirePulse.exe --experience-self-test
+        shell: pwsh
+        run: |
+          New-Item test-results -ItemType Directory -Force | Out-Null
+          $p=Start-Process ./publish/WirePulse.exe -ArgumentList '--experience-self-test' -Wait -PassThru -RedirectStandardOutput test-results/experience.log -RedirectStandardError test-results/experience.err
+          if($p.ExitCode -ne 0){Get-Content test-results/experience.err;throw 'Native experience test failed'}
+          if(!(Select-String -Path test-results/experience.log -Pattern 'PASS WinUI' -Quiet)){throw 'Native experience test did not complete'}
       - name: DSP and Cider protocol
         shell: bash
         run: ./publish/WirePulse${{ matrix.rid == 'win-x64' && '.exe' || '' }} --self-test
