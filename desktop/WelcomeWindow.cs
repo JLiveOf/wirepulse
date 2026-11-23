@@ -50,7 +50,7 @@ public sealed class WelcomeWindow : Window
  public bool Configured=>configured;
  public void SetIntroProgress(double progress){double front=Math.Clamp(progress,0,1)*1.4-.2;if(front<=0){name.Opacity=0;return;}name.Opacity=1;if(front>=1.2){name.OpacityMask=null;return;}name.OpacityMask=new LinearGradientBrush{StartPoint=new RelativePoint(0,0,RelativeUnit.Relative),EndPoint=new RelativePoint(1,0,RelativeUnit.Relative),GradientStops=new GradientStops{new GradientStop(Colors.White,0),new GradientStop(Colors.White,Math.Clamp(front-.2,0,1)),new GradientStop(Colors.Transparent,Math.Clamp(front+.2,0,1)),new GradientStop(Colors.Transparent,1)}};}
  public void ShowSetup(bool animate=true){if(transitioning)return;if(!initialSetup){Close();return;}transitioning=true;transitionAt=elapsed.Elapsed.TotalSeconds;form.IsVisible=true;close.IsVisible=true;sound.Dispose();name.Opacity=1;name.OpacityMask=null;if(!animate){PositionHeader(1);form.Opacity=1;clock.Stop();}}
- void Animate(){double t=elapsed.Elapsed.TotalSeconds;if(!transitioning){SetIntroProgress(t/IntroDuration);if(t>=IntroDuration+.15)ShowSetup();}if(!transitioning)return;double progress=Math.Clamp((t-transitionAt)/.8,0,1);double eased=1-Math.Pow(1-progress,3);PositionHeader(eased);form.Opacity=Math.Clamp((eased-.25)/.75,0,1);if(progress>=1)clock.Stop();}
+ void Animate(){double t=elapsed.Elapsed.TotalSeconds;if(!transitioning){SetIntroProgress(t/IntroDuration);if(t>=IntroDuration+.15&&(!sound.IsPlaying||t>=IntroDuration+4))ShowSetup();}if(!transitioning)return;double progress=Math.Clamp((t-transitionAt)/.8,0,1);double eased=1-Math.Pow(1-progress,3);PositionHeader(eased);form.Opacity=Math.Clamp((eased-.25)/.75,0,1);if(progress>=1)clock.Stop();}
  void PositionHeader(double t){double w=CompactWidth+(SetupWidth-CompactWidth)*t,h=CompactHeight+(SetupHeight-CompactHeight)*t;Width=w;Height=h;if(IsVisible)Position=new PixelPoint((int)Math.Round(center.X-w*scale/2),(int)Math.Round(center.Y-h*scale/2));logo.Width=logo.Height=112+(42-112)*t;Canvas.SetLeft(logo,104+(28-104)*t);Canvas.SetTop(logo,42+(24-42)*t);name.FontSize=30+(22-30)*t;Canvas.SetLeft(name,(CompactWidth-introNameWidth)/2+(84-(CompactWidth-introNameWidth)/2)*t);Canvas.SetTop(name,174+(31-174)*t);Canvas.SetLeft(close,w-48);Canvas.SetTop(close,24);Canvas.SetLeft(backdrop,(w-SetupWidth)/2);Canvas.SetTop(backdrop,(h-SetupHeight)/2);}
 }
 
@@ -61,6 +61,13 @@ sealed class WelcomeSound : IDisposable
 #else
  Process? player;
 #endif
+ public bool IsPlaying{get{try{
+#if WINDOWS
+  return output?.PlaybackState==NAudio.Wave.PlaybackState.Playing;
+#else
+  return player is {HasExited:false};
+#endif
+ }catch{return false;}}}
  public void Play(){try{
   string file=Path.Combine(AppContext.BaseDirectory,"Assets","Welcome.wav");
 #if WINDOWS

@@ -45,7 +45,7 @@ final class WelcomeController:NSObject,NSWindowDelegate {
  private func animate(){let now=ProcessInfo.processInfo.systemUptime
   if let start=transitionStart{let progress=max(0,min(1,(now-start)/0.8)),eased=1-pow(1-progress,3);layout(eased);form.alphaValue=max(0,min(1,(eased-0.25)/0.75));if progress>=1{transitionStart=nil;timer?.invalidate();timer=Timer.scheduledTimer(withTimeInterval:0.5,repeats:true){[weak self] _ in self?.refreshPermission()}};return}
   name.reveal=CGFloat(max(0,min(1,(now-introStart)/introDuration)))
-  if now-introStart>=introDuration+0.15{if initialSetup{showSetup()}else{window.close()}}
+  if now-introStart>=introDuration+0.15 && (player?.isPlaying != true || now-introStart>=introDuration+4){if initialSetup{showSetup()}else{window.close()}}
  }
  private func layout(_ fraction:Double){let t=CGFloat(fraction),w=320+300*t,h=280+360*t
   window.setFrame(NSRect(x:center.x-w/2,y:center.y-h/2,width:w,height:h),display:true)
