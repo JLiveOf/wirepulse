@@ -11,7 +11,7 @@ using System.Runtime.InteropServices;
 using WinRT.Interop;
 namespace WirePulse.WindowsSettings;
 sealed class ExperienceWindow:Window {
- readonly string pipe;readonly Canvas canvas=new();readonly Image logo=new(){Width=112,Height=112};readonly TextBlock brand=new(){Text="WirePulse",FontSize=30,FontWeight=Microsoft.UI.Text.FontWeights.Bold};readonly StackPanel body=new(){Width=548,Spacing=14};readonly Grid titleBar=new(){Height=80};readonly Border root;readonly DispatcherTimer animation=new(){Interval=TimeSpan.FromMilliseconds(16)},poll=new(){Interval=TimeSpan.FromMilliseconds(350)};readonly Stopwatch time=new();JsonObject state=new();bool expanded,loading=true;double transition=-1,scale=1;string page="intro";Windows.Graphics.PointInt32 center;
+ readonly string pipe;readonly Canvas canvas=new();readonly Image logo=new(){Width=112,Height=112};readonly TextBlock brand=new(){Text="WirePulse",FontSize=30,FontWeight=Microsoft.UI.Text.FontWeights.Bold};readonly StackPanel body=new(){Width=548,Spacing=14};readonly Grid titleBar=new(){Height=80};readonly Border root;readonly DispatcherTimer animation=new(){Interval=TimeSpan.FromMilliseconds(16)},poll=new(){Interval=TimeSpan.FromMilliseconds(350)};readonly Stopwatch time=new();JsonObject state=new();bool expanded,loading=true;int borderResult,cornerResult;double transition=-1,scale=1;string page="intro";Windows.Graphics.PointInt32 center;
  public ExperienceWindow(string[] args){pipe=args[Array.IndexOf(args,"--pipe")+1];Title="WirePulse";SystemBackdrop=new DesktopAcrylicBackdrop();ExtendsContentIntoTitleBar=true;if(AppWindow.Presenter is OverlappedPresenter presenter){presenter.IsResizable=false;presenter.IsMaximizable=false;}
   AppWindow.Resize(new(320,280));var area=DisplayArea.GetFromWindowId(AppWindow.Id,DisplayAreaFallback.Primary).WorkArea;center=new(area.X+area.Width/2,area.Y+area.Height/2);AppWindow.Move(new(center.X-160,center.Y-140));
   root=new Border{BorderThickness=new Thickness(0),Background=new SolidColorBrush(Windows.UI.Color.FromArgb(75,24,28,38)),Child=canvas};root.RequestedTheme=ElementTheme.Dark;Content=root;
@@ -24,7 +24,6 @@ sealed class ExperienceWindow:Window {
  // Let DWM clip the whole acrylic surface; a rounded XAML border leaves square backdrop corners.
  [DllImport("user32.dll")]static extern IntPtr SendMessage(IntPtr window,uint message,IntPtr wParam,IntPtr lParam);
  [DllImport("dwmapi.dll")]static extern int DwmSetWindowAttribute(IntPtr window,int attribute,ref uint value,int size);
- [DllImport("dwmapi.dll")]static extern int DwmGetWindowAttribute(IntPtr window,int attribute,out uint value,int size);
  void ConfigureChrome(bool showCaption){
   if(AppWindow.Presenter is OverlappedPresenter presenter&&presenter.HasTitleBar!=showCaption)presenter.SetBorderAndTitleBar(showCaption,showCaption);
   ExtendsContentIntoTitleBar=true;SetTitleBar(showCaption?titleBar:null);
@@ -33,7 +32,7 @@ sealed class ExperienceWindow:Window {
   AppWindow.TitleBar.ButtonForegroundColor=white;AppWindow.TitleBar.ButtonInactiveForegroundColor=Windows.UI.Color.FromArgb(255,170,170,170);
   // Other caption states, including the red close hover, are drawn by Windows.
   var handle=WindowNative.GetWindowHandle(this);uint noBorder=0xfffffffe,round=2,dark=1;
-  DwmSetWindowAttribute(handle,20,ref dark,4);DwmSetWindowAttribute(handle,33,ref round,4);DwmSetWindowAttribute(handle,34,ref noBorder,4);
+  DwmSetWindowAttribute(handle,20,ref dark,4);cornerResult=DwmSetWindowAttribute(handle,33,ref round,4);borderResult=DwmSetWindowAttribute(handle,34,ref noBorder,4);
  }
  void VerifyChrome(bool showCaption){
   if(AppWindow.Presenter is not OverlappedPresenter presenter||presenter.HasTitleBar!=showCaption)throw new Exception("Incorrect native caption visibility");
@@ -42,9 +41,8 @@ sealed class ExperienceWindow:Window {
   var hit=SendMessage(WindowNative.GetWindowHandle(this),0x84,IntPtr.Zero,new IntPtr((y<<16)|(x&0xffff))).ToInt32();
   if((hit==20)!=showCaption)throw new Exception("Close hit target is not the native Windows caption");
   if(OperatingSystem.IsWindowsVersionAtLeast(10,0,22000)){
-   var handle=WindowNative.GetWindowHandle(this);
-   if(DwmGetWindowAttribute(handle,34,out uint border,4)!=0||border!=0xfffffffe)throw new Exception("DWM outline is visible");
-   if(DwmGetWindowAttribute(handle,33,out uint corners,4)!=0||corners!=2)throw new Exception("Acrylic surface is not rounded by DWM");
+   // Border color and corner preference are set-only DWM attributes.
+   if(borderResult!=0||cornerResult!=0)throw new Exception($"DWM frame styling failed: border={borderResult:X8}, corners={cornerResult:X8}");
   }
  }
  async Task<JsonObject> Request(string op,JsonObject? data=null){data??=new();data["op"]=op;using var socket=new NamedPipeClientStream(".",pipe,PipeDirection.InOut,PipeOptions.Asynchronous);using var timeout=new CancellationTokenSource(TimeSpan.FromSeconds(10));await socket.ConnectAsync(timeout.Token);using var reader=new StreamReader(socket,Encoding.UTF8,leaveOpen:true);using var writer=new StreamWriter(socket,new UTF8Encoding(false),leaveOpen:true){AutoFlush=true};await writer.WriteLineAsync(data.ToJsonString());var reply=JsonNode.Parse(await reader.ReadLineAsync(timeout.Token)??"{}")!.AsObject();if(reply["error"]!=null)throw new Exception(reply["error"]!.GetValue<string>());return reply;}
