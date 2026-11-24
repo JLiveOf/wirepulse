@@ -49,6 +49,22 @@ if let i=CommandLine.arguments.firstIndex(of:"--media-self-test"),CommandLine.ar
  for size in [CGSize(width:100,height:100),CGSize(width:1200,height:300),CGSize(width:300,height:1200)]{let viewport=CGRect(x:0,y:0,width:640,height:360),frame=BackgroundMedia.cover(size,in:viewport);precondition(frame.contains(viewport) && abs(frame.width/frame.height-size.width/size.height)<0.0001,"Background must fill without distortion or letterboxing")}
  _=NSApplication.shared;let media=BackgroundMedia(frame:CGRect(x:0,y:0,width:640,height:360));media.load(CommandLine.arguments[i+1]);let deadline=Date().addingTimeInterval(8);while media.playbackSeconds<0.2 && Date()<deadline{RunLoop.current.run(until:Date().addingTimeInterval(0.05))};precondition(media.hasVideo && media.playbackSeconds>=0.2,"Native video did not start");media.suspend(true);let before=media.playbackSeconds;RunLoop.current.run(until:Date().addingTimeInterval(0.25));precondition(abs(media.playbackSeconds-before)<0.1,"Native video did not pause");media.suspend(false);RunLoop.current.run(until:Date().addingTimeInterval(0.15));media.load("");precondition(!media.hasVideo,"Video resources retained after replacement");print("PASS AVFoundation background playback, pause, resume and replacement");exit(0)
 }
+if CommandLine.arguments.contains("--display-surface-self-test"){
+ _=NSApplication.shared
+ let config=Configuration(profile:"display-surface-test-"+UUID().uuidString,persistent:false)
+ let audio=SystemAudio(),media=NowPlaying()
+ let surfaces=try NSScreen.screens.map{try WallpaperSurface(screen:$0,config:config,audio:audio,media:media)}
+ defer{for surface in surfaces{surface.close()}}
+ RunLoop.current.run(until:Date().addingTimeInterval(2))
+ for surface in surfaces{
+  precondition(surface.window.frame==surface.screen.frame,"Wallpaper is outside its display: \(surface.screen.localizedName)")
+  precondition(surface.window.screen.map{displayKey($0)}==displayKey(surface.screen),"Wallpaper attached to the wrong display")
+  precondition(surface.frameCount>0,"Wallpaper did not render")
+  print("PASS display \(surface.screen.localizedName): \(surface.window.frame), \(surface.frameCount) frames")
+ }
+ precondition(!audio.requested,"Display test requested audio permission")
+ exit(0)
+}
 if CommandLine.arguments.contains("--orb-render-self-test"){
  let config=Configuration(profile:UUID().uuidString,persistent:false)
  guard let device=MTLCreateSystemDefaultDevice() else{fatalError("Metal unavailable")}

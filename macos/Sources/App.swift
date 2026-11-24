@@ -15,7 +15,10 @@ final class WallpaperSurface {
   self.config=config;self.audio=audio;self.media=media;self.screen=screen
   guard let device=MTLCreateSystemDefaultDevice() else{throw NSError(domain:"WirePulse",code:3,userInfo:[NSLocalizedDescriptionKey:"Este Mac no dispone de Metal"])}
   renderer=try WallpaperRenderer(config:config,analyzer:audio.analyzer,device:device,media:media)
-  window=NSWindow(contentRect:screen.frame,styleMask:.borderless,backing:.buffered,defer:false,screen:screen)
+  // This initializer takes screen-local coordinates; setFrame uses desktop coordinates.
+  // Passing screen.frame here adds the secondary display origin twice (e.g. Sidecar).
+  window=NSWindow(contentRect:NSRect(origin:.zero,size:screen.frame.size),styleMask:.borderless,backing:.buffered,defer:false,screen:screen)
+  window.setFrame(screen.frame,display:false)
   window.title=L10n.text("WirePulse · fondo animado");window.level=NSWindow.Level(rawValue:Int(CGWindowLevelForKey(.desktopWindow))+1);window.collectionBehavior=[.canJoinAllSpaces,.stationary,.ignoresCycle];window.ignoresMouseEvents=true;window.hasShadow=false;window.isOpaque=true;window.isReleasedWhenClosed=false;window.hidesOnDeactivate=false
   let root=NSView(frame:NSRect(origin:.zero,size:screen.frame.size));root.wantsLayer=true;window.contentView=root;root.layer?.addSublayer(backgroundGradient)
   background=BackgroundMedia(frame:root.bounds);background.wantsLayer=true;background.layer?.contentsGravity = .resizeAspectFill;background.layer?.masksToBounds=true;background.autoresizingMask=[.width,.height];root.addSubview(background);backgroundDim.backgroundColor=NSColor.black.cgColor;background.layer?.addSublayer(backgroundDim)
