@@ -24,7 +24,7 @@ jobs:
         shell: pwsh
         run: |
           $p=Start-Process ./publish/WirePulse.exe -ArgumentList '--experience-self-test' -Wait -PassThru -RedirectStandardOutput test-results/experience.log -RedirectStandardError test-results/experience.err
-          if($p.ExitCode -ne 0){Get-Content test-results/experience.err;throw 'Native experience test failed'}
+          if($p.ExitCode -ne 0){Get-Content test-results/experience.err;Get-Content "$env:TEMP/WirePulse-settings-error.txt" -ErrorAction SilentlyContinue;throw 'Native experience test failed'}
           if(!(Select-String -Path test-results/experience.log -Pattern 'PASS WinUI' -Quiet)){throw 'Native experience test did not complete'}
       - name: Package and validate installer
         shell: pwsh
@@ -38,11 +38,15 @@ jobs:
           name: windows-hotfix-packages
           path: desktop/packages/*
           if-no-files-found: error
+      - name: Collect native window diagnostics
+        if: always()
+        shell: pwsh
+        run: |
+          if(Test-Path "$env:TEMP/WirePulse-settings-error.txt"){Copy-Item "$env:TEMP/WirePulse-settings-error.txt" test-results/experience-native-error.txt}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
           name: windows-hotfix-validation
           path: |
             desktop/test-results/
-            ${{ runner.temp }}/WirePulse-settings-error.txt
           if-no-files-found: warn
