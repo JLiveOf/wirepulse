@@ -224,7 +224,7 @@ class Companion:
   header=Gtk.HeaderBar();header.set_title(self.t('Propiedades'));header.set_show_close_button(True);self.window.set_titlebar(header)
   scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC);self.pack(self.box,scroll,True);panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12);panel.set_border_width(14);scroll.add(panel)
   self.pack(panel,self.label('Objetos',18));self.pack(panel,self.label('Arrastra ⠿ para ordenar capas · arriba queda delante',dim=True));self.layer_model=Gtk.ListStore(str,str,bool,bool);self.layers=Gtk.TreeView(model=self.layer_model);self.layers.set_headers_visible(False);text_cell=Gtk.CellRendererText(ellipsize=Pango.EllipsizeMode.END,width_chars=16,max_width_chars=22);name_column=Gtk.TreeViewColumn('',text_cell,text=1);name_column.set_expand(True);self.layers.append_column(name_column);self.layer_buttons={}
-  for key,icons in [('locked',('changes-allow-symbolic','changes-prevent-symbolic')),('visible',('view-conceal-symbolic','view-reveal-symbolic'))]:
+  for key,icons in [('locked',('changes-prevent-symbolic','changes-allow-symbolic')),('visible',('view-conceal-symbolic','view-reveal-symbolic'))]:
    cell=Gtk.CellRendererPixbuf();column=Gtk.TreeViewColumn(self.t('Bloqueado' if key=='locked' else 'Visible'),cell);column.set_fixed_width(28);column.set_sizing(Gtk.TreeViewColumnSizing.FIXED);column.set_cell_data_func(cell,lambda col,renderer,model,it,data,k=key,choices=icons:renderer.set_property('icon-name',choices[bool(model[it][2 if k=='locked' else 3])]),None);self.layers.append_column(column);self.layer_buttons[column]=key
   self.layers.connect('button-press-event',self.layer_button);self.layers.set_reorderable(True);self.layers.get_selection().connect('changed',self.select_layer);self.layer_model.connect('rows-reordered',self.reordered);list_scroll=Gtk.ScrolledWindow();list_scroll.set_min_content_height(135);list_scroll.set_max_content_height(200);list_scroll.set_propagate_natural_height(True);list_scroll.add(self.layers);self.pack(panel,list_scroll)
   self.properties=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12);self.pack(panel,self.properties);self.toolbar=Gtk.Window(title=self.t('Editar escritorio'));self.toolbar.set_type_hint(Gdk.WindowTypeHint.UTILITY);self.toolbar.set_skip_taskbar_hint(True);self.toolbar.set_keep_above(True);self.toolbar.set_resizable(False);self.toolbar.set_decorated(False);self.toolbar.connect('delete-event',lambda *_:(self.cancel_editor(),True)[1]);bar=Gtk.FlowBox();bar.set_selection_mode(Gtk.SelectionMode.NONE);bar.set_max_children_per_line(8);bar.set_column_spacing(6);bar.set_row_spacing(6);bar.set_border_width(10);self.toolbar.add(bar)
@@ -395,29 +395,37 @@ class Companion:
   if hasattr(self,'toolbar'):self.toolbar.destroy()
   self.pool.shutdown(wait=False);Gtk.main_quit()
 
- def capture(self,name):
-  for _ in range(30):
-   if not Gtk.events_pending():break
-   Gtk.main_iteration_do(False)
-  Gdk.Window.process_all_updates()
-  window=self.window.get_window();width,height=window.get_width(),window.get_height();pixbuf=Gdk.pixbuf_get_from_window(window,0,0,width,height)
-  if pixbuf:pixbuf.savev(self.args.test_output+'-'+name+'.png','png',[],[])
+ def capture(self,name,done=None):
+  # Wait for a native GTK layout/paint frame after changing page contents.
+  def save():
+   try:
+    if self.args.mode=='editor':
+     position=self.properties.translate_coordinates(self.window,0,0)
+     assert self.properties.get_mapped() and self.properties.get_allocated_height()>100
+     assert position and position[1]<self.window.get_size()[1]-50,'Object properties are outside the window'
+    window=self.window.get_window();pixbuf=Gdk.pixbuf_get_from_window(window,0,0,window.get_width(),window.get_height())
+    if pixbuf:pixbuf.savev(self.args.test_output+'-'+name+'.png','png',[],[])
+    if done:done()
+   except Exception as e:self.error('GTK visual regression: '+str(e))
+   return False
+  GLib.timeout_add(180,save)
  def smoke(self):
   try:
    if self.args.mode=='settings':
     for group in GROUPS:self.group=group;self.build_page()
     expected={s['key'] for s in self.state['specs'] if s['key'] not in LAYOUT};assert self.covered==expected,(self.covered,expected);assert set(ICONS)==set(GROUPS)
-    self.group='Audio';self.build_page();self.capture('settings')
+    self.group='Audio';self.build_page()
     def descendants(w):
      yield w
      if isinstance(w,Gtk.Container):
       for child in w.get_children():yield from descendants(child)
     scales=[w for w in descendants(self.page) if isinstance(w,Gtk.Scale)];assert scales
-    value=scales[0].get_value();scales[0].set_value(value+.1);self.flush(True)
+    value=scales[0].get_value()
     def verify(s):
      assert abs(s['global']['values']['sensitivity']-(value+.1))<.001,s['global']['values']['sensitivity']
      self.command('edit');self.window.hide();GLib.timeout_add(300,self.smoke_wait_editor)
-    self.rpc('get',verify);return False
+    def interact():scales[0].set_value(value+.1);self.flush(True);self.rpc('get',verify)
+    self.capture('settings',interact);return False
    if self.args.mode=='editor':
     assert self.window.get_titlebar()!=None;self.toggle_properties();assert not self.window.get_visible();self.toggle_properties();assert self.window.get_visible()
     def step(operations,final):
@@ -429,7 +437,7 @@ class Companion:
      item=self.state['selected'];assert item['kind']=='text'
      edits=[('editor-property',{'key':'text','value':'GTK · WirePulse'}),('editor-property',{'key':'rotation','value':35}),('editor-property',{'key':'opacity','value':.6}),('editor-gradient',{'key':'color','value':{'enabled':True,'end':'#00ff00','angle':45}})]
      def properties_done():
-      selected=self.state['selected'];assert selected['rotation']==35 and abs(selected['opacity']-.6)<.001 and selected['text']=='GTK · WirePulse' and selected['gradients']['color']['enabled'];self.capture('editor');path=str(ROOT.parent/'tests/fixtures/disposal.gif');step([('editor-add',{'kind':'image','path':path})],after_image)
+      selected=self.state['selected'];assert selected['rotation']==35 and abs(selected['opacity']-.6)<.001 and selected['text']=='GTK · WirePulse' and selected['gradients']['color']['enabled'];path=str(ROOT.parent/'tests/fixtures/disposal.gif');self.capture('editor',lambda:step([('editor-add',{'kind':'image','path':path})],after_image))
      step(edits,properties_done)
     def after_image():
      assert self.state['selected']['kind']=='image';old=[i['id'] for i in self.state['items']];ordered=list(reversed(old))
@@ -451,8 +459,9 @@ class Companion:
    assert self.window.get_titlebar()!=None and self.window.get_decorated()
    assert self.window.get_window().get_state() & Gdk.WindowState.ABOVE,'Welcome is not above normal windows'
    if self.phase=='setup':
-    self.capture('setup');self.experience_page('news');return True
-   self.capture('news');self.smoke_close_time=time.monotonic();self.window.close();self.window.close();return False
+    self.capture('setup',lambda:self.experience_page('news'));return True
+   def close_news():self.smoke_close_time=time.monotonic();self.window.close();self.window.close()
+   self.capture('news',close_news);return False
   except Exception as e:self.error('GTK regression: '+str(e));return False
  def smoke_wait_editor(self):
   try:
