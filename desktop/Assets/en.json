@@ -522,5 +522,12 @@
   "Giro del objeto": "Object rotation",
   "Recorrido de animación": "Animation travel",
   "Selecciona un objeto": "Select an object",
-  "Ángulo del gradiente": "Gradient angle"
+  "Ángulo del gradiente": "Gradient angle",
+  "Ajustar a pantalla": "Fit to screen",
+  "Linux se siente como Mint": "Linux feels like Mint",
+  "Ajustes, bienvenida y novedades usan GTK 3 y el tema del sistema. Las categorías tienen sus iconos y el contenido se adapta al área útil de la pantalla.": "Settings, welcome and release highlights use GTK 3 and the system theme. Categories have their own icons and content fits the usable screen area.",
+  "Un editor nativo y completo": "A complete native editor",
+  "Edita propiedades, gira objetos, elige colores y gradientes, añade imágenes o GIF y arrastra las capas para reordenarlas con controles nativos.": "Edit properties, rotate objects, choose colors and gradients, add images or GIFs and drag layers to reorder them with native controls.",
+  "Novedades legibles, con el mismo cierre": "Readable highlights, the same shutdown",
+  "El fondo del tema mantiene el texto legible. Cierra con la X o Continuar para oír el efecto de apagado de tele; la música no se corta al pasar de bienvenida a novedades.": "The theme background keeps text readable. Use the close button or Continue to hear the TV shutdown effect; music continues between welcome and release highlights."
 }

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-import sys,pathlib,shutil,zipfile,tarfile,subprocess,hashlib
+import sys,pathlib,shutil,zipfile,tarfile,subprocess,hashlib,json
 rid,version=sys.argv[1:3]
 root=pathlib.Path(__file__).resolve().parent.parent
 output=root/'packages';output.mkdir(exist_ok=True)
@@ -7,6 +7,8 @@ name=f'WirePulse-{version}-{rid}'
 stage=output/name
 if stage.exists():shutil.rmtree(stage)
 shutil.copytree(root/'publish',stage)
+linux_notes=root/'Assets/whats-new-linux.json'
+if rid.startswith('linux') and linux_notes.exists() and json.loads(linux_notes.read_text())['version']==version:shutil.copy2(linux_notes,stage/'Assets/whats-new.json')
 shutil.copy2(root.parent/'README.md',stage/'README.md')
 shutil.copy2(root.parent/'README.es.md',stage/'README.es.md')
 from notices import collect
@@ -23,7 +25,7 @@ else:
  package=output/'deb-root';app=package/'opt'/'wirepulse';app.mkdir(parents=True,exist_ok=True)
  shutil.copytree(stage,app,dirs_exist_ok=True)
  control=package/'DEBIAN';control.mkdir(exist_ok=True)
- (control/'control').write_text(f'Package: wirepulse\nVersion: {version}\nArchitecture: amd64\nMaintainer: JLiveOf <noreply@github.com>\nDepends: python3, python3-gi, python3-gi-cairo, gir1.2-gtk-3.0, ffmpeg, pulseaudio-utils, playerctl, libx11-6, libxfixes3, libice6, libsm6, libfontconfig1, libwebkit2gtk-4.1-0, libfreetype6, libgl1\nSection: graphics\nPriority: optional\nDescription: Audio-reactive native wallpaper for Cinnamon X11\n Shared WirePulse renderer with system audio capture and media metadata.\n')
+ (control/'control').write_text(f'Package: wirepulse\nVersion: {version}\nArchitecture: amd64\nMaintainer: JLiveOf <noreply@github.com>\nDepends: python3, python3-gi, python3-gi-cairo, gir1.2-gtk-3.0, librsvg2-common, ffmpeg, pulseaudio-utils, playerctl, libx11-6, libxfixes3, libice6, libsm6, libfontconfig1, libwebkit2gtk-4.1-0, libfreetype6, libgl1\nSection: graphics\nPriority: optional\nDescription: Audio-reactive native wallpaper for Cinnamon X11\n Shared WirePulse renderer with system audio capture and media metadata.\n')
  launch=package/'usr/share/applications';launch.mkdir(parents=True,exist_ok=True)
  (launch/'wirepulse.desktop').write_text('[Desktop Entry]\nType=Application\nName=WirePulse\nComment=Audio-reactive desktop wallpaper\nExec=/opt/wirepulse/WirePulse\nIcon=wirepulse\nTerminal=false\nCategories=AudioVideo;Graphics;\nStartupNotify=false\n')
  icons=package/'usr/share/icons/hicolor/1024x1024/apps';icons.mkdir(parents=True,exist_ok=True);shutil.copy2(root/'Assets/WirePulse.png',icons/'wirepulse.png')

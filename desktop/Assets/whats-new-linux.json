@@ -1,0 +1,20 @@
+{
+  "version": "4.5.1",
+  "features": [
+    {
+      "icon": "sparkles",
+      "title": "Linux se siente como Mint",
+      "description": "Ajustes, bienvenida y novedades usan GTK 3 y el tema del sistema. Las categorías tienen sus iconos y el contenido se adapta al área útil de la pantalla."
+    },
+    {
+      "icon": "update",
+      "title": "Un editor nativo y completo",
+      "description": "Edita propiedades, gira objetos, elige colores y gradientes, añade imágenes o GIF y arrastra las capas para reordenarlas con controles nativos."
+    },
+    {
+      "icon": "music",
+      "title": "Novedades legibles, con el mismo cierre",
+      "description": "El fondo del tema mantiene el texto legible. Cierra con la X o Continuar para oír el efecto de apagado de tele; la música no se corta al pasar de bienvenida a novedades."
+    }
+  ]
+}

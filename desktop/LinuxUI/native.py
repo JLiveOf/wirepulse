@@ -5,6 +5,7 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib, Pango, GdkPixbuf
 ROOT = pathlib.Path(__file__).resolve().parent.parent
+ICONS={'Audio':'audio-volume-high-symbolic','Fondo':'image-x-generic-symbolic','Fondo animado':'starred-symbolic','Orbe':'web-browser-symbolic','Espectro':'view-sort-ascending-symbolic','Tarjeta':'audio-x-generic-symbolic','Reloj':'preferences-system-time-symbolic','Rendimiento':'utilities-system-monitor-symbolic','Inicio':'system-shutdown-symbolic'}
 GROUPS = ['Audio','Fondo','Fondo animado','Orbe','Espectro','Tarjeta','Reloj','Rendimiento','Inicio']
 LAYOUT = {'sphereX','sphereY','radius','spectrumX','spectrumY','spectrumWidth','spectrumHeight','cardX','cardY','cardscale','clockX','clockY','clocksize'}
 MEDIA = ['*.png','*.jpg','*.jpeg','*.webp','*.bmp','*.gif','*.mp4','*.m4v','*.mov','*.wmv','*.avi','*.webm','*.mkv']
@@ -13,7 +14,8 @@ class Companion:
   self.args=args;self.state={};self.language='es';self.catalog=json.loads((ROOT/'Assets/en.json').read_text());self.covered=set();self.pool=concurrent.futures.ThreadPoolExecutor(max_workers=1);self.busy=False;self.pending={};self.widgets={};self.profile='';self.group='Audio';self.selected=None;self.item_ids=[];self.finished=False;self.finishing=False;self.loading=False;self.phase='intro';self.started=time.monotonic();self.expanding=False;self.expanded=False;self.editor_hidden=False;self.focus_stamp=None
   self.window=Gtk.Window(title='WirePulse');self.window.set_icon_from_file(str(ROOT/'Assets/WirePulse.png'));self.window.set_default_size(880,650);self.window.connect('delete-event',self.close)
   self.box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=0);self.window.add(self.box)
-  if args.mode=='experience':self.window.set_keep_above(True);self.window.set_resizable(False);self.window.set_decorated(False);self.window.resize(320,280)
+  if args.mode=='experience':
+   self.window.set_default_size(320,280);self.window.set_keep_above(True);self.window.set_resizable(False);self.window.set_decorated(False);self.header=Gtk.HeaderBar();self.header.set_show_close_button(False);brand=Gtk.Box(spacing=10);self.pack(brand,Gtk.Image.new_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_scale(str(ROOT/'Assets/WirePulse.png'),32,32,True)));self.pack(brand,self.label('WirePulse',16));self.header.pack_start(brand);self.header.set_no_show_all(True);self.window.set_titlebar(self.header);self.header.hide()
   self.window.set_position(Gtk.WindowPosition.CENTER);self.rpc('get' if args.mode!='editor' else 'editor-get',self.loaded)
   GLib.timeout_add(50,self.flush);GLib.timeout_add(250,self.poll);GLib.timeout_add(250,self.focus)
  def t(self,text):return self.catalog.get(str(text),str(text)) if self.language=='en' else str(text)
@@ -62,6 +64,8 @@ class Companion:
    elif old_scene!=self.target().get('scene'):self.build_page()
    for key,value in [('audio',s.get('audio','')),('media',s.get('media','')),('updates',s.get('updates',{}).get('status','')),('performance','\n'.join(f"{p['name']}: {p['fps']:.0f} FPS / {p['target']:.0f} · {p['drawMs']:.2f} ms · {p['backend']}" for p in s.get('performance',[]))),('tempo',f"{s.get('bpm',0):.0f} BPM")]:
     if key in self.widgets:self.widgets[key].set_text(self.t(value))
+   if 'fft' in self.widgets:
+    rate=s.get('sampleRate',0);fft=s.get('fft',0);self.widgets['fft'].set_text(f"64 bands · FFT {fft} · {rate} Hz · {rate/fft if fft else 0:.2f} Hz/bin" if self.language=='en' else f"64 bandas · FFT {fft} · {rate} Hz · {rate/fft if fft else 0:.2f} Hz/bin")
    if 'capture' in self.widgets:self.widgets['capture'].set_label(self.t('Detener captura' if s.get('audioRunning') else 'Activar audio del sistema'))
    if 'meters' in self.widgets:self.widgets['meters'].queue_draw()
   elif self.args.mode=='editor':
@@ -145,12 +149,12 @@ class Companion:
   if self.finished:return
   if self.args.test_output:
    pathlib.Path(self.args.test_output).write_text(json.dumps({'valid':False,'error':text}));print(text,file=sys.stderr);self.destroy();return
-  dialog=Gtk.MessageDialog(transient_for=self.window,modal=True,message_type=Gtk.MessageType.ERROR,buttons=Gtk.ButtonsType.CLOSE,text='WirePulse');dialog.format_secondary_text(self.t(text));dialog.run();dialog.destroy()
+  dialog=Gtk.MessageDialog(transient_for=self.window,modal=True,message_type=Gtk.MessageType.ERROR,buttons=Gtk.ButtonsType.CLOSE,text='WirePulse');dialog.set_keep_above(True);dialog.format_secondary_text(self.t(text));dialog.run();dialog.destroy()
  def build_settings(self):
   self.loading=True;self.widgets={};self.clear(self.box);self.window.set_title(self.t('Ajustes de WirePulse'));self.window.set_resizable(True)
   split=Gtk.Box(spacing=0);self.pack(self.box,split,True);sidebar=Gtk.ListBox();sidebar.set_selection_mode(Gtk.SelectionMode.SINGLE);sidebar.set_size_request(170,-1);sidebar.get_style_context().add_class('sidebar')
   for title in GROUPS:
-   row=Gtk.ListBoxRow();label=self.label(title);label.set_margin_start(16);label.set_margin_end(16);label.set_margin_top(12);label.set_margin_bottom(12);row.add(label);row.group=title;sidebar.add(row)
+   row=Gtk.ListBoxRow();line=Gtk.Box(spacing=10);line.set_margin_start(12);line.set_margin_end(12);line.set_margin_top(12);line.set_margin_bottom(12);icon=Gtk.Image.new_from_icon_name(ICONS[title],Gtk.IconSize.MENU);self.pack(line,icon);self.pack(line,self.label(title));row.add(line);row.group=title;sidebar.add(row)
   self.pack(split,sidebar);self.pack(split,Gtk.Separator(orientation=Gtk.Orientation.VERTICAL));right=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=0);self.pack(split,right,True)
   header=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10);header.set_border_width(16);self.pack(right,header)
   self.toggle(header,'Ajustar cada pantalla por separado',self.state.get('independent',False),lambda v:self.command('property',True,key='IndependentDisplays',value=v,**{'global':True}))
@@ -173,7 +177,7 @@ class Companion:
   if group in ('Orbe','Espectro','Tarjeta','Reloj','Fondo animado'):
    self.pack(self.page,self.button('Mover, redimensionar o añadir objetos…',lambda:self.command('edit')))
   if group=='Audio':
-   area=self.section(self.page,'Audio del sistema');self.widgets['capture']=self.pack(area,self.button('Detener captura' if self.state.get('audioRunning') else 'Activar audio del sistema',lambda:self.command('audio')));self.widgets['audio']=self.pack(area,self.label(self.state.get('audio','')));self.pack(area,self.label(f"64 bandas · FFT {self.state.get('fft',8192)} · {self.state.get('sampleRate',0)} Hz",dim=True));self.pack(area,self.label('Analiza el sonido que reproducen las aplicaciones, en memoria. No usa el micrófono ni guarda grabaciones.',dim=True));meter=Gtk.DrawingArea();meter.set_size_request(-1,54);meter.connect('draw',self.draw_meters);self.widgets['meters']=meter;self.pack(area,meter)
+   area=self.section(self.page,'Audio del sistema');self.widgets['capture']=self.pack(area,self.button('Detener captura' if self.state.get('audioRunning') else 'Activar audio del sistema',lambda:self.command('audio')));self.widgets['audio']=self.pack(area,self.label(self.state.get('audio','')));self.widgets['fft']=self.pack(area,self.label('',dim=True));self.pack(area,self.label('Analiza el sonido que reproducen las aplicaciones, en memoria. No usa el micrófono ni guarda grabaciones.',dim=True));meter=Gtk.DrawingArea();meter.set_size_request(-1,54);meter.connect('draw',self.draw_meters);self.widgets['meters']=meter;self.pack(area,meter)
   if group=='Inicio':
    area=self.section(self.page,'Bienvenida');self.pack(area,self.button('¿Qué hay de nuevo?',lambda:self.command('show-news')));self.toggle(area,'Mostrar la splash en cada inicio',self.state.get('showSplash',False),lambda v:self.command('show-splash',value=v))
    area=self.section(self.page,'Actualizaciones');self.toggle(area,'Comprobar al iniciar',self.state.get('updates',{}).get('automatic',True),lambda v:self.command('update-automatic',value=v));self.choice(area,'Canal de actualizaciones',['stable','beta'],self.state.get('updates',{}).get('channel','stable'),lambda v:self.command('update-channel',value=v),['Estable','Beta (prereleases)']);self.pack(area,self.button('Comprobar ahora',lambda:self.command('update-check')));self.widgets['updates']=self.pack(area,self.label(self.state.get('updates',{}).get('status',''),dim=True))
@@ -221,16 +225,20 @@ class Companion:
   folder=Gtk.MenuItem(label=self.t('Widget desde carpeta…'));folder.connect('activate',lambda *_:self.add_object('widget',True));menu.append(folder);menu.show_all();add.set_popup(menu);bar.add(add)
   for title,op in [('↶ Deshacer','editor-undo'),('↷ Rehacer','editor-redo'),('Duplicar','editor-duplicate'),('Eliminar objeto','editor-delete')]:bar.add(self.button(title,lambda v=op:self.command(v,True)))
   snap=Gtk.CheckButton(label=self.t('Ajustar a guías'));snap.set_active(self.state.get('snap',True));snap.connect('toggled',lambda w:self.command('editor-snap',value=w.get_active()));bar.add(snap);bar.add(self.button('Propiedades',self.toggle_properties));bar.add(self.button('Cancelar',self.cancel_editor));save=self.button('Guardar diseño',lambda:self.command('editor-save'));save.get_style_context().add_class('suggested-action');bar.add(save)
-  self.window.connect('key-press-event',self.editor_key);self.toolbar.connect('key-press-event',self.editor_key);self.toolbar.connect('size-allocate',lambda *_:self.place_toolbar());self.toolbar.show_all();self.update_layers();self.build_properties();self.position_editor()
+  self.window.connect('size-allocate',lambda *_:self.place_inspector());self.window.connect('key-press-event',self.editor_key);self.toolbar.connect('key-press-event',self.editor_key);self.toolbar.connect('size-allocate',lambda *_:self.place_toolbar());self.toolbar.show_all();self.update_layers();self.build_properties();self.position_editor()
  def position_editor(self):
   s=self.state.get('screen',{});screen=self.window.get_screen();monitor=screen.get_monitor_at_point(int(s.get('x',0)),int(s.get('y',0)));area=screen.get_monitor_workarea(monitor)
-  self.window.resize(min(350,area.width-32),max(260,min(650,area.height-110)));self.window.move(area.x+max(8,area.width-366),area.y+12);self.toolbar.get_preferred_size();self.toolbar.resize(min(850,area.width-32),64);self.toolbar.move(area.x+max(8,(area.width-min(850,area.width-32))//2),area.y+area.height-84)
+  self.window.resize(min(350,area.width-32),max(260,min(650,area.height-110)));self.editor_area=area;self.window.move(area.x+max(8,area.width-366),area.y+12);self.toolbar.get_preferred_size();self.toolbar.resize(min(850,area.width-32),64);self.toolbar.move(area.x+max(8,(area.width-min(850,area.width-32))//2),area.y+area.height-84)
   try:
    gi.require_version('GdkX11','3.0');from gi.repository import GdkX11
    owner=GdkX11.X11Window.foreign_new_for_display(self.window.get_display(),int(self.state['owner']))
    if owner:
     self.window.realize();self.toolbar.realize();self.window.get_window().set_transient_for(owner);self.toolbar.get_window().set_transient_for(owner)
   except (ValueError,AttributeError,TypeError):pass
+ def place_inspector(self):
+  if not hasattr(self,'editor_area') or not self.window.get_window():return
+  area=self.editor_area;w=self.window.get_window().get_width();x,y=area.x+max(8,area.width-w-12),area.y+12
+  if self.window.get_position()!=(x,y):self.window.move(x,y)
  def place_toolbar(self):
   screen=self.toolbar.get_screen();s=self.state.get('screen',{});area=screen.get_monitor_workarea(screen.get_monitor_at_point(int(s.get('x',0)),int(s.get('y',0))));w,h=self.toolbar.get_size();self.toolbar.move(area.x+max(8,(area.width-w)//2),area.y+max(8,area.height-h-12))
  def toggle_properties(self):
@@ -293,7 +301,7 @@ class Companion:
   self.command('editor-add',True,**args)
  def cancel_editor(self):
   if self.state.get('dirty'):
-   dialog=Gtk.MessageDialog(transient_for=self.window,modal=True,message_type=Gtk.MessageType.QUESTION,buttons=Gtk.ButtonsType.NONE,text=self.t('¿Descartar los cambios de este diseño?'));dialog.add_button(self.t('Seguir editando'),Gtk.ResponseType.CANCEL);dialog.add_button(self.t('Descartar'),Gtk.ResponseType.ACCEPT);choice=dialog.run();dialog.destroy()
+   dialog=Gtk.MessageDialog(transient_for=self.window,modal=True,message_type=Gtk.MessageType.QUESTION,buttons=Gtk.ButtonsType.NONE,text=self.t('¿Descartar los cambios de este diseño?'));dialog.set_keep_above(True);dialog.add_button(self.t('Seguir editando'),Gtk.ResponseType.CANCEL);dialog.add_button(self.t('Descartar'),Gtk.ResponseType.ACCEPT);choice=dialog.run();dialog.destroy()
    if choice!=Gtk.ResponseType.ACCEPT:self.command('editor-continue');return
   self.command('editor-discard')
  def editor_key(self,window,event):
@@ -321,7 +329,7 @@ class Companion:
  def experience_page(self,phase):
   self.phase=phase
   def content():
-   self.clear(self.box);header=Gtk.HeaderBar();header.set_show_close_button(True);brand=Gtk.Box(spacing=10);brand.pack_start(Gtk.Image.new_from_pixbuf(GdkPixbuf.Pixbuf.new_from_file_at_scale(str(ROOT/'Assets/WirePulse.png'),32,32,True)),False,False,0);brand.pack_start(self.label('WirePulse',16),False,False,0);header.pack_start(brand);self.window.set_titlebar(header);self.window.set_decorated(True)
+   self.clear(self.box);self.header.set_show_close_button(True);self.header.set_no_show_all(False);self.header.show_all();self.window.set_decorated(True)
    scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC);self.pack(self.box,scroll,True);body=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=18);body.set_border_width(24);scroll.add(body);self.expanded=True
    if phase=='setup':
     self.pack(body,self.label('Vamos a preparar tu escritorio',24));choices={}
@@ -373,13 +381,13 @@ class Companion:
   self.pool.shutdown(wait=False);Gtk.main_quit()
 
  def capture(self,name):
-  window=self.window.get_window();width,height=self.window.get_size();pixbuf=Gdk.pixbuf_get_from_window(window,0,0,width,height)
+  window=self.window.get_window();width,height=window.get_width(),window.get_height();pixbuf=Gdk.pixbuf_get_from_window(window,0,0,width,height)
   if pixbuf:pixbuf.savev(self.args.test_output+'-'+name+'.png','png',[],[])
  def smoke(self):
   try:
    if self.args.mode=='settings':
     for group in GROUPS:self.group=group;self.build_page()
-    expected={s['key'] for s in self.state['specs'] if s['key'] not in LAYOUT};assert self.covered==expected,(self.covered,expected)
+    expected={s['key'] for s in self.state['specs'] if s['key'] not in LAYOUT};assert self.covered==expected,(self.covered,expected);assert set(ICONS)==set(GROUPS)
     self.group='Audio';self.build_page();self.capture('settings')
     def descendants(w):
      yield w

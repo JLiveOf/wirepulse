@@ -22,6 +22,7 @@ jobs:
           python3 ../scripts/build-info.py Assets/build-info.json
           dotnet publish -c Release -f net10.0 -r linux-x64 --self-contained true -o publish -p:DebugType=None -p:DebugSymbols=false
           python3 -m py_compile publish/LinuxUI/native.py
+          cp Assets/whats-new-linux.json publish/Assets/whats-new.json
       - name: Shared editor and update regression
         run: |
           ./publish/WirePulse --self-test
@@ -32,8 +33,22 @@ jobs:
           if test -f /etc/apt/apt-mirrors.txt; then echo https://archive.ubuntu.com/ubuntu | sudo tee /etc/apt/apt-mirrors.txt; fi
           if test -f /etc/apt/apt-security-mirrors.txt; then echo https://security.ubuntu.com/ubuntu | sudo tee /etc/apt/apt-security-mirrors.txt; fi
           sudo apt-get -o Acquire::Retries=3 -o Acquire::https::Timeout=30 update -qq
-          sudo apt-get -o Acquire::Retries=3 -o Acquire::https::Timeout=30 install -y --no-install-recommends ffmpeg cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-gi-cairo python3-pil gir1.2-gtk-3.0 libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::https::Timeout=30 install -y --no-install-recommends ffmpeg cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-gi-cairo python3-pil librsvg2-common gir1.2-gtk-3.0 libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
+      - uses: actions/checkout@v4
+        with:
+          repository: linuxmint/mint-themes
+          ref: ed8abc6901491c2971505b483428b5c7f30707ff
+          path: mint-theme
+          sparse-checkout: src/Mint-Y/gtk-3.0
+      - name: Use official Mint-Y GTK theme for visual QA
+        run: |
+          mkdir -p "$HOME/.themes/Mint-Y-Dark/gtk-3.0"
+          cp -R ../mint-theme/src/Mint-Y/gtk-3.0/. "$HOME/.themes/Mint-Y-Dark/gtk-3.0/"
+          cp "$HOME/.themes/Mint-Y-Dark/gtk-3.0/gtk-dark.css" "$HOME/.themes/Mint-Y-Dark/gtk-3.0/gtk.css"
       - name: Real Cinnamon desktop, GTK controls and editor transactions
+        env:
+          GTK_THEME: Mint-Y-Dark
+          WIREPULSE_LANGUAGE: es
         run: dbus-run-session -- bash tests/linux-integration.sh
       - name: Package only Linux
         run: |
