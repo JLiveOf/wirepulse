@@ -26,3 +26,12 @@ print(f'PASS {len(specs)} shared controls, groups, slider ranges/steps and five 
 for file in ["desktop/SettingsWindow.cs","desktop/WindowsSettings/SettingsWindow.cs","macos/Sources/Settings.swift","desktop/WelcomeWindow.cs","macos/Sources/Welcome.swift"]:
  assert "Mostrar la splash en cada inicio" in (root/file).read_text(), "Missing splash preference: "+file
 print("PASS splash preference in initial setup and all three settings UIs")
+
+# GTK uses the same specification-driven rows, with native category icons.
+import ast
+gtk=ast.parse((root/'desktop/LinuxUI/native.py').read_text())
+constants={n.targets[0].id:ast.literal_eval(n.value) for n in gtk.body if isinstance(n,ast.Assign) and isinstance(n.targets[0],ast.Name) and n.targets[0].id in ('GROUPS','ICONS','LAYOUT')}
+assert set(constants['GROUPS'])==set(x['group'] for x in specs)|{'Inicio'}
+assert set(constants['ICONS'])==set(constants['GROUPS']), 'GTK category icon missing'
+assert any(isinstance(n,ast.List) and all(isinstance(v,ast.Constant) for v in n.elts) and [v.value for v in n.elts]==providers for n in ast.walk(gtk)), 'GTK media providers differ'
+print('PASS GTK categories, per-category icons and shared provider choices')

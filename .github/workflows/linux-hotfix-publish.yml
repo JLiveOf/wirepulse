@@ -1,0 +1,33 @@
+name: Publish validated Linux hotfix
+on:
+  workflow_dispatch:
+    inputs:
+      validated_run:
+        description: Successful Linux hotfix validation run ID
+        required: true
+        type: string
+permissions:
+  contents: write
+  actions: read
+concurrency:
+  group: linux-hotfix-publication
+  cancel-in-progress: false
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-hotfix-packages
+          run-id: ${{ inputs.validated_run }}
+          github-token: ${{ github.token }}
+          path: linux-packages
+      - name: Replace only the validated Linux downloads and manifest
+        env:
+          GH_TOKEN: ${{ github.token }}
+          VALIDATED_RUN: ${{ inputs.validated_run }}
+        run: python3 scripts/publish-linux-hotfix.py "$VALIDATED_RUN" linux-packages

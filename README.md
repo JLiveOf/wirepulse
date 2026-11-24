@@ -21,7 +21,7 @@ An audio-reactive wallpaper for **Windows, macOS and Linux Mint / Cinnamon X11**
 | macOS 14.2+, Apple silicon | `macOS-arm64.zip` — move the app to Applications |
 | Linux Mint / Cinnamon **X11**, x64 | `.deb` or portable `linux-x64.tar.gz` |
 
-Linux video backgrounds require FFmpeg. Audio and artwork may require system permissions. macOS builds are ad-hoc signed, not notarized; Windows builds are unsigned.
+Linux uses native GTK 3 controls; the `.deb` installs their dependencies. Portable users also need `python3-gi`, `python3-gi-cairo`, `gir1.2-gtk-3.0` and `librsvg2-common`. Linux video backgrounds require FFmpeg. Audio and artwork may require system permissions. macOS builds are ad-hoc signed, not notarized; Windows builds are unsigned.
 
 ## Edit your desktop
 

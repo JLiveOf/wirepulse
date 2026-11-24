@@ -21,7 +21,7 @@ Un fondo reactivo al audio para **Windows, macOS y Linux Mint / Cinnamon X11**.
 | macOS 14.2+, Apple silicon | `macOS-arm64.zip` — mueve la app a Aplicaciones |
 | Linux Mint / Cinnamon **X11**, x64 | `.deb` o `linux-x64.tar.gz` portátil |
 
-Los fondos de vídeo en Linux necesitan FFmpeg. El audio y las portadas pueden solicitar permisos del sistema. La app de macOS lleva firma ad hoc y no está notarizada; Windows no lleva firma comercial.
+Linux usa controles nativos GTK 3; el `.deb` instala sus dependencias. La versión portátil necesita también `python3-gi`, `python3-gi-cairo`, `gir1.2-gtk-3.0` y `librsvg2-common`. Los fondos de vídeo en Linux necesitan FFmpeg. El audio y las portadas pueden solicitar permisos del sistema. La app de macOS lleva firma ad hoc y no está notarizada; Windows no lleva firma comercial.
 
 ## Editar el escritorio
 
