@@ -11,7 +11,7 @@ LAYOUT = {'sphereX','sphereY','radius','spectrumX','spectrumY','spectrumWidth','
 MEDIA = ['*.png','*.jpg','*.jpeg','*.webp','*.bmp','*.gif','*.mp4','*.m4v','*.mov','*.wmv','*.avi','*.webm','*.mkv']
 class Companion:
  def __init__(self,args):
-  self.args=args;self.state={};self.language='es';self.catalog=json.loads((ROOT/'Assets/en.json').read_text());self.covered=set();self.inflight=0;self.pool=concurrent.futures.ThreadPoolExecutor(max_workers=1);self.busy=False;self.pending={};self.widgets={};self.profile='';self.group='Audio';self.selected=None;self.item_ids=[];self.finished=False;self.finishing=False;self.loading=False;self.phase='intro';self.started=time.monotonic();self.expanding=False;self.expanded=False;self.editor_hidden=False;self.focus_stamp=None
+  self.args=args;self.owner_pid=os.getppid();self.state={};self.language='es';self.catalog=json.loads((ROOT/'Assets/en.json').read_text());self.covered=set();self.inflight=0;self.pool=concurrent.futures.ThreadPoolExecutor(max_workers=1);self.busy=False;self.pending={};self.widgets={};self.profile='';self.group='Audio';self.selected=None;self.item_ids=[];self.finished=False;self.finishing=False;self.loading=False;self.phase='intro';self.started=time.monotonic();self.expanding=False;self.expanded=False;self.editor_hidden=False;self.focus_stamp=None
   self.window=Gtk.Window(title='WirePulse');self.window.set_icon_from_file(str(ROOT/'Assets/WirePulse.png'));self.window.set_default_size(880,650);self.window.connect('delete-event',self.close)
   self.box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=0);self.window.add(self.box)
   if args.mode=='experience':
@@ -58,6 +58,7 @@ class Companion:
   except OSError:pass
   return not self.finished
  def poll(self):
+  if os.getppid()!=self.owner_pid:self.destroy();return False
   if self.finished:return False
   if self.busy or self.inflight:return True
   self.busy=True
@@ -80,7 +81,8 @@ class Companion:
    selected=s.get('selectedId')
    if rebuild or selected!=self.selected:self.selected=selected;self.build_properties()
    if s.get('closeRequested'):self.cancel_editor()
-  elif self.phase=='update':
+  elif self.phase=='update' and s.get('handedOff'):self.destroy()
+  elif self.phase=='update' and 'status' in self.widgets:
    self.widgets['status'].set_text(self.t(s.get('status','')));self.widgets['progress'].set_fraction(min(1,max(0,s.get('progress',0))))
    self.widgets['actions'].set_sensitive(not s.get('installing',False))
  def loaded(self,s):
