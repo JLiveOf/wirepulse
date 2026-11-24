@@ -3,7 +3,7 @@
   <TargetFrameworks>net10.0;net10.0-windows10.0.19041.0</TargetFrameworks>
   <EnableWindowsTargeting>true</EnableWindowsTargeting><OutputType>WinExe</OutputType>
   <Nullable>enable</Nullable><ImplicitUsings>enable</ImplicitUsings><AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-  <ApplicationIcon>Assets/WirePulse.ico</ApplicationIcon><AssemblyName>WirePulse</AssemblyName><Version>4.5.0</Version><AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
+  <ApplicationIcon>Assets/WirePulse.ico</ApplicationIcon><AssemblyName>WirePulse</AssemblyName><Version>4.5.1</Version><AvaloniaUseCompiledBindingsByDefault>false</AvaloniaUseCompiledBindingsByDefault>
  </PropertyGroup>
  <ItemGroup><EmbeddedResource Include="Assets/en.json"/></ItemGroup>
  <ItemGroup>
@@ -16,6 +16,6 @@
   <PackageReference Include="Vortice.Direct3D11" Version="3.8.3"/><PackageReference Include="Vortice.Direct2D1" Version="3.8.3"/><PackageReference Include="Vortice.D3DCompiler" Version="3.8.3"/><PackageReference Include="Vortice.MediaFoundation" Version="3.8.3"/>
   <PackageReference Include="NAudio" Version="2.2.1"/><PackageReference Include="Microsoft.Web.WebView2" Version="1.0.4314.35"/>
  </ItemGroup>
- <ItemGroup><None Include="Assets/Shutdown.wav" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/Setup-*.wav" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/whats-new.json" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/Welcome.wav" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/controls.json" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/WirePulse.png" CopyToOutputDirectory="PreserveNewest"/></ItemGroup>
+ <ItemGroup><None Include="Assets/build-info.json" Condition="Exists('Assets/build-info.json')" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/Shutdown.wav" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/Setup-*.wav" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/whats-new.json" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/Welcome.wav" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/controls.json" CopyToOutputDirectory="PreserveNewest"/><None Include="Assets/WirePulse.png" CopyToOutputDirectory="PreserveNewest"/></ItemGroup>
  <Target Name="UseOnlyWebView2Core" BeforeTargets="ResolveAssemblyReferences" Condition="$([MSBuild]::GetTargetPlatformIdentifier('$(TargetFramework)')) == 'windows'"><ItemGroup><Reference Remove="@(Reference)" Condition="$([System.String]::Copy('%(Filename)').EndsWith('.Wpf')) Or $([System.String]::Copy('%(Filename)').EndsWith('.WinForms'))"/></ItemGroup></Target>
 </Project>

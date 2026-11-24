@@ -27,15 +27,15 @@ final class WelcomeController:NSObject,NSWindowDelegate {
  private let introNameWidth=("WirePulse" as NSString).size(withAttributes:[.font:NSFont.systemFont(ofSize:30,weight:.bold)]).width
  private var center=NSPoint.zero
  private var startToggle:NSButton?,updatesToggle:NSButton?,splashToggle:NSButton?,channel:NSPopUpButton?,errorLabel:NSTextField?
- init(audio:SystemAudio,startup:StartupManager,initialSetup:Bool=true,playSound:Bool=true,showNews:Bool=false,directNews:Bool=false,acknowledgeNews:@escaping()->Void={UserDefaults.standard.set(UpdateManager.installed,forKey:WelcomeController.newsKey)},onFinish:@escaping()->Void){
+ init(audio:SystemAudio,startup:StartupManager,initialSetup:Bool=true,playSound:Bool=true,showNews:Bool=false,directNews:Bool=false,acknowledgeNews:@escaping()->Void={UserDefaults.standard.set(UpdateManager.newsIdentity,forKey:WelcomeController.newsKey)},onFinish:@escaping()->Void){
   self.audio=audio;self.startup=startup;self.initialSetup=initialSetup;self.onFinish=onFinish;self.showNews=showNews;self.audioEnabled=playSound;self.acknowledgeNews=acknowledgeNews
   window=NSWindow(contentRect:NSRect(x:0,y:0,width:320,height:280),styleMask:[.titled,.closable,.fullSizeContentView],backing:.buffered,defer:false)
-  super.init();Self.active=true;window.appearance=NSAppearance(named:.darkAqua);window.title="WirePulse";window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.isOpaque=false;window.backgroundColor = .clear;window.isMovableByWindowBackground=true;window.isReleasedWhenClosed=false;window.delegate=self
+  super.init();Self.active=true;window.appearance=NSAppearance(named:.darkAqua);window.title="WirePulse";window.titleVisibility = .hidden;window.titlebarAppearsTransparent=true;window.isOpaque=false;window.backgroundColor = .clear;window.isMovableByWindowBackground=true;window.isReleasedWhenClosed=false;window.delegate=self;window.level = .floating;window.collectionBehavior=[.canJoinAllSpaces,.fullScreenAuxiliary]
   window.standardWindowButton(.closeButton)?.isHidden=true;window.standardWindowButton(.miniaturizeButton)?.isHidden=true;window.standardWindowButton(.zoomButton)?.isHidden=true
   // Resolve the native class at runtime so older build SDKs and macOS 14/15 remain supported.
   let backdrop:NSView
-  if #available(macOS 26.0,*),let type=NSClassFromString("NSGlassEffectView") as? NSView.Type{let glass=type.init(frame:NSRect(x:0,y:0,width:320,height:280));glass.setValue(root,forKey:"contentView");glass.setValue(28,forKey:"cornerRadius");glass.setValue(0,forKey:"style");glass.setValue(NSColor.black.withAlphaComponent(0.55),forKey:"tintColor");backdrop=glass}
-  else{let blur=NSVisualEffectView(frame:NSRect(x:0,y:0,width:320,height:280));blur.material = .hudWindow;blur.blendingMode = .behindWindow;blur.state = .active;blur.wantsLayer=true;blur.layer?.cornerRadius=28;blur.layer?.masksToBounds=true;blur.addSubview(root);backdrop=blur}
+  if #available(macOS 26.0,*),let type=NSClassFromString("NSGlassEffectView") as? NSView.Type{let glass=type.init(frame:NSRect(x:0,y:0,width:320,height:280));glass.setValue(root,forKey:"contentView");glass.setValue(0,forKey:"cornerRadius");glass.setValue(0,forKey:"style");glass.setValue(NSColor.black.withAlphaComponent(0.55),forKey:"tintColor");backdrop=glass}
+  else{let blur=NSVisualEffectView(frame:NSRect(x:0,y:0,width:320,height:280));blur.material = .hudWindow;blur.blendingMode = .behindWindow;blur.state = .active;blur.addSubview(root);backdrop=blur}
   window.contentView=backdrop;root.frame=backdrop.bounds;root.autoresizingMask=[.width,.height];root.wantsLayer=true;root.layer?.backgroundColor=NSColor.black.withAlphaComponent(0.32).cgColor
   logo.image=NSImage(named:NSImage.applicationIconName);logo.imageScaling = .scaleProportionallyUpOrDown;root.addSubview(logo);name.isBezeled=false;name.drawsBackground=false;name.isEditable=false;name.textColor = .white;root.addSubview(name)
   form.orientation = .vertical;form.alignment = .leading;form.spacing=10;form.frame=NSRect(x:36,y:28,width:548,height:500);root.addSubview(form)
@@ -88,5 +88,6 @@ final class WelcomeController:NSObject,NSWindowDelegate {
  }
  @objc private func finishNews(){acknowledgeNews();newsAcknowledged=true;completed=true;finishWithEffect()}
  private func finishWithEffect(){guard !finishing else{return};finishing=true;music.stop();guard audioEnabled,let url=Bundle.main.url(forResource:"Shutdown",withExtension:"wav") else{window.close();return};do{player=try AVAudioPlayer(contentsOf:url);player?.play()}catch{};DispatchQueue.main.asyncAfter(deadline:.now()+0.6){[weak self] in self?.window.close()}}
+ func windowShouldClose(_ sender:NSWindow)->Bool{guard expanded else{return true};if phase=="news" && !finishing{finishNews()}else{finishWithEffect()};return false}
  func windowWillClose(_ notification:Notification){timer?.invalidate();timer=nil;player?.stop();player=nil;music.stop();Self.active=false;onFinish()}
 }

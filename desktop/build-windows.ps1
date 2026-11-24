@@ -2,6 +2,8 @@ param([string]$Dotnet='dotnet',[switch]$Test)
 $ErrorActionPreference='Stop'
 Push-Location $PSScriptRoot
 try {
+ python ../scripts/build-info.py Assets/build-info.json
+ if($LASTEXITCODE -ne 0){throw 'Build identity failed'}
  & $Dotnet publish WirePulse.csproj -c Release -f net10.0-windows10.0.19041.0 -r win-x64 --self-contained true -o publish -p:DebugType=None -p:DebugSymbols=false
  if($LASTEXITCODE -ne 0){throw 'Windows renderer build failed'}
  & $Dotnet publish WindowsSettings/WirePulse.Settings.csproj -c Release -o publish/WindowsSettings -p:DebugType=None -p:DebugSymbols=false

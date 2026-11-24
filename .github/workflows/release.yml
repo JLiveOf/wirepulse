@@ -47,6 +47,8 @@ jobs:
       - uses: actions/setup-dotnet@v4
         with:
           dotnet-version: '10.0.x'
+      - name: Embed build identity
+        run: python ../scripts/build-info.py Assets/build-info.json
       - run: dotnet publish -c Release -f ${{ matrix.framework }} -r ${{ matrix.rid }} --self-contained true -o publish -p:DebugType=None -p:DebugSymbols=false
         if: runner.os != 'Windows'
       - name: Windows renderer, native WinUI settings and video cadence
@@ -98,7 +100,12 @@ jobs:
           path: desktop/test-results/performance*
       - name: Linux desktop dependencies
         if: runner.os == 'Linux'
-        run: sudo apt-get update -qq && sudo apt-get install -y ffmpeg cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
+        run: |
+          # Avoid the cloud mirror that stalled previous desktop validation runs.
+          if test -f /etc/apt/apt-mirrors.txt; then echo https://archive.ubuntu.com/ubuntu | sudo tee /etc/apt/apt-mirrors.txt; fi
+          if test -f /etc/apt/apt-security-mirrors.txt; then echo https://security.ubuntu.com/ubuntu | sudo tee /etc/apt/apt-security-mirrors.txt; fi
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::https::Timeout=30 update -qq
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::https::Timeout=30 install -y --no-install-recommends ffmpeg cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-pil libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
       - name: Native glass welcome and X11 blurred backdrop
         if: runner.os == 'Linux'
         run: xvfb-run -a ./publish/WirePulse --welcome-smoke-test
@@ -221,6 +228,8 @@ jobs:
           pattern: release-*
           merge-multiple: true
           path: packages
+      - name: Generate platform build identities
+        run: python3 scripts/build-info.py packages/BUILD-INFO.json --manifest
       - name: Verify complete download set and create checksums
         run: python3 scripts/check-release.py packages
       - name: Add the editor video demo

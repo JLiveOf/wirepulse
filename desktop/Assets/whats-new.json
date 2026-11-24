@@ -1,20 +1,20 @@
 {
-  "version": "4.5.0",
+  "version": "4.5.1",
   "features": [
     {
-      "icon": "sparkles",
-      "title": "Novedades siempre a mano",
-      "description": "Abre esta pantalla desde Inicio con el botón ¿Qué hay de nuevo?."
-    },
-    {
       "icon": "update",
-      "title": "Ventanas nativas en Windows",
-      "description": "La bienvenida, la splash, las novedades y el aviso de actualización utilizan WinUI y un fondo acrílico transparente."
+      "title": "Los hotfixes también cuentan",
+      "description": "El actualizador distingue nuevas compilaciones aunque mantengan el mismo número de versión, de forma independiente para cada sistema."
     },
     {
       "icon": "music",
-      "title": "Más contraste y un nuevo cierre",
-      "description": "Los textos del cristal de macOS se leen mejor. Al terminar la bienvenida suena un efecto de apagado de tele antigua."
+      "title": "El mismo cierre, también con la X",
+      "description": "Al cerrar las novedades con la X se corta la música y suena el efecto de apagado de tele antigua, sin fade-out."
+    },
+    {
+      "icon": "sparkles",
+      "title": "Ventanas que se mantienen a la vista",
+      "description": "La splash y las novedades permanecen por encima de las ventanas normales. En macOS, sus esquinas siguen el marco nativo del sistema."
     }
   ]
 }

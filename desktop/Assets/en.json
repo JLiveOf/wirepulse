@@ -508,5 +508,11 @@
   "Ventanas nativas en Windows": "Native windows on Windows",
   "La bienvenida, la splash, las novedades y el aviso de actualización utilizan WinUI y un fondo acrílico transparente.": "Welcome, splash, release highlights and update prompts use WinUI with a transparent acrylic backdrop.",
   "Más contraste y un nuevo cierre": "Better contrast and a new ending",
-  "Los textos del cristal de macOS se leen mejor. Al terminar la bienvenida suena un efecto de apagado de tele antigua.": "Text over macOS glass is easier to read. Finishing welcome plays a vintage TV shutdown effect."
+  "Los textos del cristal de macOS se leen mejor. Al terminar la bienvenida suena un efecto de apagado de tele antigua.": "Text over macOS glass is easier to read. Finishing welcome plays a vintage TV shutdown effect.",
+  "Los hotfixes también cuentan": "Hotfixes count too",
+  "El actualizador distingue nuevas compilaciones aunque mantengan el mismo número de versión, de forma independiente para cada sistema.": "The updater detects newer builds even when their version number stays the same, independently for each operating system.",
+  "El mismo cierre, también con la X": "The same shutdown, including the close button",
+  "Al cerrar las novedades con la X se corta la música y suena el efecto de apagado de tele antigua, sin fade-out.": "Closing release highlights with the close button cuts the music and plays the vintage TV shutdown effect, without fading out.",
+  "Ventanas que se mantienen a la vista": "Windows that stay in view",
+  "La splash y las novedades permanecen por encima de las ventanas normales. En macOS, sus esquinas siguen el marco nativo del sistema.": "The splash and release highlights stay above normal windows. On macOS, their corners follow the native system window frame."
 }

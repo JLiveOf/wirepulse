@@ -3,6 +3,7 @@ set -euo pipefail
 project_dir=${0:A:h}
 app_dir="${WIREPULSE_OUTPUT_DIR:-$project_dir/dist}/WirePulse.app"
 mkdir -p "$app_dir/Contents/MacOS" "$app_dir/Contents/Resources"
+python3 "$project_dir/../scripts/build-info.py" "$app_dir/Contents/Resources/build-info.json"
 cp "$project_dir/Resources/Info.plist" "$app_dir/Contents/Info.plist"
 cp -R "$project_dir/Resources/en.lproj" "$project_dir/Resources/es.lproj" "$app_dir/Contents/Resources/"
 cp "$project_dir/../desktop/Assets/en.json" "$app_dir/Contents/Resources/en.json"

@@ -47,7 +47,7 @@ final class AppDelegate:NSObject,NSApplicationDelegate{
  private var surfaces=[WallpaperSurface](),item:NSStatusItem!,settingsWindow:NSWindow?,timer:Timer?,subscriptions=Set<AnyCancellable>(),observers=[NSObjectProtocol](),resumeAudio=false,displayProfiles=[String:Configuration](),lastIndependent=false,sessionSuspended=false
  private var coverageTimer:Timer?
  func applicationDidFinishLaunching(_ notification:Notification){
-  if !WelcomeController.needsSetup() && !WelcomeController.needsNews(UpdateManager.installed){DispatchQueue.main.asyncAfter(deadline:.now()+5){Task{await UpdateManager.shared.check()}}}
+  if !WelcomeController.needsSetup() && !WelcomeController.needsNews(UpdateManager.newsIdentity){DispatchQueue.main.asyncAfter(deadline:.now()+5){Task{await UpdateManager.shared.check()}}}
   NSApp.setActivationPolicy(.accessory)
   item=NSStatusBar.system.statusItem(withLength:NSStatusItem.squareLength);item.button?.image=NSImage(systemSymbolName:"waveform.circle.fill",accessibilityDescription:"WirePulse")
   let menu=NSMenu();menu.addItem(withTitle:L10n.text("WirePulse · Ajustes…"),action:#selector(showSettings),keyEquivalent:",");menu.addItem(withTitle:L10n.text("Editar escritorio…"),action:#selector(editDesktop),keyEquivalent:"e");menu.addItem(withTitle:L10n.text("Pausar / reanudar animación"),action:#selector(toggleAnimation),keyEquivalent:"");menu.addItem(withTitle:L10n.text("Reiniciar audio del sistema"),action:#selector(restartAudio),keyEquivalent:"");menu.addItem(.separator());menu.addItem(withTitle:L10n.text("Salir de WirePulse"),action:#selector(quit),keyEquivalent:"q");for entry in menu.items{entry.target=self};item.menu=menu
@@ -62,7 +62,7 @@ final class AppDelegate:NSObject,NSApplicationDelegate{
   timer=Timer.scheduledTimer(withTimeInterval:2,repeats:true){[weak self] _ in guard let self=self else{return};Task{@MainActor in UpdateManager.shared.offerPending()};if self.welcome==nil{self.media.poll(source:self.config.mediaSource,ciderURL:self.config.ciderURL,ciderToken:self.config.ciderToken)};self.writeStatus()}
   let diagnostic=CommandLine.arguments.dropFirst().contains{$0.hasPrefix("--") && $0 != "--autostart" && $0 != "--no-settings"}
   let initialSetup=WelcomeController.needsSetup()
-  let needsNews=WelcomeController.needsNews(UpdateManager.installed)
+  let needsNews=WelcomeController.needsNews(UpdateManager.newsIdentity)
   if !diagnostic && (initialSetup || needsNews || WelcomeController.showOnStartup){welcome=WelcomeController(audio:audio,startup:startup,initialSetup:initialSetup,showNews:needsNews,onFinish:{[weak self] in let finished=self?.welcome?.finished==true;self?.welcome=nil;if self?.audio.requested==false{self?.audio.start()};if finished{Task{await UpdateManager.shared.check()}}})}
   if !initialSetup || diagnostic{DispatchQueue.main.asyncAfter(deadline:.now()+0.8){[weak self] in self?.audio.start()}}
 

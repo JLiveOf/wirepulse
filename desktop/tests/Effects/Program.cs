@@ -21,6 +21,15 @@ Check(UpdateService.Select(json,"4.1.0","stable","windows","4.1.1")==null,"skip 
 Check(UpdateService.Select(json,"9.0.0","beta","windows")==null,"never downgrade");
 Check(UpdateService.Select(JsonSerializer.Serialize(new[]{Release("v4.9.0",url:"https://evil.example/WirePulse.exe")}),"4.1.0","stable","windows")==null,"reject non-repository download URLs");
 Check(UpdateService.Select(json,"4.1.0","stable","unknown")==null,"require a compatible platform asset");
+var localBuild=new BuildIdentity("4.1.1",new string('a',40),100);string hotfixManifest=JsonSerializer.Serialize(new Dictionary<string,BuildIdentity>{{"windows",new("4.1.1",new string('b',40),200)},{"linux",localBuild},{"macos",localBuild}});
+var hotfix=UpdateService.Select(json,"4.1.1","stable","windows",builds:hotfixManifest,build:localBuild);
+Check(hotfix!=null,"same-version Windows hotfix is offered by build identity");
+Check(UpdateService.Select(json,"4.1.1","stable","windows",builds:hotfixManifest,build:new("4.1.1",new string('b',40),200))==null,"installed hotfix is not offered repeatedly");
+Check(UpdateService.Select(json,"4.1.1","stable","windows",hotfix!.Identity,hotfixManifest,localBuild)==null,"skip a specific hotfix");
+Check(UpdateService.Select(json,"4.1.1","stable","windows",hotfix.Identity.Replace(new string('a',64),new string('b',64)),hotfixManifest,localBuild)!=null,"a newer hotfix bypasses an older skipped fingerprint");
+Check(UpdateService.Select(json,"4.1.1","stable","windows",builds:hotfixManifest,build:new("4.1.1",new string('c',40),300))==null,"same-version builds never downgrade");
+Check(!UpdateService.PlatformBuild(hotfixManifest,"linux")!.NewerThan(localBuild)&&!UpdateService.PlatformBuild(hotfixManifest,"macos")!.NewerThan(localBuild),"Windows-only hotfix leaves other platforms unchanged");
+Check(UpdateService.Select(json,"4.1.1","stable","windows",builds:"invalid",build:localBuild)==null,"missing or malformed build metadata does not invent an update");
 Check(UpdateService.ResolveInstalled("4.2.0",new("v4.2.0-beta.10","abc"),"abc")=="4.2.0-beta.10","retain installed prerelease identity");
 Check(UpdateService.ResolveInstalled("4.2.0",new("v4.2.0-beta.10","abc"),"different")=="4.2.0","manual replacement invalidates prerelease identity");
 Check(ReleaseVersion.Parse("4.1.0-beta.01")==null&&ReleaseVersion.Parse("4.1.0-beta..1")==null,"reject malformed prerelease identifiers");
