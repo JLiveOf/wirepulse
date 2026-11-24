@@ -1,0 +1,48 @@
+name: Windows hotfix validation
+on:
+  push:
+    branches: [windows-hotfix]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  windows:
+    runs-on: windows-latest
+    timeout-minutes: 25
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build Windows and exercise native editor, graphics, audio and video
+        shell: pwsh
+        run: ./build-windows.ps1 -Test
+      - name: Native splash and system caption regression
+        shell: pwsh
+        run: |
+          $p=Start-Process ./publish/WirePulse.exe -ArgumentList '--experience-self-test' -Wait -PassThru -RedirectStandardOutput test-results/experience.log -RedirectStandardError test-results/experience.err
+          if($p.ExitCode -ne 0){Get-Content test-results/experience.err;throw 'Native experience test failed'}
+          if(!(Select-String -Path test-results/experience.log -Pattern 'PASS WinUI' -Quiet)){throw 'Native experience test did not complete'}
+      - name: Package and validate installer
+        shell: pwsh
+        run: |
+          $version=(Get-Content ../VERSION -Raw).Trim()
+          python packaging/package.py win-x64 $version
+          if($LASTEXITCODE -ne 0){throw 'Packaging failed'}
+          ./packaging/windows/test-installer.ps1 -Installer "packages/WirePulse-$version-win-x64-Setup.exe" -Version $version
+      - uses: actions/upload-artifact@v4
+        with:
+          name: windows-hotfix-packages
+          path: desktop/packages/*
+          if-no-files-found: error
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: windows-hotfix-validation
+          path: |
+            desktop/test-results/
+            ${{ runner.temp }}/WirePulse-settings-error.txt
+          if-no-files-found: warn
