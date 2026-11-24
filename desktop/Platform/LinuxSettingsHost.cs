@@ -7,7 +7,7 @@ using System.Text.Json.Nodes;
 namespace WirePulse;
 internal interface INativeUiHost:IDisposable {bool Alive{get;}bool Show(bool experience=false);void Terminate();}
 internal sealed class LinuxSettingsHost(Func<JsonObject,JsonNode> handle):INativeUiHost {
- static readonly Lazy<bool> gtk=new(()=>{try{if(!File.Exists("/usr/bin/python3"))return false;var start=new ProcessStartInfo("/usr/bin/python3"){UseShellExecute=false,RedirectStandardError=true,RedirectStandardOutput=true};start.ArgumentList.Add("-c");start.ArgumentList.Add("import gi;gi.require_version('Gtk','3.0');from gi.repository import Gtk");using var process=Process.Start(start)!;if(!process.WaitForExit(2000)){process.Kill(true);return false;}return process.ExitCode==0;}catch{return false;}});
+ static readonly Lazy<bool> gtk=new(()=>{try{if(!File.Exists("/usr/bin/python3"))return false;var start=new ProcessStartInfo("/usr/bin/python3"){UseShellExecute=false,RedirectStandardError=true,RedirectStandardOutput=true};start.ArgumentList.Add("-c");start.ArgumentList.Add("import gi,cairo;gi.require_foreign('cairo');gi.require_version('Gtk','3.0');from gi.repository import Gtk");using var process=Process.Start(start)!;if(!process.WaitForExit(2000)){process.Kill(true);return false;}return process.ExitCode==0;}catch{return false;}});
  public static bool Available=>File.Exists(Path.Combine(AppContext.BaseDirectory,"LinuxUI","native.py"))&&gtk.Value;
  readonly string folder=Path.Combine(Path.GetTempPath(),"wirepulse-ui-"+Guid.NewGuid().ToString("N"));readonly CancellationTokenSource stop=new();Socket? listener;Process? process,editor;Task? server;
  public bool Alive=>process is{HasExited:false};

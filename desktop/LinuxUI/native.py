@@ -86,8 +86,8 @@ class Companion:
   if self.args.test_output:GLib.timeout_add(600,self.smoke)
  def fit_window(self):
   screen=self.window.get_screen();area=screen.get_monitor_workarea(screen.get_monitor_at_window(self.window.get_window()))
-  width,height=self.window.get_size();self.window.resize(min(width,max(300,area.width-32)),min(height,max(260,area.height-40)))
-  if self.args.mode!='editor':self.window.move(area.x+max(0,(area.width-min(width,area.width-32))//2),area.y+max(0,(area.height-min(height,area.height-40))//2))
+  width,height=self.window.get_size();self.window.resize(min(width,max(300,area.width-32)),min(height,max(260,area.height-64)))
+  if self.args.mode!='editor':self.window.move(area.x+max(0,(area.width-min(width,area.width-32))//2),area.y+max(0,(area.height-min(height,area.height-64))//2))
  def clear(self,box):
   for child in box.get_children():box.remove(child)
  def label(self,text,size=None,dim=False):
@@ -217,8 +217,11 @@ class Companion:
   self.window.set_title(self.t('Editar escritorio'));self.window.set_type_hint(Gdk.WindowTypeHint.UTILITY);self.window.set_skip_taskbar_hint(True);self.window.set_keep_above(True);self.window.set_default_size(350,600);self.clear(self.box)
   header=Gtk.HeaderBar();header.set_title(self.t('Propiedades'));header.set_show_close_button(True);self.window.set_titlebar(header)
   scroll=Gtk.ScrolledWindow();scroll.set_policy(Gtk.PolicyType.NEVER,Gtk.PolicyType.AUTOMATIC);self.pack(self.box,scroll,True);panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12);panel.set_border_width(14);scroll.add(panel)
-  self.pack(panel,self.label('Objetos',18));self.pack(panel,self.label('Arrastra ⠿ para ordenar capas · arriba queda delante',dim=True));self.layer_model=Gtk.ListStore(str,str);self.layers=Gtk.TreeView(model=self.layer_model);self.layers.set_headers_visible(False);self.layers.append_column(Gtk.TreeViewColumn('',Gtk.CellRendererText(),text=1));self.layers.set_reorderable(True);self.layers.get_selection().connect('changed',self.select_layer);self.layer_model.connect('rows-reordered',self.reordered);list_scroll=Gtk.ScrolledWindow();list_scroll.set_min_content_height(135);list_scroll.set_max_content_height(200);list_scroll.set_propagate_natural_height(True);list_scroll.add(self.layers);self.pack(panel,list_scroll)
-  self.properties=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12);self.pack(panel,self.properties);self.toolbar=Gtk.Window(title=self.t('Editar escritorio'));self.toolbar.set_type_hint(Gdk.WindowTypeHint.UTILITY);self.toolbar.set_skip_taskbar_hint(True);self.toolbar.set_keep_above(True);self.toolbar.set_resizable(False);self.toolbar.connect('delete-event',lambda *_:(self.cancel_editor(),True)[1]);bar=Gtk.FlowBox();bar.set_selection_mode(Gtk.SelectionMode.NONE);bar.set_max_children_per_line(8);bar.set_column_spacing(6);bar.set_row_spacing(6);bar.set_border_width(10);self.toolbar.add(bar)
+  self.pack(panel,self.label('Objetos',18));self.pack(panel,self.label('Arrastra ⠿ para ordenar capas · arriba queda delante',dim=True));self.layer_model=Gtk.ListStore(str,str,bool,bool);self.layers=Gtk.TreeView(model=self.layer_model);self.layers.set_headers_visible(False);text_cell=Gtk.CellRendererText(ellipsize=Pango.EllipsizeMode.END,width_chars=16,max_width_chars=22);name_column=Gtk.TreeViewColumn('',text_cell,text=1);name_column.set_expand(True);self.layers.append_column(name_column);self.layer_buttons={}
+  for key,icons in [('locked',('changes-allow-symbolic','changes-prevent-symbolic')),('visible',('view-conceal-symbolic','view-reveal-symbolic'))]:
+   cell=Gtk.CellRendererPixbuf();column=Gtk.TreeViewColumn(self.t('Bloqueado' if key=='locked' else 'Visible'),cell);column.set_fixed_width(28);column.set_sizing(Gtk.TreeViewColumnSizing.FIXED);column.set_cell_data_func(cell,lambda col,renderer,model,it,data,k=key,choices=icons:renderer.set_property('icon-name',choices[bool(model[it][2 if k=='locked' else 3])]),None);self.layers.append_column(column);self.layer_buttons[column]=key
+  self.layers.connect('button-press-event',self.layer_button);self.layers.set_reorderable(True);self.layers.get_selection().connect('changed',self.select_layer);self.layer_model.connect('rows-reordered',self.reordered);list_scroll=Gtk.ScrolledWindow();list_scroll.set_min_content_height(135);list_scroll.set_max_content_height(200);list_scroll.set_propagate_natural_height(True);list_scroll.add(self.layers);self.pack(panel,list_scroll)
+  self.properties=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=12);self.pack(panel,self.properties);self.toolbar=Gtk.Window(title=self.t('Editar escritorio'));self.toolbar.set_type_hint(Gdk.WindowTypeHint.UTILITY);self.toolbar.set_skip_taskbar_hint(True);self.toolbar.set_keep_above(True);self.toolbar.set_resizable(False);self.toolbar.set_decorated(False);self.toolbar.connect('delete-event',lambda *_:(self.cancel_editor(),True)[1]);bar=Gtk.FlowBox();bar.set_selection_mode(Gtk.SelectionMode.NONE);bar.set_max_children_per_line(8);bar.set_column_spacing(6);bar.set_row_spacing(6);bar.set_border_width(10);self.toolbar.add(bar)
   add=Gtk.MenuButton(label=self.t('＋ Añadir'));menu=Gtk.Menu()
   for kind,title in self.state.get('kinds',{}).items():
    item=Gtk.MenuItem(label=self.t(title));item.connect('activate',lambda _,k=kind:self.add_object(k));menu.append(item)
@@ -250,14 +253,20 @@ class Companion:
   items=self.state.get('items',[]);ids=[x['id'] for x in items];self.loading=True
   if ids!=self.item_ids:
    self.layer_model.clear()
-   for item in items:self.layer_model.append([item['id'],self.layer_title(item)])
+   for item in items:self.layer_model.append([item['id'],self.layer_title(item),item.get('locked',False),item.get('visible',True)])
    self.item_ids=ids
   else:
-   for row,item in zip(self.layer_model,items):row[1]=self.layer_title(item)
+   for row,item in zip(self.layer_model,items):row[1]=self.layer_title(item);row[2]=item.get('locked',False);row[3]=item.get('visible',True)
   for i,item in enumerate(items):
    if item['id']==self.state.get('selectedId'):self.layers.get_selection().select_path(i)
   self.loading=False
- def layer_title(self,item):return '⠿  '+('🔒 ' if item.get('locked') else '')+('○ ' if not item.get('visible',True) else '')+self.t(item.get('name',item['kind']))
+ def layer_title(self,item):return '⠿  '+('○ ' if not item.get('visible',True) else '')+self.t(item.get('name',item['kind']))
+ def layer_button(self,tree,event):
+  if event.button!=1:return False
+  hit=tree.get_path_at_pos(int(event.x),int(event.y))
+  if hit and hit[1] in self.layer_buttons:
+   path,column,_,_=hit;key=self.layer_buttons[column];row=self.layer_model[path];self.command('editor-property',id=row[0],key=key,value=not row[2 if key=='locked' else 3]);return True
+  return False
  def select_layer(self,selection):
   if self.loading:return
   model,it=selection.get_selected()
@@ -271,10 +280,10 @@ class Companion:
  def build_properties(self):
   self.clear(self.properties);item=self.state.get('selected');self.selected=self.state.get('selectedId')
   if not item:self.pack(self.properties,self.label('Selecciona un objeto'));self.properties.show_all();return
-  self.loading=True;self.entry(self.properties,'Nombre',item.get('name',''),lambda v:self.property('name',v));self.toggle(self.properties,'Visible',item.get('visible',True),lambda v:self.property('visible',v));self.toggle(self.properties,'Bloqueado',item.get('locked',False),lambda v:self.property('locked',v));actions=Gtk.Box(spacing=6)
+  self.loading=True;self.entry(self.properties,'Nombre',item.get('name',''),lambda v:self.property('name',v));self.toggle(self.properties,'Visible',item.get('visible',True),lambda v:self.property('visible',v));self.toggle(self.properties,'Bloqueado',item.get('locked',False),lambda v:self.property('locked',v));self.toggle(self.properties,'Mantener proporciones',item.get('keepAspect',True),lambda v:self.property('keepAspect',v));actions=Gtk.Box(spacing=6)
   for title,op in [('Centrar','editor-center'),('Ajustar a pantalla','editor-fit')]:self.pack(actions,self.button(title,lambda v=op:self.command(v)))
   self.pack(self.properties,actions);self.number(self.properties,'Giro del objeto',item.get('rotation',0),0,359,1,lambda v,g:self.property('rotation',v,g));self.number(self.properties,'Opacidad',item.get('opacity',1),0,1,.01,lambda v,g:self.property('opacity',v,g));kind=item['kind']
-  if kind in ('image','widget'):self.toggle(self.properties,'Mantener proporción',item.get('keepAspect',True),lambda v:self.property('keepAspect',v));self.pack(self.properties,self.label(pathlib.Path(item.get('asset','')).name,dim=True))
+  if kind in ('image','widget'):self.pack(self.properties,self.label(pathlib.Path(item.get('asset','')).name,dim=True))
   if kind in ('text','clock'):
    if kind=='text':
     self.pack(self.properties,self.label('Texto'));text=Gtk.TextView();text.set_wrap_mode(Gtk.WrapMode.WORD_CHAR);text.set_size_request(-1,90);buffer=text.get_buffer();buffer.set_text(item.get('text',''));gesture=uuid.uuid4().hex;buffer.connect('changed',lambda b:self.property('text',b.get_text(b.get_start_iter(),b.get_end_iter(),True),gesture));self.pack(self.properties,text)
@@ -350,7 +359,7 @@ class Companion:
   if self.expanded:content();return
   self.reveal.set_transition_duration(0);self.reveal.set_reveal_child(True);self.splash_name.set_opacity(1);start=time.monotonic()
   def expand():
-   p=min(1,(time.monotonic()-start)/.8);e=1-(1-p)**3;w,h=int(320+300*e),int(280+360*e);screen=self.window.get_screen();area=screen.get_monitor_workarea(screen.get_monitor_at_window(self.window.get_window()));self.window.resize(min(w,area.width-32),min(h,area.height-40));self.window.move(area.x+(area.width-min(w,area.width-32))//2,area.y+(area.height-min(h,area.height-40))//2);self.fixed.move(self.splash_logo,int(104-76*e),int(42-18*e));self.fixed.move(self.reveal,int(86-2*e),int(174-143*e))
+   p=min(1,(time.monotonic()-start)/.8);e=1-(1-p)**3;w,h=int(320+300*e),int(280+360*e);screen=self.window.get_screen();area=screen.get_monitor_workarea(screen.get_monitor_at_window(self.window.get_window()));self.window.resize(min(w,area.width-32),min(h,area.height-64));self.window.move(area.x+(area.width-min(w,area.width-32))//2,area.y+(area.height-min(h,area.height-64))//2);self.fixed.move(self.splash_logo,int(104-76*e),int(42-18*e));self.fixed.move(self.reveal,int(86-2*e),int(174-143*e))
    if p>=1:content();return False
    return True
   GLib.timeout_add(16,expand)
