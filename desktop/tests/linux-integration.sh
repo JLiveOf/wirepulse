@@ -17,7 +17,7 @@ import wave,math,struct
 with wave.open('test-results/tone.wav','wb') as f:
  f.setparams((2,2,48000,0,'NONE','not compressed'))
  data=b''.join(struct.pack('<hh',int(16000*math.sin(2*math.pi*1000*i/48000)),-int(16000*math.sin(2*math.pi*1000*i/48000))) for i in range(48000))
- for i in range(45):f.writeframes(data)
+ for i in range(120):f.writeframes(data)
 PY
 paplay --device=wirepulse_test test-results/tone.wav &
 /usr/bin/python3 tests/mpris-fixture.py >test-results/mpris.log 2>&1 &

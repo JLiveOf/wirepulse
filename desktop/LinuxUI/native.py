@@ -5,13 +5,13 @@ import gi
 gi.require_version('Gtk', '3.0')
 from gi.repository import Gtk, Gdk, GLib, Pango, GdkPixbuf
 ROOT = pathlib.Path(__file__).resolve().parent.parent
-ICONS={'Audio':'audio-volume-high-symbolic','Fondo':'image-x-generic-symbolic','Fondo animado':'starred-symbolic','Orbe':'web-browser-symbolic','Espectro':'view-sort-ascending-symbolic','Tarjeta':'audio-x-generic-symbolic','Reloj':'preferences-system-time-symbolic','Rendimiento':'utilities-system-monitor-symbolic','Inicio':'system-shutdown-symbolic'}
+ICONS={'Audio':'audio-volume-high-symbolic','Fondo':'image-x-generic-symbolic','Fondo animado':'starred-symbolic','Orbe':'web-browser-symbolic','Espectro':'view-sort-ascending-symbolic','Tarjeta':'audio-x-generic-symbolic','Reloj':'preferences-system-time-symbolic','Rendimiento':'preferences-system-symbolic','Inicio':'system-shutdown-symbolic'}
 GROUPS = ['Audio','Fondo','Fondo animado','Orbe','Espectro','Tarjeta','Reloj','Rendimiento','Inicio']
 LAYOUT = {'sphereX','sphereY','radius','spectrumX','spectrumY','spectrumWidth','spectrumHeight','cardX','cardY','cardscale','clockX','clockY','clocksize'}
 MEDIA = ['*.png','*.jpg','*.jpeg','*.webp','*.bmp','*.gif','*.mp4','*.m4v','*.mov','*.wmv','*.avi','*.webm','*.mkv']
 class Companion:
  def __init__(self,args):
-  self.args=args;self.state={};self.language='es';self.catalog=json.loads((ROOT/'Assets/en.json').read_text());self.covered=set();self.pool=concurrent.futures.ThreadPoolExecutor(max_workers=1);self.busy=False;self.pending={};self.widgets={};self.profile='';self.group='Audio';self.selected=None;self.item_ids=[];self.finished=False;self.finishing=False;self.loading=False;self.phase='intro';self.started=time.monotonic();self.expanding=False;self.expanded=False;self.editor_hidden=False;self.focus_stamp=None
+  self.args=args;self.state={};self.language='es';self.catalog=json.loads((ROOT/'Assets/en.json').read_text());self.covered=set();self.inflight=0;self.pool=concurrent.futures.ThreadPoolExecutor(max_workers=1);self.busy=False;self.pending={};self.widgets={};self.profile='';self.group='Audio';self.selected=None;self.item_ids=[];self.finished=False;self.finishing=False;self.loading=False;self.phase='intro';self.started=time.monotonic();self.expanding=False;self.expanded=False;self.editor_hidden=False;self.focus_stamp=None
   self.window=Gtk.Window(title='WirePulse');self.window.set_icon_from_file(str(ROOT/'Assets/WirePulse.png'));self.window.set_default_size(880,650);self.window.connect('delete-event',self.close)
   self.box=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=0);self.window.add(self.box)
   if args.mode=='experience':
@@ -20,7 +20,7 @@ class Companion:
   GLib.timeout_add(50,self.flush);GLib.timeout_add(250,self.poll);GLib.timeout_add(250,self.focus)
  def t(self,text):return self.catalog.get(str(text),str(text)) if self.language=='en' else str(text)
  def rpc(self,op,done=None,**values):
-  values['op']=op
+  self.inflight+=1;values['op']=op
   if self.args.mode=='settings':values.setdefault('profile',self.profile)
   def work():
    with socket.socket(socket.AF_UNIX) as s:
@@ -31,6 +31,7 @@ class Companion:
   future=self.pool.submit(work)
   def completed(f):
    def apply():
+    self.inflight=max(0,self.inflight-1)
     try:
      result=f.result()
      if done:done(result)
@@ -38,9 +39,14 @@ class Companion:
     return False
    GLib.idle_add(apply)
   future.add_done_callback(completed)
- def command(self,op,refresh=False,**values):self.rpc(op,lambda s:self.apply(s,refresh),**values)
- def defer(self,op,**values):self.pending[(op,values.get('key',''))]=(op,values)
- def flush(self):
+ def command(self,op,refresh=False,**values):
+  if op in ('edit','editor-save','editor-select','editor-undo','editor-redo','layout-export','layout-import'):self.flush(True)
+  self.rpc(op,lambda s:self.apply(s,refresh),**values)
+ def defer(self,op,**values):
+  if self.args.mode=='settings':values.setdefault('profile',self.profile)
+  self.pending[(op,values.get('key',''))]=(op,values)
+ def flush(self,force=False):
+  if self.inflight and not force:return not self.finished
   pending,self.pending=self.pending,{}
   for op,values in pending.values():self.command(op,**values)
   return not self.finished
@@ -53,7 +59,7 @@ class Companion:
   return not self.finished
  def poll(self):
   if self.finished:return False
-  if self.busy:return True
+  if self.busy or self.inflight:return True
   self.busy=True
   def received(s):self.busy=False;self.apply(s)
   self.rpc('editor-get' if self.args.mode=='editor' else 'get',received);return True
@@ -167,7 +173,7 @@ class Companion:
   def select(_list,row):
    if row:self.group=row.group;self.build_page()
   sidebar.connect('row-selected',select);sidebar.select_row(sidebar.get_row_at_index(GROUPS.index(self.group)));self.loading=False;self.box.show_all()
- def select_profile(self,value):self.profile=value;self.rpc('get',lambda s:self.apply(s,True))
+ def select_profile(self,value):self.flush(True);self.profile=value;self.rpc('get',lambda s:self.apply(s,True))
  def target(self):return self.state.get('displays',{}).get(self.profile,self.state.get('global',{})) if self.state.get('independent') else self.state.get('global',{})
  def build_page(self):
   self.loading=True;self.widgets={};self.clear(self.page);target=self.target();group=self.group
@@ -309,7 +315,7 @@ class Companion:
   if path:args['path']=path
   self.command('editor-add',True,**args)
  def cancel_editor(self):
-  if self.state.get('dirty'):
+  if self.state.get('dirty') or self.pending:
    dialog=Gtk.MessageDialog(transient_for=self.window,modal=True,message_type=Gtk.MessageType.QUESTION,buttons=Gtk.ButtonsType.NONE,text=self.t('¿Descartar los cambios de este diseño?'));dialog.set_keep_above(True);dialog.add_button(self.t('Seguir editando'),Gtk.ResponseType.CANCEL);dialog.add_button(self.t('Descartar'),Gtk.ResponseType.ACCEPT);choice=dialog.run();dialog.destroy()
    if choice!=Gtk.ResponseType.ACCEPT:self.command('editor-continue');return
   self.command('editor-discard')
@@ -390,6 +396,10 @@ class Companion:
   self.pool.shutdown(wait=False);Gtk.main_quit()
 
  def capture(self,name):
+  for _ in range(30):
+   if not Gtk.events_pending():break
+   Gtk.main_iteration_do(False)
+  Gdk.Window.process_all_updates()
   window=self.window.get_window();width,height=window.get_width(),window.get_height();pixbuf=Gdk.pixbuf_get_from_window(window,0,0,width,height)
   if pixbuf:pixbuf.savev(self.args.test_output+'-'+name+'.png','png',[],[])
  def smoke(self):
@@ -403,7 +413,7 @@ class Companion:
      if isinstance(w,Gtk.Container):
       for child in w.get_children():yield from descendants(child)
     scales=[w for w in descendants(self.page) if isinstance(w,Gtk.Scale)];assert scales
-    value=scales[0].get_value();scales[0].set_value(value+.1);self.flush()
+    value=scales[0].get_value();scales[0].set_value(value+.1);self.flush(True)
     def verify(s):
      assert abs(s['global']['values']['sensitivity']-(value+.1))<.001,s['global']['values']['sensitivity']
      self.command('edit');self.window.hide();GLib.timeout_add(300,self.smoke_wait_editor)
