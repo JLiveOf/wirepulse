@@ -514,5 +514,13 @@
   "El mismo cierre, también con la X": "The same shutdown, including the close button",
   "Al cerrar las novedades con la X se corta la música y suena el efecto de apagado de tele antigua, sin fade-out.": "Closing release highlights with the close button cuts the music and plays the vintage TV shutdown effect, without fading out.",
   "Ventanas que se mantienen a la vista": "Windows that stay in view",
-  "La splash y las novedades permanecen por encima de las ventanas normales. En macOS, sus esquinas siguen el marco nativo del sistema.": "The splash and release highlights stay above normal windows. On macOS, their corners follow the native system window frame."
+  "La splash y las novedades permanecen por encima de las ventanas normales. En macOS, sus esquinas siguen el marco nativo del sistema.": "The splash and release highlights stay above normal windows. On macOS, their corners follow the native system window frame.",
+  "Color": "Color",
+  "Color final": "End color",
+  "Editar escritorio": "Edit desktop",
+  "Escritorio": "Desktop",
+  "Giro del objeto": "Object rotation",
+  "Recorrido de animación": "Animation travel",
+  "Selecciona un objeto": "Select an object",
+  "Ángulo del gradiente": "Gradient angle"
 }

@@ -63,3 +63,16 @@ s=json.load(open('test-results/linux-video.json'))
 assert s['valid'] and s['videoFrames']>15,s
 print('PASS Linux FFmpeg background frames are decoded and drawn in the app')
 PYVIDEO
+
+# GTK controls and editor commands run against the actual .NET renderer, not a mock settings file.
+if test -f publish/LinuxUI/native.py; then
+ ./publish/WirePulse --no-settings --gtk-ui-test-output "$PWD/test-results/gtk-native.json" --probe-seconds 55 --probe-output "$PWD/test-results/gtk-app.json" >test-results/gtk-app.log 2>&1
+ python3 - <<'PYGTK'
+import json
+s=json.load(open('test-results/gtk-native.json'))
+assert s['valid'] and s['gtk']==3,s
+assert all(s['editor'].values()),s
+assert s['welcome']['valid'] and s['welcome']['closeSeconds']>=.5,s
+print('PASS native GTK settings, per-object properties, GIF import, layers, history, save, topmost welcome and close audio handoff')
+PYGTK
+fi

@@ -1,0 +1,74 @@
+name: Linux native UI hotfix validation
+on:
+  push:
+    branches: [linux-hotfix]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Build renderer and native companion
+        run: |
+          python3 ../scripts/build-info.py Assets/build-info.json
+          dotnet publish -c Release -f net10.0 -r linux-x64 --self-contained true -o publish -p:DebugType=None -p:DebugSymbols=false
+          python3 -m py_compile publish/LinuxUI/native.py
+      - name: Shared editor and update regression
+        run: |
+          ./publish/WirePulse --self-test
+          dotnet run --project tests/UiTests -c Release
+          dotnet run --project tests/Effects -c Release
+      - name: Native Cinnamon and GTK dependencies
+        run: |
+          if test -f /etc/apt/apt-mirrors.txt; then echo https://archive.ubuntu.com/ubuntu | sudo tee /etc/apt/apt-mirrors.txt; fi
+          if test -f /etc/apt/apt-security-mirrors.txt; then echo https://security.ubuntu.com/ubuntu | sudo tee /etc/apt/apt-security-mirrors.txt; fi
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::https::Timeout=30 update -qq
+          sudo apt-get -o Acquire::Retries=3 -o Acquire::https::Timeout=30 install -y --no-install-recommends ffmpeg cinnamon nemo pulseaudio pulseaudio-utils playerctl xvfb xdotool imagemagick python3-dbus python3-gi python3-gi-cairo python3-pil gir1.2-gtk-3.0 libxfixes3 libice6 libsm6 libfontconfig1 libwebkit2gtk-4.1-0
+      - name: Real Cinnamon desktop, GTK controls and editor transactions
+        run: dbus-run-session -- bash tests/linux-integration.sh
+      - name: Package only Linux
+        run: |
+          python3 packaging/package.py linux-x64 "$(cat ../VERSION)"
+          dpkg-deb --info packages/*.deb
+          dpkg-deb --contents packages/*.deb | grep 'LinuxUI/native.py'
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-hotfix-packages
+          path: desktop/packages/*
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-hotfix-validation
+          path: desktop/test-results/
+  shared-windows-regression:
+    runs-on: windows-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: desktop
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '10.0.x'
+      - name: Shared settings and editor protocol remains compatible with WinUI
+        shell: pwsh
+        run: |
+          ./build-windows.ps1 -Test
+          $p=Start-Process ./publish/WirePulse.exe -ArgumentList '--experience-self-test' -Wait -PassThru -RedirectStandardOutput test-results/experience.log -RedirectStandardError test-results/experience.err
+          if($p.ExitCode -ne 0){Get-Content test-results/experience.err;throw 'Native Windows experience regression'}
+          if(!(Select-String -Path test-results/experience.log -Pattern 'PASS WinUI' -Quiet)){throw 'Native experience test did not complete'}
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: linux-hotfix-windows-regression
+          path: desktop/test-results/
