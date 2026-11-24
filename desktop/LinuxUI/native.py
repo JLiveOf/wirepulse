@@ -40,7 +40,7 @@ class Companion:
    GLib.idle_add(apply)
   future.add_done_callback(completed)
  def command(self,op,refresh=False,**values):
-  if op in ('edit','editor-save','editor-select','editor-undo','editor-redo','layout-export','layout-import'):self.flush(True)
+  if op not in ('set','gradient','editor-style','editor-property','get','editor-get'):self.flush(True)
   self.rpc(op,lambda s:self.apply(s,refresh),**values)
  def defer(self,op,**values):
   if self.args.mode=='settings':values.setdefault('profile',self.profile)
@@ -140,7 +140,7 @@ class Companion:
  def gradient(self,box,key,current,change):
   values=dict(current or {'enabled':False,'end':'#0000ff','angle':0});panel=Gtk.Box(orientation=Gtk.Orientation.VERTICAL,spacing=10)
   def update(k,v):values[k]=v;change(dict(values))
-  self.toggle(panel,'Gradiente',values.get('enabled',False),lambda v:update('enabled',v));self.color(panel,'Color final',values.get('end','#0000ff'),lambda v:update('end',v));self.number(panel,'Ángulo del gradiente',values.get('angle',0),0,360,1,lambda v,g:update('angle',v));exp=Gtk.Expander(label=self.t('Gradiente'));exp.add(panel);self.pack(box,exp)
+  self.toggle(panel,'Gradiente',values.get('enabled',False),lambda v:update('enabled',v));self.color(panel,'Color final',values.get('end','#0000ff'),lambda v:update('end',v));self.number(panel,'Ángulo del gradiente',values.get('angle',0),-360,360,1,lambda v,g:update('angle',v));exp=Gtk.Expander(label=self.t('Gradiente'));exp.add(panel);self.pack(box,exp)
  def chooser(self,title,save=False,patterns=None,folder=False):
   action=Gtk.FileChooserAction.SELECT_FOLDER if folder else Gtk.FileChooserAction.SAVE if save else Gtk.FileChooserAction.OPEN
   dialog=Gtk.FileChooserNative.new(self.t(title),self.window,action,self.t('Guardar' if save else 'Elegir…'),self.t('Cancelar'))
@@ -288,7 +288,7 @@ class Companion:
   if not item:self.pack(self.properties,self.label('Selecciona un objeto'));self.properties.show_all();return
   self.loading=True;self.entry(self.properties,'Nombre',item.get('name',''),lambda v:self.property('name',v));self.toggle(self.properties,'Visible',item.get('visible',True),lambda v:self.property('visible',v));self.toggle(self.properties,'Bloqueado',item.get('locked',False),lambda v:self.property('locked',v));self.toggle(self.properties,'Mantener proporciones',item.get('keepAspect',True),lambda v:self.property('keepAspect',v));actions=Gtk.Box(spacing=6)
   for title,op in [('Centrar','editor-center'),('Ajustar a pantalla','editor-fit')]:self.pack(actions,self.button(title,lambda v=op:self.command(v)))
-  self.pack(self.properties,actions);self.number(self.properties,'Giro del objeto',item.get('rotation',0),0,359,1,lambda v,g:self.property('rotation',v,g));self.number(self.properties,'Opacidad',item.get('opacity',1),0,1,.01,lambda v,g:self.property('opacity',v,g));kind=item['kind']
+  self.pack(self.properties,actions);self.number(self.properties,'Giro del objeto',item.get('rotation',0),-360,360,1,lambda v,g:self.property('rotation',v,g));self.number(self.properties,'Opacidad',item.get('opacity',1),0,1,.01,lambda v,g:self.property('opacity',v,g));kind=item['kind']
   if kind in ('image','widget'):self.pack(self.properties,self.label(pathlib.Path(item.get('asset','')).name,dim=True))
   if kind in ('text','clock'):
    if kind=='text':
